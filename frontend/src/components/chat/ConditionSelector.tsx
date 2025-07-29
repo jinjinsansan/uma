@@ -150,7 +150,7 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
       // 予想結果のテキストを生成
       const resultText = `🏆 予想結果 (${getConfidenceText(confidence)})\n\n📊 選択条件: ${selectedConditionsDetail}\n\n${response.horses.map((horse, index) => {
         const rank = index + 1;
-        const score = horse.finalScore || horse.baseScore || 0;
+        const score = horse.final_score || horse.base_score || 0;
         const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}位`;
         return `${rankEmoji} ${horse.name} (指数: ${score.toFixed(1)}点)`;
       }).join('\n')}\n\n⏱️ 計算時間: ${new Date().toLocaleTimeString()}`;

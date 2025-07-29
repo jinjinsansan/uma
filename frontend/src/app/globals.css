@@ -159,7 +159,7 @@ body {
     inset 0 -10px 20px rgba(0, 0, 0, 0.15);
 }
 
-/* レスポンシブ対応 - 影を軽減して白い背景に映えるように */
+/* レスポンシブ対応 - 影を完全に削除して真っ白な背景を保証 */
 @media (max-width: 768px) {
   .orb-container {
     width: 130px;
@@ -169,12 +169,8 @@ body {
   .orb {
     /* モバイルでの輪郭を鮮明に */
     filter: blur(0.3px) brightness(1.2);
-    /* 影を軽減して白い背景に映えるように */
-    box-shadow: 
-      0 0 15px rgba(0, 0, 0, 0.05),
-      inset 0 0 25px rgba(255, 255, 255, 0.6),
-      0 5px 10px rgba(0, 0, 0, 0.08),
-      inset 0 -2px 5px rgba(0, 0, 0, 0.05);
+    /* 影を完全に削除して真っ白な背景を保証 */
+    box-shadow: none;
   }
   
   .orb::before {
@@ -195,12 +191,8 @@ body {
       #acceac 75%,
       #98c198 100%
     );
-    /* モバイル用の軽い影 */
-    box-shadow: 
-      0 0 15px rgba(0, 0, 0, 0.05),
-      inset 0 0 25px rgba(255, 255, 255, 0.6),
-      0 5px 10px rgba(0, 0, 0, 0.08),
-      inset 0 -2px 5px rgba(0, 0, 0, 0.05);
+    /* 影を完全に削除 */
+    box-shadow: none;
   }
   
   .orb.processing {
@@ -212,12 +204,8 @@ body {
       #764ba2 75%,
       #f5576c 100%
     );
-    /* モバイル用の軽い影 */
-    box-shadow: 
-      0 0 20px rgba(79, 172, 254, 0.3),
-      inset 0 0 25px rgba(255, 255, 255, 0.6),
-      0 5px 10px rgba(0, 0, 0, 0.08),
-      inset 0 -2px 5px rgba(0, 0, 0, 0.05);
+    /* 影を完全に削除 */
+    box-shadow: none;
   }
 }
 
@@ -230,12 +218,8 @@ body {
   .orb {
     /* 小さいサイズでの輪郭をより鮮明に */
     filter: blur(0.2px) brightness(1.3);
-    /* さらに軽い影で白い背景に映えるように */
-    box-shadow: 
-      0 0 10px rgba(0, 0, 0, 0.03),
-      inset 0 0 20px rgba(255, 255, 255, 0.7),
-      0 3px 6px rgba(0, 0, 0, 0.05),
-      inset 0 -1px 3px rgba(0, 0, 0, 0.03);
+    /* 影を完全に削除して真っ白な背景を保証 */
+    box-shadow: none;
   }
   
   .orb::before {
@@ -255,12 +239,8 @@ body {
       #c0dbc0 60%,
       #98c198 100%
     );
-    /* 小さいサイズ用のさらに軽い影 */
-    box-shadow: 
-      0 0 10px rgba(0, 0, 0, 0.03),
-      inset 0 0 20px rgba(255, 255, 255, 0.7),
-      0 3px 6px rgba(0, 0, 0, 0.05),
-      inset 0 -1px 3px rgba(0, 0, 0, 0.03);
+    /* 影を完全に削除 */
+    box-shadow: none;
   }
   
   .orb.processing {
@@ -271,12 +251,8 @@ body {
       #667eea 60%,
       #f5576c 100%
     );
-    /* 小さいサイズ用のさらに軽い影 */
-    box-shadow: 
-      0 0 15px rgba(79, 172, 254, 0.2),
-      inset 0 0 20px rgba(255, 255, 255, 0.7),
-      0 3px 6px rgba(0, 0, 0, 0.05),
-      inset 0 -1px 3px rgba(0, 0, 0, 0.03);
+    /* 影を完全に削除 */
+    box-shadow: none;
   }
 }
 

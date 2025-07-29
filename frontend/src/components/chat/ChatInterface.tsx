@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Horse, Crown } from 'lucide-react';
+import { Zap, Crown } from 'lucide-react';
 import AnimatedOrb from '../animation/AnimatedOrb';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
@@ -25,7 +25,7 @@ export default function ChatInterface() {
       <header className="flex justify-between items-center p-6">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2">
-            <Horse className="w-8 h-8 text-orange-500" />
+            <Zap className="w-8 h-8 text-orange-500" />
             <h1 className="text-2xl font-bold text-gray-800" style={{ fontFamily: 'Georgia, serif' }}>
               OracleAI
             </h1>

@@ -282,11 +282,16 @@ class PredictionEngine:
         
         # 複勝率を0-100点スケールに変換
         score = win_rate * 100
+        
+        logger.info(f"Condition {condition_id}: win_rate={win_rate}, score={score}")
         return score
     
     def calculate_final_score(self, horse_data: dict, selected_conditions: List[str]) -> float:
         """最終指数を計算（0-100点）"""
+        logger.info(f"Calculating final score for {horse_data['name']} with conditions: {selected_conditions}")
+        
         if len(selected_conditions) == 0:
+            logger.info(f"No conditions selected, using base score: {horse_data['base_score']}")
             return horse_data['base_score']
         
         # 各条件のスコアを計算
@@ -294,19 +299,22 @@ class PredictionEngine:
         for condition_id in selected_conditions:
             score = self.calculate_condition_score(horse_data, condition_id)
             condition_scores.append(score)
+            logger.info(f"Condition {condition_id} score: {score}")
         
         # 重み付け計算（選択条件のみ使用）
         weighted_score = 0.0
         for i, score in enumerate(condition_scores):
             if i < len(self.weights):
-                weighted_score += score * self.weights[i]
+                weight = self.weights[i]
+                weighted_score += score * weight
+                logger.info(f"Weight {i+1}: {score} × {weight} = {score * weight}")
         
-        # データ不足時の補完（3走以上: そのまま使用）
-        # ここでは各馬の詳細データを使用しているため、補完は不要
+        logger.info(f"Total weighted score before adjustment: {weighted_score}")
         
-        # 最終指数を0-100点に制限
+        # 最終指数を20-90点に制限
         final_score = max(20, min(90, weighted_score))  # 20-90点の範囲に制限
         
+        logger.info(f"Final score for {horse_data['name']}: {final_score}")
         return round(final_score, 1)  # 小数点第1位まで
     
     def determine_confidence(self, horses: List[dict]) -> str:
@@ -394,6 +402,7 @@ async def predict_race(request: PredictRequest):
     """レース予想を実行（8条件計算式完璧実装）"""
     try:
         logger.info(f"Prediction request received: {request}")
+        logger.info(f"Selected conditions: {request.selected_conditions}")
         
         # 馬のデータをコピー
         horses = []
@@ -413,10 +422,14 @@ async def predict_race(request: PredictRequest):
             }
             horses.append(horse)
         
+        logger.info(f"Processing {len(horses)} horses")
+        
         # 各馬の最終指数を計算
         for horse in horses:
+            logger.info(f"Processing horse: {horse['name']}")
             final_score = prediction_engine.calculate_final_score(horse, request.selected_conditions)
             horse["final_score"] = final_score
+            logger.info(f"Final score for {horse['name']}: {final_score}")
         
         # スコアでソート（降順）
         horses.sort(key=lambda x: x["final_score"], reverse=True)

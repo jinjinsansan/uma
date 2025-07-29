@@ -31,4 +31,4 @@ export interface Condition {
   priority?: number;
 }
 
-export type ConfidenceLevel = 'rainbow' | 'high' | 'medium' | 'low' | 'processing';
+export type ConfidenceLevel = 'waiting' | 'chatting' | 'high' | 'medium' | 'low' | 'processing';

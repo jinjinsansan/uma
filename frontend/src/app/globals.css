@@ -15,8 +15,8 @@ body {
 
 /* 3D球体スタイル */
 .orb-container {
-  width: 200px;
-  height: 200px;
+  width: 180px;
+  height: 180px;
   position: relative;
   margin: 0 auto;
 }
@@ -27,12 +27,12 @@ body {
   border-radius: 50%;
   background: radial-gradient(
     circle at 30% 30%,
-    #ffffff 0%,
-    #f0f0f0 20%,
-    #e0e0e0 40%,
-    #d0d0d0 60%,
-    #c0c0c0 80%,
-    #b0b0b0 100%
+    #e8f5e8 0%,
+    #d4e8d4 20%,
+    #c0dbc0 40%,
+    #acceac 60%,
+    #98c198 80%,
+    #84b484 100%
   );
   box-shadow: 
     0 0 50px rgba(0, 0, 0, 0.1),
@@ -44,6 +44,7 @@ body {
     rotate 6s linear infinite;
   filter: blur(0.5px) brightness(1.1);
   position: relative;
+  transition: all 0.5s ease-in-out;
 }
 
 .orb::before {
@@ -73,7 +74,43 @@ body {
   to { transform: rotateX(10deg) rotateY(360deg); }
 }
 
-/* 信頼度別カラーバリエーション */
+/* 待機状態 - 薄いグリーン */
+.orb.waiting {
+  background: radial-gradient(
+    circle at 30% 30%,
+    #e8f5e8 0%,
+    #d4e8d4 20%,
+    #c0dbc0 40%,
+    #acceac 60%,
+    #98c198 80%,
+    #84b484 100%
+  );
+  box-shadow: 
+    0 0 50px rgba(0, 0, 0, 0.1),
+    inset 0 0 50px rgba(255, 255, 255, 0.3),
+    0 20px 40px rgba(0, 0, 0, 0.2),
+    inset 0 -10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* チャット中 - ランダム色（動的に変更） */
+.orb.chatting {
+  background: radial-gradient(
+    circle at 30% 30%,
+    #ff6b6b 0%,
+    #ff5252 20%,
+    #ff3838 40%,
+    #ff1f1f 60%,
+    #ff0505 80%,
+    #e60000 100%
+  );
+  box-shadow: 
+    0 0 60px rgba(255, 107, 107, 0.6),
+    inset 0 0 50px rgba(255, 255, 255, 0.3),
+    0 20px 40px rgba(0, 0, 0, 0.2),
+    inset 0 -10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* 高信頼度 - 白/銀色 */
 .orb.high-confidence {
   background: radial-gradient(
     circle at 30% 30%,
@@ -91,6 +128,7 @@ body {
     inset 0 -10px 20px rgba(0, 0, 0, 0.1);
 }
 
+/* 中信頼度 - ゴールド */
 .orb.medium-confidence {
   background: radial-gradient(
     circle at 30% 30%,
@@ -108,6 +146,7 @@ body {
     inset 0 -10px 20px rgba(0, 0, 0, 0.1);
 }
 
+/* 低信頼度 - 黒/グレー */
 .orb.low-confidence {
   background: radial-gradient(
     circle at 30% 30%,
@@ -125,51 +164,46 @@ body {
     inset 0 -10px 20px rgba(0, 0, 0, 0.2);
 }
 
+/* 処理中 - 青/紫 */
 .orb.processing {
   background: radial-gradient(
     circle at 30% 30%,
-    #ffd700 0%,
-    #ffed4e 20%,
-    #f4d03f 40%,
-    #f39c12 60%,
-    #e67e22 80%,
-    #d68910 100%
+    #4facfe 0%,
+    #00f2fe 20%,
+    #667eea 40%,
+    #764ba2 60%,
+    #f093fb 80%,
+    #f5576c 100%
   );
   box-shadow: 
-    0 0 60px rgba(255, 215, 0, 0.6),
+    0 0 60px rgba(79, 172, 254, 0.6),
     inset 0 0 50px rgba(255, 255, 255, 0.3),
     0 20px 40px rgba(0, 0, 0, 0.2),
-    inset 0 -10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.orb.rainbow {
-  background: conic-gradient(
-    from 0deg,
-    #ff0000 0deg,
-    #ff8800 60deg,
-    #ffff00 120deg,
-    #00ff00 180deg,
-    #0088ff 240deg,
-    #8800ff 300deg,
-    #ff0088 360deg
-  );
-  box-shadow: 
-    0 0 50px rgba(255, 255, 255, 0.3),
-    inset 0 0 50px rgba(255, 255, 255, 0.1),
-    0 20px 40px rgba(0, 0, 0, 0.3),
     inset 0 -10px 20px rgba(0, 0, 0, 0.1);
 }
 
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
   .orb-container {
-    width: 150px;
-    height: 150px;
+    width: 130px;
+    height: 130px;
   }
   
   .orb::before {
-    width: 45px;
-    height: 45px;
+    width: 35px;
+    height: 35px;
+  }
+}
+
+@media (max-width: 480px) {
+  .orb-container {
+    width: 110px;
+    height: 110px;
+  }
+  
+  .orb::before {
+    width: 30px;
+    height: 30px;
   }
 }
 

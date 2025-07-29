@@ -47,6 +47,19 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
     try {
       const response = await api.predict('sample_race', selectedConditions);
       
+      // 予想指数に基づいて信頼度を決定
+      const avgScore = response.horses.reduce((sum, horse) => 
+        sum + (horse.finalScore || horse.baseScore), 0) / response.horses.length;
+      
+      let confidence: 'high' | 'medium' | 'low';
+      if (avgScore >= 80) {
+        confidence = 'high';
+      } else if (avgScore >= 60) {
+        confidence = 'medium';
+      } else {
+        confidence = 'low';
+      }
+      
       const resultText = `予想結果:\n${response.horses.map((horse, index) => 
         `${index + 1}位: ${horse.name} (指数: ${horse.finalScore || horse.baseScore})`
       ).join('\n')}`;
@@ -54,6 +67,10 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
       addMessage({
         type: 'ai',
         content: resultText,
+        predictionResult: {
+          ...response,
+          confidence
+        }
       });
     } catch (error) {
       addMessage({

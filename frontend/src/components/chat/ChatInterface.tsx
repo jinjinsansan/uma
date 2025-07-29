@@ -14,9 +14,19 @@ export default function ChatInterface() {
 
   const getOrbConfidence = (): ConfidenceLevel => {
     if (isLoading) return 'processing';
-    if (messages.length === 0) return 'rainbow';
-    if (selectedConditions.length > 0) return 'medium';
-    return 'rainbow';
+    if (messages.length === 0) return 'waiting';
+    
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.predictionResult) {
+      return lastMessage.predictionResult.confidence || 'medium';
+    }
+    
+    // ユーザーメッセージがある場合はチャット中
+    if (messages.some(msg => msg.type === 'user')) {
+      return 'chatting';
+    }
+    
+    return 'waiting';
   };
 
   return (

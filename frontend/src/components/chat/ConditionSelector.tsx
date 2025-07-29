@@ -146,7 +146,7 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
         const score = horse.final_score || horse.base_score || 0;
         const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}位`;
         return `${rankEmoji} ${horse.name} (指数: ${score.toFixed(1)}点)`;
-      }).join('\n')}\n\n⏱️ 計算時間: ${new Date().toLocaleTimeString()}`;
+      }).join('\n')}\n\n${response.analysis ? `\n📝 詳細解説:\n${response.analysis}` : ''}\n\n⏱️ 計算時間: ${new Date().toLocaleTimeString()}`;
 
       addMessage({
         type: 'ai',

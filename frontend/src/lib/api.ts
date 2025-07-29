@@ -6,6 +6,7 @@ export interface PredictionResult {
   confidence: 'high' | 'medium' | 'low';
   selectedConditions: string[];
   calculationTime: string;
+  analysis?: string;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://uma-i30n.onrender.com';

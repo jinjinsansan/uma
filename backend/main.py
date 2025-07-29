@@ -34,6 +34,14 @@ app.add_middleware(
 # OpenAI API設定
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# 環境変数が設定されていない場合の警告
+if not openai.api_key:
+    logger.warning("OPENAI_API_KEY environment variable is not set. Using fixed responses.")
+    OPENAI_ENABLED = False
+else:
+    OPENAI_ENABLED = True
+    logger.info("OpenAI API is enabled")
+
 # データモデル
 class Condition(BaseModel):
     id: str
@@ -364,6 +372,94 @@ def get_random_response(category: str) -> str:
     responses = FIXED_RESPONSES.get(category, FIXED_RESPONSES["general"])
     return random.choice(responses)
 
+def get_openai_response(message: str, context: str = "") -> str:
+    """OpenAI APIを使用してレスポンスを生成"""
+    if not OPENAI_ENABLED:
+        return get_random_response("general")
+    
+    try:
+        # 競馬専門のプロンプト
+        system_prompt = """あなたは競馬予想の専門AI「UmaOracle」です。
+
+専門知識:
+- JRA競馬の詳細な知識
+- 8つの予想条件（脚質、コース回り、距離、出走間隔、コース、出走頭数、馬場、季節）
+- 馬の血統、調教師、騎手の情報
+- レース分析と予想技術
+
+応答スタイル:
+- 親切で分かりやすい説明
+- 競馬初心者にも理解しやすい言葉遣い
+- 具体的なアドバイスと根拠の提示
+- 適度な専門用語の使用
+
+禁止事項:
+- 過度な確実性の表現
+- 具体的な馬券の推奨
+- 違法な情報の提供"""
+
+        user_prompt = f"{context}\n\nユーザー: {message}\n\nUmaOracle:"
+        
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_tokens=500,
+            temperature=0.7
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        logger.error(f"OpenAI API error: {e}")
+        return get_random_response("general")
+
+def get_prediction_analysis(horses: List[dict], selected_conditions: List[str], confidence: str) -> str:
+    """予想結果の詳細解説を生成"""
+    if not OPENAI_ENABLED:
+        return "予想結果の詳細分析をご提供いたします。"
+    
+    try:
+        # 上位3頭の情報を整理
+        top_horses = horses[:3]
+        horse_info = []
+        for horse in top_horses:
+            horse_info.append(f"{horse['name']}: {horse['final_score']}点")
+        
+        analysis_prompt = f"""以下の予想結果について、競馬初心者にも分かりやすい詳細解説を提供してください：
+
+予想結果:
+{chr(10).join(horse_info)}
+
+選択された条件: {', '.join(selected_conditions)}
+信頼度: {confidence}
+
+解説のポイント:
+1. 上位馬の特徴と強み
+2. 選択された条件が結果に与えた影響
+3. 今後のレースでの参考ポイント
+4. 競馬初心者へのアドバイス
+
+専門的すぎず、親切で分かりやすい解説をお願いします。"""
+
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "あなたは競馬予想の専門AIです。親切で分かりやすい解説を提供してください。"},
+                {"role": "user", "content": analysis_prompt}
+            ],
+            max_tokens=400,
+            temperature=0.7
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        logger.error(f"OpenAI analysis error: {e}")
+        return "予想結果の詳細分析をご提供いたします。"
+
 @app.get("/")
 async def root():
     """ヘルスチェック用エンドポイント"""
@@ -441,11 +537,15 @@ async def predict_race(request: PredictRequest):
         # 信頼度を決定
         confidence = prediction_engine.determine_confidence(horses)
         
+        # OpenAIによる詳細解説を生成
+        analysis = get_prediction_analysis(horses, request.selected_conditions, confidence)
+        
         result = {
             "horses": horses,
             "confidence": confidence,
             "selectedConditions": request.selected_conditions,
-            "calculationTime": datetime.now().isoformat()
+            "calculationTime": datetime.now().isoformat(),
+            "analysis": analysis
         }
         
         logger.info(f"Prediction completed: {result}")
@@ -456,7 +556,7 @@ async def predict_race(request: PredictRequest):
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
-    """チャットボット応答"""
+    """チャットボット応答（OpenAI API統合）"""
     try:
         logger.info(f"Chat request received: {request.message}")
         
@@ -468,11 +568,13 @@ async def chat(request: ChatRequest):
         is_prediction_request = any(keyword in message_lower for keyword in prediction_keywords)
         
         if is_prediction_request:
-            ai_message = get_random_response("prediction_request")
+            # 予想リクエストの場合
+            ai_message = get_openai_response(request.message, "ユーザーが競馬予想を求めています。")
             response_type = "conditions"
             data = {"raceInfo": request.race_info} if request.race_info else None
         else:
-            ai_message = get_random_response("greeting")
+            # 一般会話の場合
+            ai_message = get_openai_response(request.message)
             response_type = "text"
             data = None
         

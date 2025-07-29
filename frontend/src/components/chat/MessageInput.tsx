@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Send } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 import { useChatStore } from '../../store/chatStore';
 import { api } from '../../lib/api';
 
@@ -10,70 +10,106 @@ interface MessageInputProps {
 
 export default function MessageInput({ onShowConditions }: MessageInputProps) {
   const [input, setInput] = useState('');
-  const { addMessage, setLoading } = useChatStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { addMessage, setLoading, isLoading } = useChatStore();
+
+  // 入力フィールドにフォーカスを当てる
+  useEffect(() => {
+    if (!isLoading && !isSubmitting) {
+      inputRef.current?.focus();
+    }
+  }, [isLoading, isSubmitting]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isSubmitting) return;
 
     const userMessage = input.trim();
     setInput('');
+    setIsSubmitting(true);
+
+    // ユーザーメッセージを即座に追加
     addMessage({
       type: 'user',
       content: userMessage,
     });
 
-    setLoading(true);
+    // AIの応答を少し遅延させて自然な会話感を演出
+    setTimeout(async () => {
+      setLoading(true);
 
-    try {
-      // まずバックエンドサーバーの状態を確認
-      const isServerHealthy = await api.healthCheck();
-      if (!isServerHealthy) {
-        throw new Error('バックエンドサーバーが起動していません。サーバーを起動してから再度お試しください。');
+      try {
+        // まずバックエンドサーバーの状態を確認
+        const isServerHealthy = await api.healthCheck();
+        if (!isServerHealthy) {
+          throw new Error('バックエンドサーバーが起動していません。サーバーを起動してから再度お試しください。');
+        }
+
+        const response = await api.chat(userMessage);
+        
+        // AIメッセージを滑らかに追加
+        addMessage({
+          type: 'ai',
+          content: response.message,
+        });
+
+        if (response.type === 'conditions') {
+          // 条件選択を少し遅延させて自然な流れを作る
+          setTimeout(() => {
+            onShowConditions();
+          }, 1000);
+        }
+      } catch (error) {
+        console.error('Chat error:', error);
+        
+        // エラーメッセージを取得
+        const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました。';
+        
+        addMessage({
+          type: 'ai',
+          content: `エラーが発生しました: ${errorMessage}`,
+        });
+      } finally {
+        setLoading(false);
+        setIsSubmitting(false);
       }
+    }, 300); // 300msの遅延で自然な会話感を演出
+  };
 
-      const response = await api.chat(userMessage);
-      addMessage({
-        type: 'ai',
-        content: response.message,
-      });
-
-      if (response.type === 'conditions') {
-        onShowConditions();
-      }
-    } catch (error) {
-      console.error('Chat error:', error);
-      
-      // エラーメッセージを取得
-      const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました。';
-      
-      addMessage({
-        type: 'ai',
-        content: `エラーが発生しました: ${errorMessage}`,
-      });
-    } finally {
-      setLoading(false);
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="flex items-center space-x-4">
       <motion.input
+        ref={inputRef}
         type="text"
         value={input}
         onChange={(e) => setInput(e.target.value)}
+        onKeyPress={handleKeyPress}
         placeholder="今日のレースの予想は？"
-        className="flex-1 px-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-800"
+        disabled={isLoading || isSubmitting}
+        className="flex-1 px-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
         whileFocus={{ scale: 1.02 }}
+        transition={{ duration: 0.2 }}
       />
       <motion.button
         type="submit"
-        disabled={!input.trim()}
-        className="p-3 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+        disabled={!input.trim() || isSubmitting || isLoading}
+        className="p-3 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all duration-200"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
       >
-        <Send className="w-5 h-5" />
+        {isSubmitting || isLoading ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : (
+          <Send className="w-5 h-5" />
+        )}
       </motion.button>
     </form>
   );

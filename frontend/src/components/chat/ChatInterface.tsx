@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, Crown } from 'lucide-react';
 import AnimatedOrb from '../animation/AnimatedOrb';
@@ -11,6 +11,7 @@ import { ConfidenceLevel } from '../../types/race';
 export default function ChatInterface() {
   const { messages, isLoading, selectedConditions } = useChatStore();
   const [showConditions, setShowConditions] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const getOrbConfidence = (): ConfidenceLevel => {
     if (isLoading) return 'processing';
@@ -28,6 +29,15 @@ export default function ChatInterface() {
     
     return 'waiting';
   };
+
+  // メッセージが追加されたときに自動スクロール
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -56,6 +66,7 @@ export default function ChatInterface() {
 
         <div className="w-full max-w-2xl">
           <MessageList messages={messages} />
+          <div ref={messagesEndRef} />
         </div>
 
         {showConditions && (
@@ -63,6 +74,7 @@ export default function ChatInterface() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
             className="w-full max-w-4xl mt-6"
           >
             <ConditionSelector onComplete={() => setShowConditions(false)} />

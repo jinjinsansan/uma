@@ -32,10 +32,12 @@ app.add_middleware(
 )
 
 # OpenAI API設定
-openai.api_key = os.getenv("OPENAI_API_KEY")
+from openai import OpenAI
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # 環境変数が設定されていない場合の警告
-if not openai.api_key:
+if not client.api_key:
     logger.warning("OPENAI_API_KEY environment variable is not set. Using fixed responses.")
     OPENAI_ENABLED = False
 else:
@@ -400,7 +402,7 @@ def get_openai_response(message: str, context: str = "") -> str:
 
         user_prompt = f"{context}\n\nユーザー: {message}\n\nUmaOracle:"
         
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -444,7 +446,7 @@ def get_prediction_analysis(horses: List[dict], selected_conditions: List[str], 
 
 専門的すぎず、親切で分かりやすい解説をお願いします。"""
 
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "あなたは競馬予想の専門AIです。親切で分かりやすい解説を提供してください。"},

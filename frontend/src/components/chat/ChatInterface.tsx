@@ -1,78 +1,72 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useChatStore } from '../../store/chatStore';
+import { Horse, Crown } from 'lucide-react';
 import AnimatedOrb from '../animation/AnimatedOrb';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import ConditionSelector from './ConditionSelector';
+import { useChatStore } from '../../store/chatStore';
 import { ConfidenceLevel } from '../../types/race';
 
 export default function ChatInterface() {
   const { messages, isLoading, selectedConditions } = useChatStore();
   const [showConditions, setShowConditions] = useState(false);
 
-  const getConfidenceLevel = (): ConfidenceLevel => {
+  const getOrbConfidence = (): ConfidenceLevel => {
     if (isLoading) return 'processing';
     if (messages.length === 0) return 'rainbow';
-    
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage.predictionResult) {
-      return lastMessage.predictionResult.confidence || 'medium';
-    }
+    if (selectedConditions.length > 0) return 'medium';
     return 'rainbow';
   };
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="min-h-screen flex flex-col">
       {/* ヘッダー */}
-      <motion.header 
-        className="flex justify-between items-center p-4 bg-black/20 backdrop-blur-sm"
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
-            <span className="text-white font-bold text-sm">🐎</span>
+      <header className="flex justify-between items-center p-6">
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
+            <Horse className="w-8 h-8 text-orange-500" />
+            <h1 className="text-2xl font-bold text-gray-800" style={{ fontFamily: 'Georgia, serif' }}>
+              OracleAI
+            </h1>
           </div>
-          <h1 className="text-white text-xl font-bold">UmaOracle AI</h1>
         </div>
-        <button className="px-4 py-2 bg-yellow-500 text-black rounded-lg font-semibold hover:bg-yellow-400 transition-colors">
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="bg-yellow-500 text-white px-4 py-2 rounded-lg font-semibold shadow-lg"
+        >
           Premium会員
-        </button>
-      </motion.header>
+        </motion.button>
+      </header>
 
       {/* メインコンテンツ */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 relative">
-        {/* 中央の球体 */}
-        <motion.div
-          className="mb-8"
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-        >
-          <AnimatedOrb confidence={getConfidenceLevel()} isProcessing={isLoading} />
-        </motion.div>
-
-        {/* メッセージエリア */}
-        <div className="w-full max-w-2xl">
-          <MessageList />
-          
-          {/* 条件選択UI */}
-          {showConditions && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-            >
-              <ConditionSelector />
-            </motion.div>
-          )}
+      <main className="flex-1 flex flex-col items-center justify-center px-6 pb-20">
+        {/* 3D球体 */}
+        <div className="mb-8">
+          <AnimatedOrb confidence={getOrbConfidence()} isProcessing={isLoading} />
         </div>
-      </div>
+
+        {/* メッセージリスト */}
+        <div className="w-full max-w-2xl">
+          <MessageList messages={messages} />
+        </div>
+
+        {/* 条件選択 */}
+        {showConditions && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="w-full max-w-4xl mt-6"
+          >
+            <ConditionSelector onComplete={() => setShowConditions(false)} />
+          </motion.div>
+        )}
+      </main>
 
       {/* 入力エリア */}
-      <div className="p-4 bg-black/20 backdrop-blur-sm">
+      <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-sm border-t border-gray-200">
         <MessageInput onShowConditions={() => setShowConditions(true)} />
       </div>
     </div>

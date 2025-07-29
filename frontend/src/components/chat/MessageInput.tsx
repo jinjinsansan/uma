@@ -5,7 +5,7 @@ import { useChatStore } from '../../store/chatStore';
 import { api } from '../../lib/api';
 
 interface MessageInputProps {
-  onShowConditions?: () => void;
+  onShowConditions: () => void;
 }
 
 export default function MessageInput({ onShowConditions }: MessageInputProps) {
@@ -27,19 +27,15 @@ export default function MessageInput({ onShowConditions }: MessageInputProps) {
 
     try {
       const response = await api.chat(userMessage);
-      
       addMessage({
         type: 'ai',
         content: response.message,
-        raceInfo: response.data?.raceInfo,
       });
 
-      // 条件選択が必要な場合
       if (response.type === 'conditions') {
-        onShowConditions?.();
+        onShowConditions();
       }
     } catch (error) {
-      console.error('Chat error:', error);
       addMessage({
         type: 'ai',
         content: '申し訳ございません。エラーが発生しました。もう一度お試しください。',
@@ -50,23 +46,23 @@ export default function MessageInput({ onShowConditions }: MessageInputProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex space-x-2">
+    <form onSubmit={handleSubmit} className="flex items-center space-x-4">
       <motion.input
         type="text"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="今日のレースの予想は？"
-        className="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm text-white placeholder-white/60 rounded-lg border border-white/20 focus:outline-none focus:border-white/40"
+        className="flex-1 px-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-800"
         whileFocus={{ scale: 1.02 }}
-        transition={{ duration: 0.2 }}
       />
       <motion.button
         type="submit"
-        className="px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-400 transition-colors"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        disabled={!input.trim()}
+        className="p-3 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
       >
-        <Send size={20} />
+        <Send className="w-5 h-5" />
       </motion.button>
     </form>
   );

@@ -1,141 +1,121 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useChatStore } from '../../store/chatStore';
-import { Condition } from '../../types/race';
+import { api } from '../../lib/api';
 
-const CONDITIONS: Condition[] = [
-  {
-    id: '1_running_style',
-    name: '脚質',
-    description: '逃げ、先行、差し、追込の適性',
-  },
-  {
-    id: '2_course_direction',
-    name: '右周り・左周り複勝率',
-    description: 'コース回り方向別成績',
-  },
-  {
-    id: '3_distance_category',
-    name: '距離毎複勝率',
-    description: '1000-3600mの距離別成績',
-  },
-  {
-    id: '4_interval_category',
-    name: '出走間隔毎複勝率',
-    description: '連闘、中1、中2、中3-4、中5-8、中9-12、中13以上',
-  },
-  {
-    id: '5_course_specific',
-    name: 'コース毎複勝率',
-    description: '競馬場・芝ダート・距離の組み合わせ',
-  },
-  {
-    id: '6_horse_count',
-    name: '出走頭数毎複勝率',
-    description: '7頭以下、8-12頭、13-16頭、16-17頭、16-18頭',
-  },
-  {
-    id: '7_track_condition',
-    name: '馬場毎複勝率',
-    description: '良、重、やや重、不良',
-  },
-  {
-    id: '8_season_category',
-    name: '季節毎複勝率',
-    description: '1-3月、4-6月、7-9月、10-12月',
-  },
+interface ConditionSelectorProps {
+  onComplete: () => void;
+}
+
+const CONDITIONS = [
+  { id: '1_running_style', name: '脚質', description: '逃げ、先行、差し、追込の適性' },
+  { id: '2_course_direction', name: '右周り・左周り複勝率', description: 'コース回り方向別成績' },
+  { id: '3_distance_category', name: '距離毎複勝率', description: '1000-1200m、1400m、1600m、1800-2000m、2200m、2000-2400m、2500m、2400-3000m、3000-3600m' },
+  { id: '4_interval_category', name: '出走間隔毎複勝率', description: '連闘、中1、中2、中3-4、中5-8、中9-12、中13以上' },
+  { id: '5_course_specific', name: 'コース毎複勝率', description: '競馬場・芝ダート・距離の組み合わせ' },
+  { id: '6_horse_count', name: '出走頭数毎複勝率', description: '7頭以下、8-12頭、13-16頭、16-17頭、16-18頭' },
+  { id: '7_track_condition', name: '馬場毎複勝率', description: '良、重、やや重、不良' },
+  { id: '8_season_category', name: '季節毎複勝率', description: '1-3月、4-6月、7-9月、10-12月' },
 ];
 
-export default function ConditionSelector() {
-  const { selectedConditions, setSelectedConditions } = useChatStore();
-  const [selected, setSelected] = useState<string[]>([]);
+export default function ConditionSelector({ onComplete }: ConditionSelectorProps) {
+  const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
+  const { addMessage, setLoading } = useChatStore();
 
   const handleConditionClick = (conditionId: string) => {
-    if (selected.includes(conditionId)) {
-      setSelected(selected.filter(id => id !== conditionId));
-    } else if (selected.length < 4) {
-      setSelected([...selected, conditionId]);
+    if (selectedConditions.includes(conditionId)) {
+      setSelectedConditions(selectedConditions.filter(id => id !== conditionId));
+    } else if (selectedConditions.length < 4) {
+      setSelectedConditions([...selectedConditions, conditionId]);
     }
   };
 
-  const handleConfirm = () => {
-    if (selected.length === 4) {
-      setSelectedConditions(selected);
-      // ここで予想処理を実行
-    }
-  };
-
-  const getPriorityLabel = (conditionId: string) => {
-    const index = selected.indexOf(conditionId);
-    if (index === -1) return null;
-    
+  const getPriorityLabel = (index: number) => {
     const labels = ['1st', '2nd', '3rd', '4th'];
     return labels[index];
   };
 
+  const handleConfirm = async () => {
+    if (selectedConditions.length === 0) return;
+
+    setLoading(true);
+    addMessage({
+      type: 'ai',
+      content: '選択された条件で予想を実行しています...',
+    });
+
+    try {
+      const response = await api.predict('sample_race', selectedConditions);
+      
+      const resultText = `予想結果:\n${response.horses.map((horse, index) => 
+        `${index + 1}位: ${horse.name} (指数: ${horse.finalScore || horse.baseScore})`
+      ).join('\n')}`;
+
+      addMessage({
+        type: 'ai',
+        content: resultText,
+      });
+    } catch (error) {
+      addMessage({
+        type: 'ai',
+        content: '予想の実行中にエラーが発生しました。',
+      });
+    } finally {
+      setLoading(false);
+      onComplete();
+    }
+  };
+
   return (
-    <motion.div
-      className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <h3 className="text-white text-lg font-semibold mb-4">
-        8条件から4つを選択してください（優先順位付き）
+    <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
+      <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
+        予想条件を選択してください（最大4つ）
       </h3>
       
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {CONDITIONS.map((condition) => {
-          const isSelected = selected.includes(condition.id);
-          const priority = getPriorityLabel(condition.id);
+          const isSelected = selectedConditions.includes(condition.id);
+          const selectedIndex = selectedConditions.indexOf(condition.id);
           
           return (
             <motion.button
               key={condition.id}
               onClick={() => handleConditionClick(condition.id)}
-              className={`p-3 rounded-lg text-left transition-all ${
+              className={`p-4 rounded-xl border-2 transition-all ${
                 isSelected
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-white/5 text-white hover:bg-white/10'
+                  ? 'border-blue-500 bg-blue-50 text-blue-800'
+                  : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-gray-100'
               }`}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-semibold text-sm">{condition.name}</div>
-                  <div className="text-xs opacity-70">{condition.description}</div>
+              <div className="text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold">{condition.name}</h4>
+                  {isSelected && (
+                    <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
+                      {getPriorityLabel(selectedIndex)}
+                    </span>
+                  )}
                 </div>
-                {priority && (
-                  <div className="bg-white/20 px-2 py-1 rounded text-xs font-bold">
-                    {priority}
-                  </div>
-                )}
+                <p className="text-sm opacity-75">{condition.description}</p>
               </div>
             </motion.button>
           );
         })}
       </div>
 
-      <div className="flex justify-between items-center">
-        <div className="text-white/70 text-sm">
-          選択済み: {selected.length}/4
-        </div>
-        
+      <div className="flex justify-center">
         <motion.button
           onClick={handleConfirm}
-          disabled={selected.length !== 4}
-          className={`px-6 py-2 rounded-lg font-semibold ${
-            selected.length === 4
-              ? 'bg-green-500 text-white hover:bg-green-400'
-              : 'bg-gray-500 text-gray-300 cursor-not-allowed'
-          }`}
-          whileHover={selected.length === 4 ? { scale: 1.05 } : {}}
-          whileTap={selected.length === 4 ? { scale: 0.95 } : {}}
+          disabled={selectedConditions.length === 0}
+          className="px-8 py-3 bg-blue-600 text-white rounded-full font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
         >
           予想実行
         </motion.button>
       </div>
-    </motion.div>
+    </div>
   );
 }

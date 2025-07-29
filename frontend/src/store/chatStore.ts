@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { Message, ChatState, ConfidenceLevel } from '../types/chat';
+import { Message, ChatState } from '../types/chat';
+import { ConfidenceLevel } from '../types/race';
 
 interface ChatStore extends ChatState {
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
@@ -7,7 +8,6 @@ interface ChatStore extends ChatState {
   setSelectedConditions: (conditions: string[]) => void;
   setCurrentRace: (race: string) => void;
   clearMessages: () => void;
-  setConfidence: (confidence: ConfidenceLevel) => void;
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -41,9 +41,5 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   clearMessages: () => {
     set({ messages: [] });
-  },
-
-  setConfidence: (confidence) => {
-    // この関数は後でAnimatedOrbコンポーネントで使用
   },
 }));

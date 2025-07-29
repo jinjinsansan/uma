@@ -14,10 +14,16 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="UmaOracle AI API", version="1.0.0")
 
-# CORS設定
+# CORS設定 - より広範囲のドメインを許可
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://uma-oracle-ai.netlify.app"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://uma-oracle-ai.netlify.app",
+        "https://*.netlify.app",
+        "https://*.onrender.com",
+        "*"  # 開発中は全てのドメインを許可
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -128,12 +134,24 @@ def get_random_response(category: str) -> str:
 @app.get("/")
 async def root():
     """ヘルスチェック用エンドポイント"""
+    logger.info("Health check endpoint accessed")
     return {"message": "UmaOracle AI API is running", "status": "healthy"}
+
+@app.get("/health")
+async def health_check():
+    """詳細なヘルスチェック"""
+    logger.info("Detailed health check endpoint accessed")
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "1.0.0"
+    }
 
 @app.get("/conditions")
 async def get_conditions():
     """8条件の一覧を取得"""
     try:
+        logger.info("Conditions endpoint accessed")
         conditions = []
         for condition_id, data in CONDITIONS_DATA.items():
             conditions.append({

@@ -140,15 +140,8 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
       // バックエンドから返された信頼度を使用
       const confidence = response.confidence || 'medium';
       
-      // 選択された条件の詳細を表示
-      const selectedConditionsDetail = selectedConditions.map((conditionId, index) => {
-        const condition = CONDITIONS.find(c => c.id === conditionId);
-        const weight = getWeightPercentage(index);
-        return `${condition?.name} (${weight}%)`;
-      }).join(' + ');
-      
       // 予想結果のテキストを生成
-      const resultText = `🏆 予想結果 (${getConfidenceText(confidence)})\n\n📊 選択条件: ${selectedConditionsDetail}\n\n${response.horses.map((horse, index) => {
+      const resultText = `🏆 予想結果 (${getConfidenceText(confidence)})\n\n${response.horses.map((horse, index) => {
         const rank = index + 1;
         const score = horse.final_score || horse.base_score || 0;
         const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}位`;
@@ -201,11 +194,6 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
               <div className="text-center">
                 <div className="flex items-center justify-center mb-3">
                   <h4 className="text-lg font-bold">{condition.name}</h4>
-                  {isSelected && (
-                    <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
-                      {getPriorityLabel(selectedIndex)} ({getWeightPercentage(selectedIndex)}%)
-                    </span>
-                  )}
                 </div>
               </div>
             </motion.button>
@@ -223,19 +211,12 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
           <div className="space-y-2">
             {selectedConditions.map((conditionId, index) => {
               const condition = CONDITIONS.find(c => c.id === conditionId);
-              const weight = getWeightPercentage(index);
               return (
                 <div key={conditionId} className="flex justify-between items-center">
                   <span className="text-blue-700">{condition?.name}</span>
-                  <span className="text-blue-600 font-semibold">{weight}%</span>
                 </div>
               );
             })}
-          </div>
-          <div className="mt-3 pt-3 border-t border-blue-200">
-            <p className="text-sm text-blue-600">
-              計算式: 最終指数 = (条件1 × 40%) + (条件2 × 30%) + (条件3 × 20%) + (条件4 × 10%)
-            </p>
           </div>
         </motion.div>
       )}

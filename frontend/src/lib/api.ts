@@ -8,7 +8,7 @@ export interface PredictionResult {
   calculationTime: string;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://uma-i30n.onrender.com';
 
 // エラーメッセージを生成する関数
 const createErrorMessage = (error: any, endpoint: string): string => {

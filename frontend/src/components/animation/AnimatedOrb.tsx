@@ -7,91 +7,24 @@ interface AnimatedOrbProps {
   isProcessing?: boolean;
 }
 
-// 予想指数出力時のランダム色パターン（15種類）
-const PREDICTION_COLORS = [
-  // 金色系
-  {
-    name: 'gold',
+// 信頼度別の色定義
+const CONFIDENCE_COLORS = {
+  high: {
+    background: 'radial-gradient(circle at 30% 30%, #ffffff 0%, #f8f8f8 25%, #f0f0f0 50%, #e8e8e8 75%, #e0e0e0 100%)',
+    shadow: '0 0 80px rgba(255, 255, 255, 0.8), inset 0 0 60px rgba(255, 255, 255, 0.6), 0 20px 40px rgba(0, 0, 0, 0.15), inset 0 -10px 20px rgba(0, 0, 0, 0.1)'
+  },
+  medium: {
     background: 'radial-gradient(circle at 30% 30%, #ffd700 0%, #ffed4e 25%, #f4d03f 50%, #f39c12 75%, #d68910 100%)',
     shadow: '0 0 60px rgba(255, 215, 0, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
   },
-  {
-    name: 'golden-yellow',
-    background: 'radial-gradient(circle at 30% 30%, #ffed4e 0%, #f4d03f 25%, #f39c12 50%, #e67e22 75%, #d68910 100%)',
-    shadow: '0 0 60px rgba(255, 237, 78, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-  },
-  {
-    name: 'amber',
-    background: 'radial-gradient(circle at 30% 30%, #ffb347 0%, #ffa500 25%, #ff8c00 50%, #ff7f00 75%, #ff6b35 100%)',
-    shadow: '0 0 60px rgba(255, 179, 71, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-  },
-  {
-    name: 'brass',
-    background: 'radial-gradient(circle at 30% 30%, #cd7f32 0%, #b8860b 25%, #daa520 50%, #bdb76b 75%, #f4a460 100%)',
-    shadow: '0 0 60px rgba(205, 127, 50, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-  },
-  {
-    name: 'copper',
-    background: 'radial-gradient(circle at 30% 30%, #b87333 0%, #cd853f 25%, #d2691e 50%, #a0522d 75%, #8b4513 100%)',
-    shadow: '0 0 60px rgba(184, 115, 51, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-  },
-  // 銀色系
-  {
-    name: 'silver',
-    background: 'radial-gradient(circle at 30% 30%, #c0c0c0 0%, #b8b8b8 25%, #a8a8a8 50%, #989898 75%, #888888 100%)',
-    shadow: '0 0 60px rgba(192, 192, 192, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-  },
-  {
-    name: 'platinum',
-    background: 'radial-gradient(circle at 30% 30%, #e5e4e2 0%, #d3d3d3 25%, #c0c0c0 50%, #a8a8a8 75%, #909090 100%)',
-    shadow: '0 0 60px rgba(229, 228, 226, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-  },
-  {
-    name: 'steel',
-    background: 'radial-gradient(circle at 30% 30%, #4682b4 0%, #5f9ea0 25%, #708090 50%, #778899 75%, #b0c4de 100%)',
-    shadow: '0 0 60px rgba(70, 130, 180, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-  },
-  {
-    name: 'chrome',
-    background: 'radial-gradient(circle at 30% 30%, #f5f5f5 0%, #e8e8e8 25%, #d3d3d3 50%, #c0c0c0 75%, #a8a8a8 100%)',
-    shadow: '0 0 60px rgba(245, 245, 245, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-  },
-  {
-    name: 'aluminum',
-    background: 'radial-gradient(circle at 30% 30%, #d3d3d3 0%, #c0c0c0 25%, #a8a8a8 50%, #909090 75%, #787878 100%)',
-    shadow: '0 0 60px rgba(211, 211, 211, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-  },
-  // レインボー系
-  {
-    name: 'rainbow-red',
-    background: 'radial-gradient(circle at 30% 30%, #ff6b6b 0%, #ff5252 25%, #ff3838 50%, #ff1f1f 75%, #e60000 100%)',
-    shadow: '0 0 60px rgba(255, 107, 107, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-  },
-  {
-    name: 'rainbow-blue',
-    background: 'radial-gradient(circle at 30% 30%, #4facfe 0%, #00f2fe 25%, #667eea 50%, #764ba2 75%, #f5576c 100%)',
-    shadow: '0 0 60px rgba(79, 172, 254, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-  },
-  {
-    name: 'rainbow-green',
-    background: 'radial-gradient(circle at 30% 30%, #4ecdc4 0%, #44a08d 25%, #2ecc71 50%, #27ae60 75%, #16a085 100%)',
-    shadow: '0 0 60px rgba(78, 205, 196, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-  },
-  {
-    name: 'rainbow-purple',
-    background: 'radial-gradient(circle at 30% 30%, #9b59b6 0%, #8e44ad 25%, #7d3c98 50%, #6c3483 75%, #5b2c6f 100%)',
-    shadow: '0 0 60px rgba(155, 89, 182, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-  },
-  {
-    name: 'rainbow-orange',
-    background: 'radial-gradient(circle at 30% 30%, #ff9f43 0%, #f39c12 25%, #e67e22 50%, #d68910 75%, #cd6133 100%)',
-    shadow: '0 0 60px rgba(255, 159, 67, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
+  low: {
+    background: 'radial-gradient(circle at 30% 30%, #2c2c2c 0%, #1a1a1a 25%, #0f0f0f 50%, #080808 75%, #000000 100%)',
+    shadow: '0 0 40px rgba(0, 50, 100, 0.4), inset 0 0 30px rgba(255, 255, 255, 0.2), 0 15px 30px rgba(0, 0, 0, 0.3), inset 0 -5px 10px rgba(0, 0, 0, 0.2)'
   }
-];
+};
 
 export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbProps) {
   const [currentConfidence, setCurrentConfidence] = useState<ConfidenceLevel>('waiting');
-  const [predictionColor, setPredictionColor] = useState(PREDICTION_COLORS[0]);
   const [isColorChanging, setIsColorChanging] = useState(false);
   const [colorChangeProgress, setColorChangeProgress] = useState(0);
 
@@ -99,11 +32,9 @@ export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbPro
     setCurrentConfidence(confidence);
   }, [confidence]);
 
-  // 予想指数出力時（high, medium, low）にランダム色を選択し、じわじわと変化
+  // 予想指数出力時（high, medium, low）に信頼度に応じた色に変化
   useEffect(() => {
     if (confidence === 'high' || confidence === 'medium' || confidence === 'low') {
-      const randomColor = PREDICTION_COLORS[Math.floor(Math.random() * PREDICTION_COLORS.length)];
-      
       // 色変化のアニメーション開始
       setIsColorChanging(true);
       setColorChangeProgress(0);
@@ -120,7 +51,6 @@ export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbPro
         setColorChangeProgress(progress);
         
         if (currentStep >= steps) {
-          setPredictionColor(randomColor);
           setIsColorChanging(false);
           clearInterval(interval);
         }
@@ -150,7 +80,7 @@ export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbPro
   };
 
   const getOrbStyle = () => {
-    // 予想指数出力時のみランダム色を適用
+    // 予想指数出力時のみ信頼度に応じた色を適用
     if (currentConfidence === 'high' || currentConfidence === 'medium' || currentConfidence === 'low') {
       if (isColorChanging) {
         // 色変化中のアニメーション
@@ -159,7 +89,7 @@ export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbPro
           boxShadow: '0 0 50px rgba(0, 0, 0, 0.15), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
         };
         
-        const targetColor = predictionColor;
+        const targetColor = CONFIDENCE_COLORS[currentConfidence as keyof typeof CONFIDENCE_COLORS];
         
         // 色の変化を滑らかに補間
         return {
@@ -169,9 +99,10 @@ export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbPro
         };
       } else {
         // 色変化完了後
+        const targetColor = CONFIDENCE_COLORS[currentConfidence as keyof typeof CONFIDENCE_COLORS];
         return {
-          background: predictionColor.background,
-          boxShadow: predictionColor.shadow
+          background: targetColor.background,
+          boxShadow: targetColor.shadow
         };
       }
     }

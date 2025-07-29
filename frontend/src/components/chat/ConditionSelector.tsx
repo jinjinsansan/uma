@@ -35,6 +35,19 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
     return labels[index];
   };
 
+  const getConfidenceText = (confidence: string) => {
+    switch (confidence) {
+      case 'high':
+        return '高信頼度';
+      case 'medium':
+        return '中信頼度';
+      case 'low':
+        return '低信頼度';
+      default:
+        return '中信頼度';
+    }
+  };
+
   const handleConfirm = async () => {
     if (selectedConditions.length === 0) return;
 
@@ -47,22 +60,16 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
     try {
       const response = await api.predict('sample_race', selectedConditions);
       
-      // 予想指数に基づいて信頼度を決定
-      const avgScore = response.horses.reduce((sum, horse) => 
-        sum + (horse.finalScore || horse.baseScore), 0) / response.horses.length;
+      // バックエンドから返された信頼度を使用
+      const confidence = response.confidence || 'medium';
       
-      let confidence: 'high' | 'medium' | 'low';
-      if (avgScore >= 80) {
-        confidence = 'high';
-      } else if (avgScore >= 60) {
-        confidence = 'medium';
-      } else {
-        confidence = 'low';
-      }
-      
-      const resultText = `予想結果:\n${response.horses.map((horse, index) => 
-        `${index + 1}位: ${horse.name} (指数: ${horse.finalScore || horse.baseScore})`
-      ).join('\n')}`;
+      // 予想結果のテキストを生成
+      const resultText = `🏆 予想結果 (${getConfidenceText(confidence)})\n\n${response.horses.map((horse, index) => {
+        const rank = index + 1;
+        const score = horse.finalScore || horse.baseScore || 0;
+        const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}位`;
+        return `${rankEmoji} ${horse.name} (指数: ${score.toFixed(1)}点)`;
+      }).join('\n')}\n\n📊 選択条件: ${selectedConditions.length}個\n⏱️ 計算時間: ${new Date().toLocaleTimeString()}`;
 
       addMessage({
         type: 'ai',
@@ -73,9 +80,10 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
         }
       });
     } catch (error) {
+      console.error('Prediction error:', error);
       addMessage({
         type: 'ai',
-        content: '予想の実行中にエラーが発生しました。',
+        content: '予想の実行中にエラーが発生しました。もう一度お試しください。',
       });
     } finally {
       setLoading(false);

@@ -41,9 +41,21 @@ body {
     inset 0 -10px 20px rgba(0, 0, 0, 0.1);
   animation: 
     pulse 6s ease-in-out infinite;
-  filter: blur(0.5px) brightness(1.1);
+  /* デスクトップでも輪郭を鮮明に */
+  filter: blur(0.2px) brightness(1.2);
   position: relative;
   transition: all 0.5s ease-in-out;
+  /* 輪郭を鮮明にするための設定 */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  /* より強いシャドウで立体感を強調 */
+  box-shadow: 
+    0 0 50px rgba(0, 0, 0, 0.15),
+    inset 0 0 50px rgba(255, 255, 255, 0.4),
+    0 20px 40px rgba(0, 0, 0, 0.25),
+    inset 0 -10px 20px rgba(0, 0, 0, 0.15);
 }
 
 .orb::before {
@@ -60,106 +72,65 @@ body {
     transparent 100%
   );
   border-radius: 50%;
-  filter: blur(1px);
+  /* 光沢効果の輪郭を鮮明に */
+  filter: blur(0.3px);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 @keyframes pulse {
   0%, 100% { 
-    transform: scale(1.0);
+    transform: scale(1.0) translateZ(0);
   }
   50% { 
-    transform: scale(1.15);
+    transform: scale(1.15) translateZ(0);
   }
 }
 
-/* 待機状態 - 薄いグリーン */
+/* 待機状態 - 薄いグリーン（デフォルト） */
 .orb.waiting {
   background: radial-gradient(
     circle at 30% 30%,
     #e8f5e8 0%,
-    #d4e8d4 20%,
-    #c0dbc0 40%,
-    #acceac 60%,
-    #98c198 80%,
-    #84b484 100%
+    #d4e8d4 25%,
+    #c0dbc0 50%,
+    #acceac 75%,
+    #98c198 100%
   );
   box-shadow: 
-    0 0 50px rgba(0, 0, 0, 0.1),
-    inset 0 0 50px rgba(255, 255, 255, 0.3),
-    0 20px 40px rgba(0, 0, 0, 0.2),
-    inset 0 -10px 20px rgba(0, 0, 0, 0.1);
+    0 0 50px rgba(0, 0, 0, 0.15),
+    inset 0 0 50px rgba(255, 255, 255, 0.4),
+    0 20px 40px rgba(0, 0, 0, 0.25),
+    inset 0 -10px 20px rgba(0, 0, 0, 0.15);
 }
 
-/* チャット中 - ランダム色（動的に変更） */
+/* チャット中 - デフォルトの薄いグリーンのまま */
 .orb.chatting {
   background: radial-gradient(
     circle at 30% 30%,
-    #ff6b6b 0%,
-    #ff5252 20%,
-    #ff3838 40%,
-    #ff1f1f 60%,
-    #ff0505 80%,
-    #e60000 100%
+    #e8f5e8 0%,
+    #d4e8d4 25%,
+    #c0dbc0 50%,
+    #acceac 75%,
+    #98c198 100%
   );
   box-shadow: 
-    0 0 60px rgba(255, 107, 107, 0.6),
-    inset 0 0 50px rgba(255, 255, 255, 0.3),
-    0 20px 40px rgba(0, 0, 0, 0.2),
-    inset 0 -10px 20px rgba(0, 0, 0, 0.1);
+    0 0 50px rgba(0, 0, 0, 0.15),
+    inset 0 0 50px rgba(255, 255, 255, 0.4),
+    0 20px 40px rgba(0, 0, 0, 0.25),
+    inset 0 -10px 20px rgba(0, 0, 0, 0.15);
 }
 
-/* 高信頼度 - 白/銀色 */
-.orb.high-confidence {
-  background: radial-gradient(
-    circle at 30% 30%,
-    #ffffff 0%,
-    #f8f8f8 20%,
-    #f0f0f0 40%,
-    #e8e8e8 60%,
-    #e0e0e0 80%,
-    #d8d8d8 100%
-  );
-  box-shadow: 
-    0 0 80px rgba(255, 255, 255, 0.8),
-    inset 0 0 50px rgba(255, 255, 255, 0.3),
-    0 20px 40px rgba(0, 0, 0, 0.2),
-    inset 0 -10px 20px rgba(0, 0, 0, 0.1);
-}
-
-/* 中信頼度 - ゴールド */
-.orb.medium-confidence {
-  background: radial-gradient(
-    circle at 30% 30%,
-    #ffd700 0%,
-    #ffed4e 20%,
-    #f4d03f 40%,
-    #f39c12 60%,
-    #e67e22 80%,
-    #d68910 100%
-  );
+/* 予想結果 - ランダム色（動的に適用） */
+.orb.prediction {
+  /* 動的に色が適用されるため、ここではデフォルト設定のみ */
   box-shadow: 
     0 0 60px rgba(255, 215, 0, 0.6),
-    inset 0 0 50px rgba(255, 255, 255, 0.3),
-    0 20px 40px rgba(0, 0, 0, 0.2),
-    inset 0 -10px 20px rgba(0, 0, 0, 0.1);
-}
-
-/* 低信頼度 - 黒/グレー */
-.orb.low-confidence {
-  background: radial-gradient(
-    circle at 30% 30%,
-    #2c2c2c 0%,
-    #1a1a1a 20%,
-    #000000 40%,
-    #0a0a0a 60%,
-    #050505 80%,
-    #000000 100%
-  );
-  box-shadow: 
-    0 0 40px rgba(0, 50, 100, 0.4),
-    inset 0 0 50px rgba(255, 255, 255, 0.1),
-    0 20px 40px rgba(0, 0, 0, 0.3),
-    inset 0 -10px 20px rgba(0, 0, 0, 0.2);
+    inset 0 0 50px rgba(255, 255, 255, 0.4),
+    0 20px 40px rgba(0, 0, 0, 0.25),
+    inset 0 -10px 20px rgba(0, 0, 0, 0.15);
 }
 
 /* 処理中 - 青/紫 */
@@ -167,29 +138,65 @@ body {
   background: radial-gradient(
     circle at 30% 30%,
     #4facfe 0%,
-    #00f2fe 20%,
-    #667eea 40%,
-    #764ba2 60%,
-    #f093fb 80%,
+    #00f2fe 25%,
+    #667eea 50%,
+    #764ba2 75%,
     #f5576c 100%
   );
   box-shadow: 
     0 0 60px rgba(79, 172, 254, 0.6),
-    inset 0 0 50px rgba(255, 255, 255, 0.3),
-    0 20px 40px rgba(0, 0, 0, 0.2),
-    inset 0 -10px 20px rgba(0, 0, 0, 0.1);
+    inset 0 0 50px rgba(255, 255, 255, 0.4),
+    0 20px 40px rgba(0, 0, 0, 0.25),
+    inset 0 -10px 20px rgba(0, 0, 0, 0.15);
 }
 
-/* レスポンシブ対応 */
+/* レスポンシブ対応 - 輪郭と色を鮮明に */
 @media (max-width: 768px) {
   .orb-container {
     width: 130px;
     height: 130px;
   }
   
+  .orb {
+    /* モバイルでの輪郭を鮮明に */
+    filter: blur(0.3px) brightness(1.2);
+    /* より強いシャドウで立体感を強調 */
+    box-shadow: 
+      0 0 40px rgba(0, 0, 0, 0.15),
+      inset 0 0 40px rgba(255, 255, 255, 0.4),
+      0 15px 30px rgba(0, 0, 0, 0.25),
+      inset 0 -8px 15px rgba(0, 0, 0, 0.15);
+  }
+  
   .orb::before {
     width: 35px;
     height: 35px;
+    /* 光沢効果をより鮮明に */
+    filter: blur(0.5px);
+  }
+  
+  /* モバイルでの色をより鮮明に */
+  .orb.waiting,
+  .orb.chatting {
+    background: radial-gradient(
+      circle at 30% 30%,
+      #e8f5e8 0%,
+      #d4e8d4 25%,
+      #c0dbc0 50%,
+      #acceac 75%,
+      #98c198 100%
+    );
+  }
+  
+  .orb.processing {
+    background: radial-gradient(
+      circle at 30% 30%,
+      #4facfe 0%,
+      #00f2fe 25%,
+      #667eea 50%,
+      #764ba2 75%,
+      #f5576c 100%
+    );
   }
 }
 
@@ -199,9 +206,44 @@ body {
     height: 110px;
   }
   
+  .orb {
+    /* 小さいサイズでの輪郭をより鮮明に */
+    filter: blur(0.2px) brightness(1.3);
+    /* より強いシャドウで立体感を強調 */
+    box-shadow: 
+      0 0 30px rgba(0, 0, 0, 0.2),
+      inset 0 0 30px rgba(255, 255, 255, 0.5),
+      0 10px 20px rgba(0, 0, 0, 0.3),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.2);
+  }
+  
   .orb::before {
     width: 30px;
     height: 30px;
+    /* 光沢効果をより鮮明に */
+    filter: blur(0.3px);
+  }
+  
+  /* 小さいサイズでの色をより鮮明に */
+  .orb.waiting,
+  .orb.chatting {
+    background: radial-gradient(
+      circle at 30% 30%,
+      #e8f5e8 0%,
+      #d4e8d4 30%,
+      #c0dbc0 60%,
+      #98c198 100%
+    );
+  }
+  
+  .orb.processing {
+    background: radial-gradient(
+      circle at 30% 30%,
+      #4facfe 0%,
+      #00f2fe 30%,
+      #667eea 60%,
+      #f5576c 100%
+    );
   }
 }
 

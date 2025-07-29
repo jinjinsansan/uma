@@ -40,10 +40,7 @@ export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbPro
           scale: 1.1,
           filter: "brightness(1.3)",
         }}
-      >
-        <div className="orb-hole" />
-        <div className="orb-glow" />
-      </motion.div>
+      />
     </div>
   );
 }

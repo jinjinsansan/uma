@@ -26,6 +26,12 @@ export default function MessageInput({ onShowConditions }: MessageInputProps) {
     setLoading(true);
 
     try {
+      // まずバックエンドサーバーの状態を確認
+      const isServerHealthy = await api.healthCheck();
+      if (!isServerHealthy) {
+        throw new Error('バックエンドサーバーが起動していません。サーバーを起動してから再度お試しください。');
+      }
+
       const response = await api.chat(userMessage);
       addMessage({
         type: 'ai',
@@ -36,9 +42,14 @@ export default function MessageInput({ onShowConditions }: MessageInputProps) {
         onShowConditions();
       }
     } catch (error) {
+      console.error('Chat error:', error);
+      
+      // エラーメッセージを取得
+      const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました。';
+      
       addMessage({
         type: 'ai',
-        content: '申し訳ございません。エラーが発生しました。もう一度お試しください。',
+        content: `エラーが発生しました: ${errorMessage}`,
       });
     } finally {
       setLoading(false);

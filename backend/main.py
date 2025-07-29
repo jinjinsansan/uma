@@ -6,13 +6,18 @@ import openai
 import os
 from datetime import datetime
 import json
+import logging
+
+# ログ設定
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="UmaOracle AI API", version="1.0.0")
 
 # CORS設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "https://uma-oracle-ai.netlify.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,7 +30,6 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 class Condition(BaseModel):
     id: str
     name: str
-    description: str
 
 class PredictRequest(BaseModel):
     race_id: str
@@ -61,17 +65,17 @@ CONDITIONS_DATA = {
     '2_course_direction': {
         'name': '右周り・左周り複勝率',
         'description': 'コース回り方向別成績',
-        'sample_data': {'右周り': 0.42, '左周り': 0.38}
+        'sample_data': {'右周り': 0.40, '左周り': 0.35}
     },
     '3_distance_category': {
         'name': '距離毎複勝率',
-        'description': '1000-3600mの距離別成績',
-        'sample_data': {'1000-1200m': 0.25, '1400m': 0.30, '1600m': 0.35, '1800-2000m': 0.40, '2200m': 0.45, '2000-2400m': 0.50, '2500m': 0.55, '2400-3000m': 0.60, '3000-3600m': 0.65}
+        'description': '1000-1200m、1400m、1600m、1800-2000m、2200m、2000-2400m、2500m、2400-3000m、3000-3600m',
+        'sample_data': {'1000-1200m': 0.30, '1400m': 0.35, '1600m': 0.40, '1800-2000m': 0.45, '2200m': 0.50}
     },
     '4_interval_category': {
         'name': '出走間隔毎複勝率',
         'description': '連闘、中1、中2、中3-4、中5-8、中9-12、中13以上',
-        'sample_data': {'連闘': 0.20, '中1': 0.25, '中2': 0.30, '中3-4': 0.35, '中5-8': 0.40, '中9-12': 0.45, '中13以上': 0.50}
+        'sample_data': {'連闘': 0.25, '中1': 0.30, '中2': 0.35, '中3-4': 0.40, '中5-8': 0.45, '中9-12': 0.50, '中13以上': 0.55}
     },
     '5_course_specific': {
         'name': 'コース毎複勝率',
@@ -95,26 +99,59 @@ CONDITIONS_DATA = {
     }
 }
 
+# 固定レスポンスのテンプレート
+FIXED_RESPONSES = {
+    "greeting": [
+        "こんにちは！競馬予想AIのUmaOracleです。今日のレースの予想をお手伝いします。",
+        "UmaOracle AIです！レース予想でお困りのことがあれば、お気軽にお声かけください。",
+        "競馬予想の専門AI、UmaOracleです。どのようなご相談でしょうか？"
+    ],
+    "prediction_request": [
+        "レース予想をご希望ですね。8つの条件から4つを選択していただき、AIが予想を実行いたします。",
+        "予想を開始しますね。まずは8つの条件から4つを選んでください。",
+        "レース予想の準備をします。条件を選択していただければ、すぐに予想を実行いたします。"
+    ],
+    "general": [
+        "競馬予想について何かお手伝いできることはありますか？",
+        "レースの予想や分析について、ご質問がございましたらお聞かせください。",
+        "UmaOracle AIが競馬予想をお手伝いします。何かご質問はありますか？"
+    ]
+}
+
+import random
+
+def get_random_response(category: str) -> str:
+    """カテゴリに応じたランダムなレスポンスを取得"""
+    responses = FIXED_RESPONSES.get(category, FIXED_RESPONSES["general"])
+    return random.choice(responses)
+
 @app.get("/")
 async def root():
-    return {"message": "UmaOracle AI API"}
+    """ヘルスチェック用エンドポイント"""
+    return {"message": "UmaOracle AI API is running", "status": "healthy"}
 
 @app.get("/conditions")
 async def get_conditions():
     """8条件の一覧を取得"""
-    conditions = []
-    for condition_id, data in CONDITIONS_DATA.items():
-        conditions.append({
-            "id": condition_id,
-            "name": data["name"],
-            "description": data["description"]
-        })
-    return conditions
+    try:
+        conditions = []
+        for condition_id, data in CONDITIONS_DATA.items():
+            conditions.append({
+                "id": condition_id,
+                "name": data["name"],
+                "description": data["description"]
+            })
+        return conditions
+    except Exception as e:
+        logger.error(f"Error in get_conditions: {e}")
+        raise HTTPException(status_code=500, detail=f"条件の取得に失敗しました: {str(e)}")
 
 @app.post("/predict")
 async def predict_race(request: PredictRequest):
     """レース予想を実行"""
     try:
+        logger.info(f"Prediction request received: {request}")
+        
         # サンプル予想ロジック
         horses = SAMPLE_HORSES.copy()
         
@@ -142,49 +179,55 @@ async def predict_race(request: PredictRequest):
         # 信頼度を決定
         confidence = "medium"  # サンプルでは常にmedium
         
-        return {
+        result = {
             "horses": horses,
             "confidence": confidence,
             "selectedConditions": request.selected_conditions,
             "calculationTime": datetime.now().isoformat()
         }
+        
+        logger.info(f"Prediction completed: {result}")
+        return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in predict_race: {e}")
+        raise HTTPException(status_code=500, detail=f"予想の実行に失敗しました: {str(e)}")
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
     """チャットボット応答"""
     try:
-        # OpenAI APIを使用した応答生成
-        if openai.api_key:
-            response = openai.ChatCompletion.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "あなたは競馬予想の専門家です。親切で分かりやすい説明を心がけてください。"},
-                    {"role": "user", "content": request.message}
-                ],
-                max_tokens=200
-            )
-            ai_message = response.choices[0].message.content
-        else:
-            # API Keyがない場合のサンプル応答
-            if "予想" in request.message or "レース" in request.message:
-                ai_message = "レース予想をご希望ですね。8つの条件から4つを選択していただき、AIが予想を実行いたします。"
-                return ChatResponse(
-                    message=ai_message,
-                    type="conditions",
-                    data={"raceInfo": request.race_info}
-                )
-            else:
-                ai_message = "こんにちは！競馬予想AIのUmaOracleです。今日のレースの予想をお手伝いします。"
+        logger.info(f"Chat request received: {request.message}")
         
-        return ChatResponse(
+        # メッセージの内容に基づいてレスポンスを決定
+        message_lower = request.message.lower()
+        
+        # 予想関連のキーワードをチェック
+        prediction_keywords = ["予想", "レース", "競馬", "予測", "分析"]
+        is_prediction_request = any(keyword in message_lower for keyword in prediction_keywords)
+        
+        if is_prediction_request:
+            ai_message = get_random_response("prediction_request")
+            response_type = "conditions"
+            data = {"raceInfo": request.race_info} if request.race_info else None
+        else:
+            ai_message = get_random_response("greeting")
+            response_type = "text"
+            data = None
+        
+        response = ChatResponse(
             message=ai_message,
-            type="text"
+            type=response_type,
+            data=data
         )
+        
+        logger.info(f"Chat response: {response}")
+        return response
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in chat: {e}")
+        raise HTTPException(status_code=500, detail=f"チャット応答の生成に失敗しました: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
+    logger.info("Starting UmaOracle AI API server...")
     uvicorn.run(app, host="0.0.0.0", port=8000)

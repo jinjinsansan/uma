@@ -14,14 +14,14 @@ export default function ChatInterface() {
 
   const getOrbConfidence = (): ConfidenceLevel => {
     if (isLoading) return 'processing';
-    if (messages.length === 0) return 'waiting';
+    if (messages.length === 0) return 'waiting'; // Initial state: waiting
     
     const lastMessage = messages[messages.length - 1];
     if (lastMessage.predictionResult) {
       return lastMessage.predictionResult.confidence || 'medium';
     }
     
-    // ユーザーメッセージがある場合はチャット中
+    // If there are user messages and no prediction result yet, it's chatting
     if (messages.some(msg => msg.type === 'user')) {
       return 'chatting';
     }
@@ -31,12 +31,11 @@ export default function ChatInterface() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* ヘッダー */}
       <header className="flex justify-between items-center p-6">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2">
             <Zap className="w-8 h-8 text-orange-500" />
-            <h1 className="text-2xl font-bold text-gray-800" style={{ fontFamily: 'Georgia, serif' }}>
+            <h1 className="text-2xl font-bold text-gray-800">
               OracleAI
             </h1>
           </div>
@@ -50,19 +49,15 @@ export default function ChatInterface() {
         </motion.button>
       </header>
 
-      {/* メインコンテンツ */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 pb-20">
-        {/* 3D球体 */}
         <div className="mb-8">
           <AnimatedOrb confidence={getOrbConfidence()} isProcessing={isLoading} />
         </div>
 
-        {/* メッセージリスト */}
         <div className="w-full max-w-2xl">
           <MessageList messages={messages} />
         </div>
 
-        {/* 条件選択 */}
         {showConditions && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -75,7 +70,6 @@ export default function ChatInterface() {
         )}
       </main>
 
-      {/* 入力エリア */}
       <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-sm border-t border-gray-200">
         <MessageInput onShowConditions={() => setShowConditions(true)} />
       </div>

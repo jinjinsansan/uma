@@ -8,14 +8,86 @@ interface ConditionSelectorProps {
 }
 
 const CONDITIONS = [
-  { id: '1_running_style', name: '脚質', description: '逃げ、先行、差し、追込の適性' },
-  { id: '2_course_direction', name: '右周り・左周り複勝率', description: 'コース回り方向別成績' },
-  { id: '3_distance_category', name: '距離毎複勝率', description: '1000-1200m、1400m、1600m、1800-2000m、2200m、2000-2400m、2500m、2400-3000m、3000-3600m' },
-  { id: '4_interval_category', name: '出走間隔毎複勝率', description: '連闘、中1、中2、中3-4、中5-8、中9-12、中13以上' },
-  { id: '5_course_specific', name: 'コース毎複勝率', description: '競馬場・芝ダート・距離の組み合わせ' },
-  { id: '6_horse_count', name: '出走頭数毎複勝率', description: '7頭以下、8-12頭、13-16頭、16-17頭、16-18頭' },
-  { id: '7_track_condition', name: '馬場毎複勝率', description: '良、重、やや重、不良' },
-  { id: '8_season_category', name: '季節毎複勝率', description: '1-3月、4-6月、7-9月、10-12月' },
+  { 
+    id: '1_running_style', 
+    name: '脚質', 
+    description: '逃げ、先行、差し、追込の適性',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-200',
+    selectedBgColor: 'bg-blue-100',
+    selectedBorderColor: 'border-blue-500',
+    hoverBgColor: 'hover:bg-blue-100'
+  },
+  { 
+    id: '2_course_direction', 
+    name: '右周り・左周り複勝率', 
+    description: 'コース回り方向別成績',
+    bgColor: 'bg-green-50',
+    borderColor: 'border-green-200',
+    selectedBgColor: 'bg-green-100',
+    selectedBorderColor: 'border-green-500',
+    hoverBgColor: 'hover:bg-green-100'
+  },
+  { 
+    id: '3_distance_category', 
+    name: '距離毎複勝率', 
+    description: '1000-1200m、1400m、1600m、1800-2000m、2200m、2000-2400m、2500m、2400-3000m、3000-3600m',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-200',
+    selectedBgColor: 'bg-purple-100',
+    selectedBorderColor: 'border-purple-500',
+    hoverBgColor: 'hover:bg-purple-100'
+  },
+  { 
+    id: '4_interval_category', 
+    name: '出走間隔毎複勝率', 
+    description: '連闘、中1、中2、中3-4、中5-8、中9-12、中13以上',
+    bgColor: 'bg-orange-50',
+    borderColor: 'border-orange-200',
+    selectedBgColor: 'bg-orange-100',
+    selectedBorderColor: 'border-orange-500',
+    hoverBgColor: 'hover:bg-orange-100'
+  },
+  { 
+    id: '5_course_specific', 
+    name: 'コース毎複勝率', 
+    description: '競馬場・芝ダート・距離の組み合わせ',
+    bgColor: 'bg-pink-50',
+    borderColor: 'border-pink-200',
+    selectedBgColor: 'bg-pink-100',
+    selectedBorderColor: 'border-pink-500',
+    hoverBgColor: 'hover:bg-pink-100'
+  },
+  { 
+    id: '6_horse_count', 
+    name: '出走頭数毎複勝率', 
+    description: '7頭以下、8-12頭、13-16頭、16-17頭、16-18頭',
+    bgColor: 'bg-indigo-50',
+    borderColor: 'border-indigo-200',
+    selectedBgColor: 'bg-indigo-100',
+    selectedBorderColor: 'border-indigo-500',
+    hoverBgColor: 'hover:bg-indigo-100'
+  },
+  { 
+    id: '7_track_condition', 
+    name: '馬場毎複勝率', 
+    description: '良、重、やや重、不良',
+    bgColor: 'bg-teal-50',
+    borderColor: 'border-teal-200',
+    selectedBgColor: 'bg-teal-100',
+    selectedBorderColor: 'border-teal-500',
+    hoverBgColor: 'hover:bg-teal-100'
+  },
+  { 
+    id: '8_season_category', 
+    name: '季節毎複勝率', 
+    description: '1-3月、4-6月、7-9月、10-12月',
+    bgColor: 'bg-yellow-50',
+    borderColor: 'border-yellow-200',
+    selectedBgColor: 'bg-yellow-100',
+    selectedBorderColor: 'border-yellow-500',
+    hoverBgColor: 'hover:bg-yellow-100'
+  },
 ];
 
 export default function ConditionSelector({ onComplete }: ConditionSelectorProps) {
@@ -93,7 +165,7 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
-      <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
+      <h3 className="text-xl font-bold text-gray-800 mb-6 text-center">
         予想条件を選択してください（最大4つ）
       </h3>
       
@@ -106,24 +178,23 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
             <motion.button
               key={condition.id}
               onClick={() => handleConditionClick(condition.id)}
-              className={`p-4 rounded-xl border-2 transition-all ${
+              className={`p-6 rounded-xl border-2 transition-all ${
                 isSelected
-                  ? 'border-blue-500 bg-blue-50 text-blue-800'
-                  : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-gray-100'
+                  ? `${condition.selectedBgColor} ${condition.selectedBorderColor} text-gray-800`
+                  : `${condition.bgColor} ${condition.borderColor} text-gray-700 ${condition.hoverBgColor}`
               }`}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <div className="text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold">{condition.name}</h4>
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-3">
+                  <h4 className="text-lg font-bold">{condition.name}</h4>
                   {isSelected && (
-                    <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
+                    <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
                       {getPriorityLabel(selectedIndex)}
                     </span>
                   )}
                 </div>
-                <p className="text-sm opacity-75">{condition.description}</p>
               </div>
             </motion.button>
           );

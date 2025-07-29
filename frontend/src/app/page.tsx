@@ -6,7 +6,7 @@ import GradientBackground from '../components/animation/GradientBackground';
 
 export default function Home() {
   return (
-    <main className="min-h-screen relative overflow-hidden">
+    <main className="min-h-screen relative overflow-hidden bg-white">
       <GradientBackground />
       <StarParticles />
       <ChatInterface />

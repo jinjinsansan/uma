@@ -6,6 +6,7 @@ export default function GradientBackground() {
       className="fixed inset-0 -z-10"
       style={{
         background: '#ffffff',
+        backgroundColor: '#ffffff',
       }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}

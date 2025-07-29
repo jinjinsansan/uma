@@ -7,9 +7,18 @@
   --background-rgb: 255, 255, 255;
 }
 
+/* 完全に白い背景を保証 */
+html, body {
+  background: #ffffff !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
+  background: #ffffff;
   min-height: 100vh;
 }
 

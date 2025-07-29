@@ -72,12 +72,12 @@ export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbPro
         className={getOrbClass()}
         style={getOrbStyle()}
         animate={{
-          scaleY: [1, 1.2, 1],
-          rotateY: [0, 360],
+          scale: [1, 1.15, 1],
         }}
         transition={{
-          scaleY: { duration: 3, repeat: Infinity, ease: "easeInOut" },
-          rotateY: { duration: 6, repeat: Infinity, ease: "linear" },
+          duration: 6,
+          repeat: Infinity,
+          ease: "easeInOut",
         }}
         whileHover={{
           scale: 1.1,

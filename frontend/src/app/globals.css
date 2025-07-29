@@ -40,8 +40,7 @@ body {
     0 20px 40px rgba(0, 0, 0, 0.2),
     inset 0 -10px 20px rgba(0, 0, 0, 0.1);
   animation: 
-    pulse 3s ease-in-out infinite,
-    rotate 6s linear infinite;
+    pulse 6s ease-in-out infinite;
   filter: blur(0.5px) brightness(1.1);
   position: relative;
   transition: all 0.5s ease-in-out;
@@ -65,13 +64,12 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% { transform: scaleY(1.0); }
-  50% { transform: scaleY(1.2); }
-}
-
-@keyframes rotate {
-  from { transform: rotateX(10deg) rotateY(0deg); }
-  to { transform: rotateX(10deg) rotateY(360deg); }
+  0%, 100% { 
+    transform: scale(1.0);
+  }
+  50% { 
+    transform: scale(1.15);
+  }
 }
 
 /* 待機状態 - 薄いグリーン */

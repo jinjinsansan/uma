@@ -65,6 +65,9 @@ body {
   height: 150px;
   position: relative;
   margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .orb {
@@ -135,15 +138,15 @@ body {
   }
 }
 
-/* 待機状態 - 薄いグリーン（デフォルト） */
+/* 待機状態 - 普通のグリーン（デフォルト） */
 .orb.waiting {
   background: radial-gradient(
     circle at 30% 30%,
-    #e8f5e8 0%,
-    #d4e8d4 25%,
-    #c0dbc0 50%,
-    #acceac 75%,
-    #98c198 100%
+    #4ade80 0%,
+    #22c55e 25%,
+    #16a34a 50%,
+    #15803d 75%,
+    #166534 100%
   );
   box-shadow: 
     0 0 50px rgba(0, 0, 0, 0.15),
@@ -152,15 +155,15 @@ body {
     inset 0 -10px 20px rgba(0, 0, 0, 0.15);
 }
 
-/* チャット中 - デフォルトの薄いグリーンのまま */
+/* チャット中 - 普通のグリーン */
 .orb.chatting {
   background: radial-gradient(
     circle at 30% 30%,
-    #e8f5e8 0%,
-    #d4e8d4 25%,
-    #c0dbc0 50%,
-    #acceac 75%,
-    #98c198 100%
+    #4ade80 0%,
+    #22c55e 25%,
+    #16a34a 50%,
+    #15803d 75%,
+    #166534 100%
   );
   box-shadow: 
     0 0 50px rgba(0, 0, 0, 0.15),
@@ -222,11 +225,11 @@ body {
   .orb.chatting {
     background: radial-gradient(
       circle at 30% 30%,
-      #e8f5e8 0%,
-      #d4e8d4 25%,
-      #c0dbc0 50%,
-      #acceac 75%,
-      #98c198 100%
+      #4ade80 0%,
+      #22c55e 25%,
+      #16a34a 50%,
+      #15803d 75%,
+      #166534 100%
     );
     /* 影を完全に削除 */
     box-shadow: none;
@@ -271,10 +274,10 @@ body {
   .orb.chatting {
     background: radial-gradient(
       circle at 30% 30%,
-      #e8f5e8 0%,
-      #d4e8d4 30%,
-      #c0dbc0 60%,
-      #98c198 100%
+      #4ade80 0%,
+      #22c55e 30%,
+      #16a34a 60%,
+      #166534 100%
     );
     /* 影を完全に削除 */
     box-shadow: none;

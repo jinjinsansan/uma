@@ -85,7 +85,7 @@ export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbPro
       if (isColorChanging) {
         // 色変化中のアニメーション
         const baseColor = {
-          background: 'radial-gradient(circle at 30% 30%, #e8f5e8 0%, #d4e8d4 25%, #c0dbc0 50%, #acceac 75%, #98c198 100%)',
+          background: 'radial-gradient(circle at 30% 30%, #4ade80 0%, #22c55e 25%, #16a34a 50%, #15803d 75%, #166534 100%)',
           boxShadow: '0 0 50px rgba(0, 0, 0, 0.15), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
         };
         

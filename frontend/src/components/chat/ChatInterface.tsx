@@ -77,10 +77,13 @@ export default function ChatInterface() {
 
       {/* 動的な位置の球体 */}
       <motion.div 
-        className="fixed left-1/2 transform -translate-x-1/2 z-10 pointer-events-none"
+        className="fixed z-10 pointer-events-none"
+        style={{
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+        }}
         animate={{
-          top: orbPosition === 'center' ? '50%' : '20%',
-          y: orbPosition === 'center' ? '-50%' : '-50%',
+          top: orbPosition === 'center' ? '50vh' : '20vh',
         }}
         transition={{
           duration: 1.5,

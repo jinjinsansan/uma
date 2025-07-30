@@ -173,8 +173,8 @@ export const ImprovedChatInput: React.FC<ImprovedChatInputProps> = ({
 
   return (
     <div className="w-full max-w-4xl mx-auto">
-      {/* Quick Actions */}
-      <div className="flex flex-wrap gap-3 mb-4">
+      {/* Quick Actions - 非表示 */}
+      {/* <div className="flex flex-wrap gap-3 mb-4">
         {quickActions.map((action) => (
           <button
             key={action.id}
@@ -190,7 +190,7 @@ export const ImprovedChatInput: React.FC<ImprovedChatInputProps> = ({
             <span>{action.displayText}</span>
           </button>
         ))}
-      </div>
+      </div> */}
 
       {/* Main Input Container */}
       <div className="relative">

@@ -104,7 +104,7 @@ export default function ChatInterface() {
       </motion.div>
 
       {/* スクロール可能なチャットエリア */}
-      <main className="flex-1 flex flex-col items-center px-6 pb-20" style={{ paddingTop: orbPosition === 'center' ? '20px' : '120px' }}>
+      <main className="flex-1 flex flex-col items-center px-6 pb-32" style={{ paddingTop: orbPosition === 'center' ? '20px' : '120px' }}>
         <div className="w-full max-w-2xl">
           <MessageList messages={messages} />
           <div ref={messagesEndRef} />
@@ -123,7 +123,7 @@ export default function ChatInterface() {
         )}
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-6 bg-white/80 backdrop-blur-sm border-t border-gray-200 z-20">
+      <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-6 bg-white/90 backdrop-blur-md border-t border-gray-200 z-20 shadow-lg">
         <MessageInput onShowConditions={() => setShowConditions(true)} />
       </div>
     </div>

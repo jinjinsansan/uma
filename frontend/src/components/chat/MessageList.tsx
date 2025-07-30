@@ -44,7 +44,7 @@ function TypingMessage({ content, type, raceInfo }: TypingMessageProps) {
       className={`flex ${type === 'user' ? 'justify-end' : 'justify-start'}`}
     >
       <div
-        className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
+        className={`max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl px-4 py-3 rounded-2xl ${
           type === 'user'
             ? 'bg-blue-500 text-white'
             : 'bg-gray-100 text-gray-800'
@@ -66,7 +66,7 @@ function TypingMessage({ content, type, raceInfo }: TypingMessageProps) {
 
 export default function MessageList({ messages }: MessageListProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-h-full">
       <AnimatePresence mode="wait">
         {messages.map((message, index) => (
           <motion.div
@@ -82,7 +82,7 @@ export default function MessageList({ messages }: MessageListProps) {
             className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
+              className={`max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl px-4 py-3 rounded-2xl ${
                 message.type === 'user'
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 text-gray-800'

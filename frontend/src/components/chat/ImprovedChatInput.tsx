@@ -214,7 +214,7 @@ export const ImprovedChatInput: React.FC<ImprovedChatInputProps> = ({
           />
 
           {/* Footer */}
-          <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
+          <div className="px-4 py-3 bg-white border-t border-gray-100 flex justify-between items-center">
             {/* Shortcuts and Counter */}
             <div className="flex items-center gap-4 text-sm text-gray-500">
               <div className="hidden sm:flex items-center gap-1">

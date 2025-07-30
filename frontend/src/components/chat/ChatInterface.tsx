@@ -93,11 +93,11 @@ export default function ChatInterface() {
   }, [messages]);
 
   return (
-    <div className="min-h-screen flex flex-col relative bg-white">
+    <div className="h-screen flex flex-col relative bg-white overflow-hidden">
       {/* ビューポートの調整 */}
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
       
-      <header className="flex justify-between items-center p-4 sm:p-6 bg-white">
+      <header className="flex justify-between items-center p-4 sm:p-6 bg-white flex-shrink-0">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2">
             <Zap className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
@@ -142,9 +142,10 @@ export default function ChatInterface() {
 
       {/* スクロール可能なチャットエリア */}
       <main 
-        className="flex-1 flex flex-col items-center px-4 sm:px-6 pb-32 sm:pb-40 overflow-y-auto"
+        className="flex-1 flex flex-col items-center px-4 sm:px-6 overflow-y-auto"
         style={{ 
-          paddingTop: orbPosition === 'center' && !isKeyboardVisible ? '20px' : '80px'
+          paddingTop: orbPosition === 'center' && !isKeyboardVisible ? '20px' : '80px',
+          paddingBottom: '200px' // チャット入力エリアの高さ分の余白
         }}
       >
         <div className="w-full max-w-2xl">
@@ -165,9 +166,9 @@ export default function ChatInterface() {
         )}
       </main>
 
-      {/* 新しいチャット入力エリア（境界線を削除して全体と同じ色に） */}
+      {/* 新しいチャット入力エリア（境界線を完全に削除） */}
       <div 
-        className="fixed bottom-8 left-0 right-0 p-3 sm:p-6 bg-white z-20 shadow-lg"
+        className="fixed bottom-8 left-0 right-0 p-3 sm:p-6 bg-white z-20"
         style={{
           paddingBottom: 'env(safe-area-inset-bottom)'
         }}

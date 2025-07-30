@@ -10,6 +10,8 @@ import random
 import math
 from tfjv_integration import TFJVDataConnector
 from chat_prompts import KeibaAIPrompts
+from race_identifier import RaceIdentifier
+from race_data_service import RaceDataService
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -39,6 +41,12 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # TFJVデータコネクター初期化
 tfjv_connector = TFJVDataConnector()
+
+# レース識別システム初期化
+race_identifier = RaceIdentifier()
+
+# レースデータサービス初期化
+race_data_service = RaceDataService()
 
 # 環境変数が設定されていない場合の警告
 if not client.api_key:
@@ -460,7 +468,7 @@ def get_openai_response(message: str, context: str = "", context_type: str = "ca
         logger.error(f"OpenAI API error: {e}")
         return get_random_response("general")
 
-def get_prediction_analysis(horses: List[dict], selected_conditions: List[str], confidence: str) -> str:
+def get_prediction_analysis(horses: List[dict], selected_conditions: List[str], confidence: str, race_context: str = "") -> str:
     """予想結果の詳細解説を生成（競馬AI専用プロンプトシステム使用）"""
     if not OPENAI_ENABLED:
         return "予想結果の詳細分析をご提供いたします。✨"
@@ -562,6 +570,50 @@ async def get_tfjv_horses():
             "error": str(e)
         }
 
+@app.get("/races/today")
+async def get_today_races():
+    """本日の開催レース情報を取得"""
+    try:
+        logger.info("Today's races endpoint accessed")
+        
+        all_races = race_data_service.get_all_races()
+        race_summary = race_data_service.get_race_summary()
+        
+        return {
+            "races": all_races,
+            "summary": race_summary,
+            "last_update": race_data_service.last_update.isoformat() if race_data_service.last_update else None,
+            "success": True
+        }
+    except Exception as e:
+        logger.error(f"Error in get_today_races: {e}")
+        raise HTTPException(status_code=500, detail=f"レース情報の取得に失敗しました: {str(e)}")
+
+@app.get("/races/{course}/{race_number}")
+async def get_specific_race(course: str, race_number: int):
+    """特定のレース情報を取得"""
+    try:
+        logger.info(f"Specific race endpoint accessed: {course}{race_number}R")
+        
+        race_info = race_data_service.get_race_info(course, race_number)
+        
+        if race_info:
+            race_details = race_data_service.format_race_details(race_info)
+            return {
+                "race": race_info,
+                "details": race_details,
+                "success": True
+            }
+        else:
+            return {
+                "race": None,
+                "details": f"{course}{race_number}Rは本日開催されていません。",
+                "success": False
+            }
+    except Exception as e:
+        logger.error(f"Error in get_specific_race: {e}")
+        raise HTTPException(status_code=500, detail=f"レース情報の取得に失敗しました: {str(e)}")
+
 @app.post("/predict")
 async def predict_race(request: PredictRequest):
     """レース予想を実行（TFJV実データ統合）"""
@@ -621,11 +673,85 @@ async def predict_race(request: PredictRequest):
         logger.error(f"Error in predict_race: {e}")
         raise HTTPException(status_code=500, detail=f"予想の実行に失敗しました: {str(e)}")
 
+@app.post("/predict/race")
+async def predict_specific_race(request: PredictRequest):
+    """特定レースの予想を実行（レース特定機能付き）"""
+    try:
+        logger.info(f"Specific race prediction request received: {request}")
+        logger.info(f"Selected conditions: {request.selected_conditions}")
+        
+        # レースIDからレース情報を取得
+        race_info = None
+        if hasattr(request, 'race_id') and request.race_id:
+            # レースIDの形式: "東京1R", "阪神2R" など
+            race_identifier = RaceIdentifier()
+            race_info = race_identifier._find_race_by_id(request.race_id)
+        
+        # TFJVから馬データを取得
+        tfjv_horses = tfjv_connector.get_race_horses()
+        data_source = tfjv_connector.get_data_source_info()
+        
+        logger.info(f"TFJVから{len(tfjv_horses)}頭の馬データを取得")
+        
+        # TFJV実データで計算
+        results = tfjv_connector.calculate_real_scores(tfjv_horses, request.selected_conditions)
+        
+        if not results:
+            logger.warning("TFJV計算結果が空のため、サンプルデータで計算")
+            # フォールバック: サンプルデータで計算
+            horses = []
+            for horse_name, horse_data in HORSE_DETAILED_DATA.items():
+                horse = {
+                    "horse_name": horse_name,
+                    "horse_id": f"@00{random.randint(200000, 999999)}",
+                    "condition_rates": horse_data["condition_rates"]
+                }
+                horses.append(horse)
+            
+            # TFJVコネクターでサンプルデータも計算
+            results = tfjv_connector.calculate_real_scores(horses, request.selected_conditions)
+        
+        # ランキングを追加
+        for i, horse in enumerate(results):
+            horse["rank"] = i + 1
+        
+        # 信頼度を決定
+        confidence = tfjv_connector._determine_confidence(
+            results[0]["final_score"] if results else 0,
+            [horse.get("final_score", 0) for horse in results]
+        ) if results else "low"
+        
+        # レース情報を含む詳細解説を生成
+        if race_info:
+            race_context = f"レース: {race_info['course']}{race_info['race_number']}R - {race_info['race_name']}"
+            analysis = get_prediction_analysis(results, request.selected_conditions, confidence, race_context)
+        else:
+            analysis = get_prediction_analysis(results, request.selected_conditions, confidence)
+        
+        result = {
+            "horses": results,
+            "confidence": confidence,
+            "selectedConditions": request.selected_conditions,
+            "calculationTime": datetime.now().isoformat(),
+            "analysis": analysis,
+            "dataSource": data_source,
+            "raceInfo": race_info
+        }
+        
+        logger.info(f"特定レース予想完了: {len(results)}頭、信頼度: {confidence}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in predict_specific_race: {e}")
+        raise HTTPException(status_code=500, detail=f"特定レース予想の実行に失敗しました: {str(e)}")
+
 @app.post("/chat")
 async def chat(request: ChatRequest):
-    """チャットボット応答（OpenAI API統合）"""
+    """チャットボット応答（OpenAI API統合 + レース特定機能）"""
     try:
         logger.info(f"Chat request received: {request.message}")
+        
+        # レース特定を試行
+        identified_race = race_identifier.identify_race_from_message(request.message)
         
         # メッセージの内容に基づいてレスポンスを決定
         message_lower = request.message.lower()
@@ -638,15 +764,36 @@ async def chat(request: ChatRequest):
         ]
         is_prediction_request = any(keyword in message_lower for keyword in prediction_keywords)
         
-        if is_prediction_request:
-            # 予想リクエストの場合
+        if identified_race and is_prediction_request:
+            # 特定されたレースの予想リクエスト
+            # 詳細なレース情報を取得
+            detailed_race = race_data_service.get_race_info(identified_race["course"], identified_race["race_number"])
+            if detailed_race:
+                race_info = race_data_service.format_race_details(detailed_race)
+            else:
+                race_info = race_identifier.format_race_info(identified_race)
+            
             ai_message = get_openai_response(
                 request.message, 
-                "ユーザーが競馬予想を求めています。8つの条件から選択してもらうように案内してください。",
+                f"ユーザーが{identified_race['course']}{identified_race['race_number']}Rの予想を求めています。8つの条件から選択してもらうように案内してください。\n\n{race_info}",
                 context_type="8conditions"
             )
             response_type = "conditions"
-            data = {"raceInfo": request.race_info} if request.race_info else None
+            data = {
+                "raceInfo": race_info,
+                "identifiedRace": identified_race,
+                "detailedRace": detailed_race
+            }
+        elif is_prediction_request:
+            # レースが特定できない予想リクエスト
+            available_races = race_data_service.get_race_summary()
+            ai_message = get_openai_response(
+                request.message, 
+                f"ユーザーが競馬予想を求めていますが、具体的なレースが特定できませんでした。\n\n{available_races}\n\nどのレースの予想をお求めでしょうか？",
+                context_type="8conditions"
+            )
+            response_type = "conditions"
+            data = {"raceInfo": available_races}
         else:
             # 一般会話の場合
             ai_message = get_openai_response(request.message, context_type="casual")

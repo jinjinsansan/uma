@@ -126,6 +126,9 @@ export default function AnimatedOrb({
     
     if (isConditionsSelected) {
       console.log('🎯 8条件選択時のアニメーション開始');
+      // 他のアニメーションをリセット
+      setIsExpanding(false);
+      setCurrentRandomColor(null);
       setIsShrinking(true);
       setPulseMode('conditions');
       // アニメーションキーを強制的に更新
@@ -152,8 +155,8 @@ export default function AnimatedOrb({
 
   // 予想結果表示時のアニメーション
   useEffect(() => {
-    if (isPredictionResult) {
-      console.log('予想結果表示時のアニメーション開始');
+    if (isPredictionResult && !isConditionsSelected) { // 8条件選択時は実行しない
+      console.log('🎯 予想結果表示時のアニメーション開始');
       // ランダムな色を選択
       const randomColor = RANDOM_COLORS[Math.floor(Math.random() * RANDOM_COLORS.length)];
       setCurrentRandomColor(randomColor);
@@ -164,7 +167,7 @@ export default function AnimatedOrb({
       
       // 3秒後に元のグリーン色に戻す
       setTimeout(() => {
-        console.log('予想結果アニメーション完了、グリーンに戻す');
+        console.log('✅ 予想結果アニメーション完了、グリーンに戻す');
         setCurrentRandomColor(null);
         setIsExpanding(false);
         setPulseMode('normal');
@@ -172,7 +175,7 @@ export default function AnimatedOrb({
         setCurrentConfidence('waiting');
       }, 3000);
     }
-  }, [isPredictionResult]);
+  }, [isPredictionResult, isConditionsSelected]);
 
   // 予想指数出力時（high, medium, low）に信頼度に応じた色に変化
   useEffect(() => {
@@ -288,8 +291,8 @@ export default function AnimatedOrb({
       };
     }
     
-    // 予想結果表示時の拡大アニメーション（最優先）
-    if (isExpanding) {
+    // 予想結果表示時の拡大アニメーション（8条件選択時以外）
+    if (isExpanding && !isShrinking) {
       console.log('🎯 拡大アニメーション実行中 - scale:', [0.02, 2.0, 1.5, 1]);
       return {
         scale: [0.02, 2.0, 1.5, 1],

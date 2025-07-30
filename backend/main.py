@@ -9,6 +9,7 @@ import logging
 import random
 import math
 from tfjv_integration import TFJVDataConnector
+from chat_prompts import KeibaAIPrompts
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -377,8 +378,8 @@ def get_random_response(category: str) -> str:
     responses = FIXED_RESPONSES.get(category, FIXED_RESPONSES["general"])
     return random.choice(responses)
 
-def get_openai_response(message: str, context: str = "") -> str:
-    """OpenAI APIを使用してレスポンスを生成"""
+def get_openai_response(message: str, context: str = "", context_type: str = "casual") -> str:
+    """OpenAI APIを使用してレスポンスを生成（競馬AI専用プロンプトシステム使用）"""
     if not OPENAI_ENABLED:
         return get_random_response("general")
     
@@ -438,47 +439,9 @@ def get_openai_response(message: str, context: str = "") -> str:
 
 常に親しみやすく、自分の球体を大切にしながらユーザーとの会話を楽しむことを心がけてください。"""
         else:
-            # 通常の会話用プロンプト
-            system_prompt = """あなたは「OracleAI」という名前の親しみやすいAIアシスタントです。
+            # 競馬AI専用プロンプトシステムを使用
+            system_prompt = KeibaAIPrompts.get_context_prompt(context_type)
         
-**基本性格:**
-- フレンドリーで親しみやすい
-- 自然で柔軟な会話ができる
-- 適度に絵文字を使用（😊✨🎉など）
-- 相手に合わせた柔軟な対応
-
-**専門分野:**
-- 競馬予想の専門知識（JRA、8つの予想条件、馬の血統など）
-- 競馬の歴史や豆知識
-- 有名な競走馬の話
-- 競馬場や騎手・調教師の話題
-
-**会話対応:**
-- 一般的な挨拶・雑談（「こんにちは」「今日はいい天気ですね」など）
-- 日常的な会話（「ありがとう」「お疲れ様」など）
-- 競馬以外の話題も自然に対応
-- 簡単な質問や情報提供
-- 天気や時事に関する軽い会話
-
-**競馬予想時の対応:**
-- ユーザーが競馬予想を求めている場合は、8つの条件から選択してもらう
-- 競馬予想以外は自由に会話する
-- 競馬の話題でも親しみやすく説明
-
-**応答スタイル:**
-- カジュアルで親しみやすい
-- 硬すぎず、自然な日本語
-- 適度な絵文字使用
-- 相手の興味に合わせた柔軟な対応
-
-**禁止事項:**
-- 過度な確実性の表現
-- 具体的な馬券の推奨
-- 違法な情報の提供
-- 不適切な内容
-
-常に親しみやすく、ユーザーとの会話を楽しむことを心がけてください。"""
-
         user_prompt = f"{context}\n\nユーザー: {message}\n\nOracleAI:"
         
         response = client.chat.completions.create(
@@ -498,7 +461,7 @@ def get_openai_response(message: str, context: str = "") -> str:
         return get_random_response("general")
 
 def get_prediction_analysis(horses: List[dict], selected_conditions: List[str], confidence: str) -> str:
-    """予想結果の詳細解説を生成"""
+    """予想結果の詳細解説を生成（競馬AI専用プロンプトシステム使用）"""
     if not OPENAI_ENABLED:
         return "予想結果の詳細分析をご提供いたします。✨"
     
@@ -507,29 +470,32 @@ def get_prediction_analysis(horses: List[dict], selected_conditions: List[str], 
         top_horses = horses[:3]
         horse_info = []
         for horse in top_horses:
-            horse_info.append(f"{horse['name']}: {horse['final_score']}点")
+            horse_info.append(f"{horse['horse_name']}: {horse['final_score']}点")
         
-        analysis_prompt = f"""以下の予想結果について、親しみやすく分かりやすい詳細解説を提供してください：
-
-🏆 予想結果:
-{chr(10).join(horse_info)}
-
-📊 選択された条件: {', '.join(selected_conditions)}
-🎯 信頼度: {confidence}
-
-解説のポイント:
-1. 上位馬の特徴と強み（親しみやすく説明）
-2. 選択された条件が結果に与えた影響
-3. 今後のレースでの参考ポイント
-4. 競馬初心者へのアドバイス
-
-絵文字を適度に使用し、親しみやすく分かりやすい解説をお願いします。専門的すぎず、楽しく読める内容にしてください。"""
-
+        # 競馬AI専用プロンプトシステムで結果データを整形
+        result_data = {
+            "race_name": "サンプルレース",
+            "distance": "1600m",
+            "surface": "芝",
+            "track_condition": "良",
+            "results": [
+                {"name": horse["horse_name"], "index": horse["final_score"]} 
+                for horse in top_horses
+            ]
+        }
+        
+        analysis_prompt = KeibaAIPrompts.format_race_analysis(
+            result_data, selected_conditions, top_horses
+        )
+        
+        # 競馬AI専用プロンプトシステムを使用
+        system_prompt = KeibaAIPrompts.get_context_prompt("prediction_result", result_data=analysis_prompt)
+        
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "あなたは親しみやすい競馬予想AIです。絵文字を適度に使用し、分かりやすく楽しい解説を提供してください。"},
-                {"role": "user", "content": analysis_prompt}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": "上記の予想結果について詳しく解説してください。"}
             ],
             max_tokens=500,
             temperature=0.8
@@ -674,12 +640,16 @@ async def chat(request: ChatRequest):
         
         if is_prediction_request:
             # 予想リクエストの場合
-            ai_message = get_openai_response(request.message, "ユーザーが競馬予想を求めています。8つの条件から選択してもらうように案内してください。")
+            ai_message = get_openai_response(
+                request.message, 
+                "ユーザーが競馬予想を求めています。8つの条件から選択してもらうように案内してください。",
+                context_type="8conditions"
+            )
             response_type = "conditions"
             data = {"raceInfo": request.race_info} if request.race_info else None
         else:
             # 一般会話の場合
-            ai_message = get_openai_response(request.message)
+            ai_message = get_openai_response(request.message, context_type="casual")
             response_type = "text"
             data = None
         

@@ -169,12 +169,12 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
-      <h3 className="text-xl font-bold text-gray-800 mb-6 text-center">
+    <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 border border-gray-200">
+      <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-4 sm:mb-6 text-center">
         予想条件を選択してください（最大4つ）
       </h3>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
         {CONDITIONS.map((condition) => {
           const isSelected = selectedConditions.includes(condition.id);
           const selectedIndex = selectedConditions.indexOf(condition.id);
@@ -183,7 +183,7 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
             <motion.button
               key={condition.id}
               onClick={() => handleConditionClick(condition.id)}
-              className={`p-6 rounded-xl border-2 transition-all ${
+              className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
                 isSelected
                   ? `${condition.selectedBgColor} ${condition.selectedBorderColor} text-gray-800`
                   : `${condition.bgColor} ${condition.borderColor} text-gray-700 ${condition.hoverBgColor}`
@@ -192,8 +192,8 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
               whileTap={{ scale: 0.98 }}
             >
               <div className="text-center">
-                <div className="flex items-center justify-center mb-3">
-                  <h4 className="text-lg font-bold">{condition.name}</h4>
+                <div className="flex items-center justify-center">
+                  <h4 className="text-xs sm:text-sm font-bold leading-tight">{condition.name}</h4>
                 </div>
               </div>
             </motion.button>
@@ -205,15 +205,15 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-blue-50 rounded-lg"
+          className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 rounded-lg"
         >
-          <h4 className="font-semibold text-blue-800 mb-2">選択された条件:</h4>
-          <div className="space-y-2">
+          <h4 className="font-semibold text-blue-800 mb-2 text-sm sm:text-base">選択された条件:</h4>
+          <div className="space-y-1 sm:space-y-2">
             {selectedConditions.map((conditionId, index) => {
               const condition = CONDITIONS.find(c => c.id === conditionId);
               return (
                 <div key={conditionId} className="flex justify-between items-center">
-                  <span className="text-blue-700">{condition?.name}</span>
+                  <span className="text-blue-700 text-xs sm:text-sm">{condition?.name}</span>
                 </div>
               );
             })}
@@ -225,7 +225,7 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
         <motion.button
           onClick={handleConfirm}
           disabled={selectedConditions.length === 0}
-          className="px-8 py-3 bg-blue-600 text-white rounded-full font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          className="px-6 sm:px-8 py-2 sm:py-3 bg-blue-600 text-white rounded-full font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg text-sm sm:text-base"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >

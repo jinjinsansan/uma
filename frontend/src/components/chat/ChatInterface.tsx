@@ -40,7 +40,7 @@ export default function ChatInterface() {
   }, [messages]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col relative">
       <header className="flex justify-between items-center p-6">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2">
@@ -59,11 +59,13 @@ export default function ChatInterface() {
         </motion.button>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-6 pb-20">
-        <div className="mb-8">
-          <AnimatedOrb confidence={getOrbConfidence()} isProcessing={isLoading} />
-        </div>
+      {/* 固定位置の球体 */}
+      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
+        <AnimatedOrb confidence={getOrbConfidence()} isProcessing={isLoading} />
+      </div>
 
+      {/* スクロール可能なチャットエリア */}
+      <main className="flex-1 flex flex-col items-center px-6 pb-20 pt-20">
         <div className="w-full max-w-2xl">
           <MessageList messages={messages} />
           <div ref={messagesEndRef} />
@@ -82,7 +84,7 @@ export default function ChatInterface() {
         )}
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-sm border-t border-gray-200">
+      <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-6 bg-white/80 backdrop-blur-sm border-t border-gray-200 z-20">
         <MessageInput onShowConditions={() => setShowConditions(true)} />
       </div>
     </div>

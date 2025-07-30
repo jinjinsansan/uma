@@ -85,7 +85,7 @@ export default function MessageInput({ onShowConditions }: MessageInputProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center space-x-4">
+    <form onSubmit={handleSubmit} className="flex items-center space-x-2 sm:space-x-4">
       <motion.input
         ref={inputRef}
         type="text"
@@ -94,21 +94,21 @@ export default function MessageInput({ onShowConditions }: MessageInputProps) {
         onKeyPress={handleKeyPress}
         placeholder="今日のレースの予想は？"
         disabled={isLoading || isSubmitting}
-        className="flex-1 px-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        className="flex-1 px-3 py-2 sm:px-4 sm:py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-sm sm:text-base"
         whileFocus={{ scale: 1.02 }}
         transition={{ duration: 0.2 }}
       />
       <motion.button
         type="submit"
         disabled={!input.trim() || isSubmitting || isLoading}
-        className="p-3 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all duration-200"
+        className="p-2 sm:p-3 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all duration-200 flex-shrink-0"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
       >
         {isSubmitting || isLoading ? (
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
         ) : (
-          <Send className="w-5 h-5" />
+          <Send className="w-4 h-4 sm:w-5 sm:h-5" />
         )}
       </motion.button>
     </form>

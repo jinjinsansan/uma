@@ -10,6 +10,7 @@
 /* 完全に白い背景を保証 */
 html, body {
   background: #ffffff !important;
+  background-color: #ffffff !important;
 }
 
 * {
@@ -18,14 +19,50 @@ html, body {
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: #ffffff;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
   min-height: 100vh;
+}
+
+/* モバイルでも完全に白い背景を保証 */
+@media (max-width: 768px) {
+  html, body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+  
+  body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+  
+  main {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+}
+
+@media (max-width: 480px) {
+  html, body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+  
+  body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+  
+  main {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
 }
 
 /* 3D球体スタイル */
 .orb-container {
-  width: 180px;
-  height: 180px;
+  width: 150px;
+  height: 150px;
   position: relative;
   margin: 0 auto;
 }
@@ -43,11 +80,6 @@ body {
     #98c198 80%,
     #84b484 100%
   );
-  box-shadow: 
-    0 0 50px rgba(0, 0, 0, 0.1),
-    inset 0 0 50px rgba(255, 255, 255, 0.3),
-    0 20px 40px rgba(0, 0, 0, 0.2),
-    inset 0 -10px 20px rgba(0, 0, 0, 0.1);
   animation: 
     pulse 6s ease-in-out infinite;
   /* デスクトップでも輪郭を鮮明に */
@@ -59,12 +91,17 @@ body {
   backface-visibility: hidden;
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
-  /* より強いシャドウで立体感を強調 */
-  box-shadow: 
-    0 0 50px rgba(0, 0, 0, 0.15),
-    inset 0 0 50px rgba(255, 255, 255, 0.4),
-    0 20px 40px rgba(0, 0, 0, 0.25),
-    inset 0 -10px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* デスクトップのみで影を適用 */
+@media (min-width: 769px) {
+  .orb {
+    box-shadow: 
+      0 0 50px rgba(0, 0, 0, 0.15),
+      inset 0 0 50px rgba(255, 255, 255, 0.4),
+      0 20px 40px rgba(0, 0, 0, 0.25),
+      inset 0 -10px 20px rgba(0, 0, 0, 0.15);
+  }
 }
 
 .orb::before {
@@ -162,8 +199,8 @@ body {
 /* レスポンシブ対応 - 影を完全に削除して真っ白な背景を保証 */
 @media (max-width: 768px) {
   .orb-container {
-    width: 130px;
-    height: 130px;
+    width: 110px;
+    height: 110px;
   }
   
   .orb {
@@ -211,8 +248,8 @@ body {
 
 @media (max-width: 480px) {
   .orb-container {
-    width: 110px;
-    height: 110px;
+    width: 90px;
+    height: 90px;
   }
   
   .orb {

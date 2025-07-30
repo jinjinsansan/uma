@@ -111,6 +111,15 @@ export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbPro
 
   return (
     <div className="orb-container">
+      {/* 半透明の背景円 */}
+      <div 
+        className="absolute inset-0 rounded-full bg-white/20 backdrop-blur-sm"
+        style={{
+          width: '100%',
+          height: '100%',
+          transform: 'scale(1.2)',
+        }}
+      />
       <motion.div
         className={getOrbClass()}
         style={getOrbStyle()}

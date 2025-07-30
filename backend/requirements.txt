@@ -3,3 +3,4 @@ uvicorn==0.35.0
 openai==1.97.1
 python-multipart==0.0.20
 pydantic==2.11.7
+requests==2.31.0

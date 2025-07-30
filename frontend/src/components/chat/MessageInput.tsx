@@ -11,15 +11,45 @@ interface MessageInputProps {
 export default function MessageInput({ onShowConditions }: MessageInputProps) {
   const [input, setInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { addMessage, setLoading, isLoading } = useChatStore();
 
-  // 入力フィールドにフォーカスを当てる
+  // キーボード表示の検出
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobile = window.innerWidth <= 768;
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      const isKeyboardOpen = isMobile && viewportHeight < window.innerHeight * 0.8;
+      
+      setIsKeyboardVisible(isKeyboardOpen);
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+    } else {
+      window.addEventListener('resize', handleResize);
+    }
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+      } else {
+        window.removeEventListener('resize', handleResize);
+      }
+    };
+  }, []);
+
+  // 入力フィールドにフォーカスを当てる（キーボード表示時は遅延）
   useEffect(() => {
     if (!isLoading && !isSubmitting) {
-      inputRef.current?.focus();
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, isKeyboardVisible ? 100 : 0);
+      
+      return () => clearTimeout(timer);
     }
-  }, [isLoading, isSubmitting]);
+  }, [isLoading, isSubmitting, isKeyboardVisible]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,14 +124,21 @@ export default function MessageInput({ onShowConditions }: MessageInputProps) {
         onKeyPress={handleKeyPress}
         placeholder="今日のレースの予想は？"
         disabled={isLoading || isSubmitting}
-        className="flex-1 px-3 py-2 sm:px-4 sm:py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-sm sm:text-base"
+        className={`flex-1 px-3 py-2.5 sm:px-4 sm:py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-base sm:text-base ${
+          isKeyboardVisible ? 'text-lg' : 'text-sm sm:text-base'
+        }`}
+        style={{
+          fontSize: isKeyboardVisible ? '16px' : undefined, // iOSでズームを防ぐ
+        }}
         whileFocus={{ scale: 1.02 }}
         transition={{ duration: 0.2 }}
       />
       <motion.button
         type="submit"
         disabled={!input.trim() || isSubmitting || isLoading}
-        className="p-2 sm:p-3 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all duration-200 flex-shrink-0"
+        className={`p-2.5 sm:p-3 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all duration-200 flex-shrink-0 ${
+          isKeyboardVisible ? 'p-3' : 'p-2.5 sm:p-3'
+        }`}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
       >

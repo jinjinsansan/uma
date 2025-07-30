@@ -5,7 +5,24 @@ export interface Message {
   timestamp: Date;
   raceInfo?: string;
   conditions?: string[];
-  predictionResult?: any;
+  predictionResult?: PredictionResult;
+}
+
+export interface PredictionResult {
+  confidence: 'high' | 'medium' | 'low';
+  selectedHorses?: SelectedHorse[];
+  analysis?: string;
+  dataSource?: {
+    source: string;
+    description: string;
+  };
+}
+
+export interface SelectedHorse {
+  number: number;
+  name: string;
+  jockey?: string;
+  trainer?: string;
 }
 
 export interface ChatState {

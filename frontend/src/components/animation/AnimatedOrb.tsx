@@ -119,21 +119,30 @@ export default function AnimatedOrb({
 
   // 8条件選択時のアニメーション
   useEffect(() => {
+    console.log('=== 8条件選択アニメーション useEffect ===');
+    console.log('isConditionsSelected:', isConditionsSelected);
+    console.log('pulseMode:', pulseMode);
+    console.log('isShrinking:', isShrinking);
+    
     if (isConditionsSelected) {
-      console.log('8条件選択時のアニメーション開始');
+      console.log('🎯 8条件選択時のアニメーション開始');
       setIsShrinking(true);
       setPulseMode('conditions');
       // アニメーションキーを強制的に更新
-      setOrbAnimationKey(prev => prev + 1);
+      setOrbAnimationKey(prev => {
+        console.log('🔄 アニメーションキー更新:', prev, '→', prev + 1);
+        return prev + 1;
+      });
       
       // 0.6秒後に縮小アニメーション完了（より高速に）
       setTimeout(() => {
-        console.log('縮小アニメーション完了');
+        console.log('✅ 縮小アニメーション完了');
         setIsShrinking(false);
         setPulseMode('normal');
       }, 600);
     } else {
       // 条件が選択されていない場合は状態をリセット
+      console.log('🔄 条件リセット');
       setIsShrinking(false);
       if (pulseMode === 'conditions') {
         setPulseMode('normal');
@@ -265,9 +274,15 @@ export default function AnimatedOrb({
   };
 
   const getPulseAnimation = () => {
+    console.log('🎬 getPulseAnimation 呼び出し');
+    console.log('  - isShrinking:', isShrinking);
+    console.log('  - isExpanding:', isExpanding);
+    console.log('  - pulseMode:', pulseMode);
+    console.log('  - isOrbTopic:', isOrbTopic);
+    
     // 8条件選択時の縮小アニメーション（最優先）
     if (isShrinking) {
-      console.log('縮小アニメーション実行中 - scale:', [1, 0.3, 0.1, 0.02]);
+      console.log('🎯 縮小アニメーション実行中 - scale:', [1, 0.3, 0.1, 0.02]);
       return {
         scale: [1, 0.3, 0.1, 0.02],
       };
@@ -275,7 +290,7 @@ export default function AnimatedOrb({
     
     // 予想結果表示時の拡大アニメーション（最優先）
     if (isExpanding) {
-      console.log('拡大アニメーション実行中 - scale:', [0.02, 2.0, 1.5, 1]);
+      console.log('🎯 拡大アニメーション実行中 - scale:', [0.02, 2.0, 1.5, 1]);
       return {
         scale: [0.02, 2.0, 1.5, 1],
       };
@@ -283,6 +298,7 @@ export default function AnimatedOrb({
     
     // 球体に関する話題の場合は特別なアニメーション
     if (isOrbTopic) {
+      console.log('🎯 球体話題アニメーション実行中');
       return {
         scale: [1, 1.2, 0.9, 1.1, 1],
         y: [0, -20, 20, -10, 0],
@@ -291,29 +307,30 @@ export default function AnimatedOrb({
     
     switch (pulseMode) {
       case 'racing':
-        // 競馬関連話題時：心臓のドキドキスピード（1回のみ）
+        console.log('🏇 競馬話題アニメーション実行中');
         return {
           scale: [1, 1.3, 0.8, 1.2, 1],
         };
       case 'prediction':
-        // 予想指数出力時：心臓のドキドキスピード（1回のみ）
+        console.log('🔮 予想アニメーション実行中');
         return {
           scale: [1, 1.4, 0.7, 1.3, 1],
         };
       case 'conditions':
         // 8条件選択時：高速縮小（より劇的に）
-        console.log('conditionsモードのアニメーション実行中 - scale:', [1, 0.3, 0.1, 0.02]);
+        console.log('🎯 conditionsモードのアニメーション実行中 - scale:', [1, 0.3, 0.1, 0.02]);
         return {
           scale: [1, 0.3, 0.1, 0.02],
         };
       case 'result':
         // 予想結果表示時：高速拡大（より劇的に）
-        console.log('resultモードのアニメーション実行中 - scale:', [0.02, 2.0, 1.5, 1]);
+        console.log('🎯 resultモードのアニメーション実行中 - scale:', [0.02, 2.0, 1.5, 1]);
         return {
           scale: [0.02, 2.0, 1.5, 1],
         };
       default:
         // 通常時：緩やかな伸び縮み
+        console.log('🌊 通常アニメーション実行中');
         return {
           scale: [1, 1.15, 1],
         };
@@ -411,6 +428,12 @@ export default function AnimatedOrb({
         whileHover={{
           scale: 1.1,
           filter: "brightness(1.3)",
+        }}
+        onAnimationStart={() => {
+          console.log('🚀 アニメーション開始 - key:', orbAnimationKey);
+        }}
+        onAnimationComplete={() => {
+          console.log('✅ アニメーション完了 - key:', orbAnimationKey);
         }}
       />
     </div>

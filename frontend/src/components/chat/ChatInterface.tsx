@@ -43,18 +43,23 @@ export default function ChatInterface() {
 
   // 8条件選択時のアニメーション
   useEffect(() => {
+    console.log('=== ChatInterface 8条件選択アニメーション ===');
     console.log('selectedConditions:', selectedConditions);
+    console.log('selectedConditions.length:', selectedConditions.length);
+    console.log('isConditionsSelected:', isConditionsSelected);
+    
     if (selectedConditions.length === 4) {
-      console.log('4つの条件が選択されました。アニメーション開始');
+      console.log('🎯 4つの条件が選択されました。アニメーション開始');
       setIsConditionsSelected(true);
       
       // 0.6秒後にアニメーション完了（AnimatedOrbと合わせる）
       setTimeout(() => {
-        console.log('アニメーション完了');
+        console.log('✅ アニメーション完了');
         setIsConditionsSelected(false);
       }, 600);
     } else {
       // 条件が4つ未満の場合はアニメーションをリセット
+      console.log('🔄 条件が4つ未満のためアニメーションをリセット');
       setIsConditionsSelected(false);
     }
   }, [selectedConditions]);

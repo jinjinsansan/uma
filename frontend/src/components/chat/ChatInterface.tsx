@@ -123,7 +123,7 @@ export default function ChatInterface() {
             transform: 'translate(-50%, -50%)',
           }}
           animate={{
-            top: orbPosition === 'center' ? '50vh' : '15vh',
+            top: orbPosition === 'center' ? '75vh' : '15vh', // 初期位置を75vhに変更
             opacity: isKeyboardVisible ? 0 : 1,
           }}
           transition={{

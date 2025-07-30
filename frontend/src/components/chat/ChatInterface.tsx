@@ -141,10 +141,14 @@ export default function ChatInterface() {
 
       {/* スクロール可能なチャットエリア */}
       <main 
-        className="flex-1 flex flex-col items-center px-4 sm:px-6 pb-20 sm:pb-32" 
+        className={`flex-1 flex flex-col items-center px-4 sm:px-6 pb-20 sm:pb-32 chat-main ${
+          isKeyboardVisible ? 'keyboard-visible' : ''
+        }`}
         style={{ 
           paddingTop: orbPosition === 'center' && !isKeyboardVisible ? '20px' : '80px',
-          minHeight: isKeyboardVisible ? '60vh' : 'auto'
+          minHeight: isKeyboardVisible ? '50vh' : 'auto',
+          maxHeight: isKeyboardVisible ? '50vh' : 'none',
+          overflow: isKeyboardVisible ? 'auto' : 'visible'
         }}
       >
         <div className="w-full max-w-2xl">
@@ -167,11 +171,12 @@ export default function ChatInterface() {
 
       {/* 入力エリア（キーボード表示時の位置調整） */}
       <div 
-        className={`fixed left-0 right-0 p-3 sm:p-6 bg-white/90 backdrop-blur-md border-t border-gray-200 z-20 shadow-lg transition-all duration-300 ${
-          isKeyboardVisible ? 'bottom-0' : 'bottom-0'
+        className={`fixed left-0 right-0 p-3 sm:p-6 bg-white/90 backdrop-blur-md border-t border-gray-200 z-20 shadow-lg transition-all duration-300 input-area ${
+          isKeyboardVisible ? 'keyboard-visible' : ''
         }`}
         style={{
-          paddingBottom: isKeyboardVisible ? 'env(safe-area-inset-bottom)' : '1rem'
+          paddingBottom: isKeyboardVisible ? 'env(safe-area-inset-bottom)' : '1rem',
+          maxHeight: isKeyboardVisible ? '40vh' : 'auto'
         }}
       >
         <MessageInput onShowConditions={() => setShowConditions(true)} />

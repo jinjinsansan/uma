@@ -124,11 +124,13 @@ export default function MessageInput({ onShowConditions }: MessageInputProps) {
         onKeyPress={handleKeyPress}
         placeholder="今日のレースの予想は？"
         disabled={isLoading || isSubmitting}
-        className={`flex-1 px-3 py-2.5 sm:px-4 sm:py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-base sm:text-base ${
-          isKeyboardVisible ? 'text-lg' : 'text-sm sm:text-base'
+        className={`flex-1 px-3 py-2.5 sm:px-4 sm:py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 ${
+          isKeyboardVisible ? 'text-base' : 'text-sm sm:text-base'
         }`}
         style={{
-          fontSize: isKeyboardVisible ? '16px' : undefined, // iOSでズームを防ぐ
+          fontSize: '16px', // iOSでズームを防ぐために16px固定
+          WebkitAppearance: 'none', // iOS Safariのデフォルトスタイルを無効化
+          borderRadius: '9999px', // 明示的にborder-radiusを設定
         }}
         whileFocus={{ scale: 1.02 }}
         transition={{ duration: 0.2 }}
@@ -136,9 +138,13 @@ export default function MessageInput({ onShowConditions }: MessageInputProps) {
       <motion.button
         type="submit"
         disabled={!input.trim() || isSubmitting || isLoading}
-        className={`p-2.5 sm:p-3 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all duration-200 flex-shrink-0 ${
+        className={`bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all duration-200 flex-shrink-0 ${
           isKeyboardVisible ? 'p-3' : 'p-2.5 sm:p-3'
         }`}
+        style={{
+          minWidth: '44px', // タッチターゲットの最小サイズ
+          minHeight: '44px',
+        }}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
       >

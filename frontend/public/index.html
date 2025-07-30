@@ -27,11 +27,14 @@
         html, body {
           height: 100%;
           overflow: hidden;
+          position: fixed;
+          width: 100%;
         }
         
         #root {
           height: 100vh;
           height: -webkit-fill-available;
+          overflow: hidden;
         }
         
         /* キーボード表示時のビューポート調整 */
@@ -42,12 +45,37 @@
             height: 100%;
           }
         }
+        
+        /* 入力フィールドのズーム防止 */
+        input[type="text"], input[type="email"], input[type="password"], textarea {
+          font-size: 16px !important;
+          -webkit-appearance: none;
+          border-radius: 0;
+        }
+        
+        /* タッチターゲットの最小サイズ確保 */
+        button, [role="button"] {
+          min-width: 44px;
+          min-height: 44px;
+        }
       }
       
       /* 安全エリアの対応 */
       @supports (padding: max(0px)) {
         .safe-area-bottom {
           padding-bottom: max(1rem, env(safe-area-inset-bottom));
+        }
+      }
+      
+      /* キーボード表示時のレイアウト調整 */
+      @media screen and (max-width: 768px) and (max-height: 600px) {
+        .chat-main {
+          max-height: 50vh !important;
+          overflow-y: auto !important;
+        }
+        
+        .input-area {
+          max-height: 40vh !important;
         }
       }
     </style>

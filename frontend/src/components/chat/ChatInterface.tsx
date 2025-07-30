@@ -11,6 +11,7 @@ import { ConfidenceLevel } from '../../types/race';
 export default function ChatInterface() {
   const { messages, isLoading, selectedConditions } = useChatStore();
   const [showConditions, setShowConditions] = useState(false);
+  const [orbPosition, setOrbPosition] = useState<'center' | 'top'>('center');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const getOrbConfidence = (): ConfidenceLevel => {
@@ -29,6 +30,21 @@ export default function ChatInterface() {
     
     return 'waiting';
   };
+
+  // 球体の位置を動的に調整
+  useEffect(() => {
+    if (messages.length > 0) {
+      // 会話が始まったら画面上部に移動
+      const timer = setTimeout(() => {
+        setOrbPosition('top');
+      }, 1000); // 1秒後に移動開始
+      
+      return () => clearTimeout(timer);
+    } else {
+      // メッセージがない場合は中央に戻す
+      setOrbPosition('center');
+    }
+  }, [messages.length]);
 
   // メッセージが追加されたときに自動スクロール
   const scrollToBottom = () => {
@@ -59,13 +75,23 @@ export default function ChatInterface() {
         </motion.button>
       </header>
 
-      {/* 固定位置の球体 */}
-      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
+      {/* 動的な位置の球体 */}
+      <motion.div 
+        className="fixed left-1/2 transform -translate-x-1/2 z-10 pointer-events-none"
+        animate={{
+          top: orbPosition === 'center' ? '50%' : '20%',
+          y: orbPosition === 'center' ? '-50%' : '-50%',
+        }}
+        transition={{
+          duration: 1.5,
+          ease: "easeInOut",
+        }}
+      >
         <AnimatedOrb confidence={getOrbConfidence()} isProcessing={isLoading} />
-      </div>
+      </motion.div>
 
       {/* スクロール可能なチャットエリア */}
-      <main className="flex-1 flex flex-col items-center px-6 pb-20 pt-20">
+      <main className="flex-1 flex flex-col items-center px-6 pb-20" style={{ paddingTop: orbPosition === 'center' ? '20px' : '120px' }}>
         <div className="w-full max-w-2xl">
           <MessageList messages={messages} />
           <div ref={messagesEndRef} />

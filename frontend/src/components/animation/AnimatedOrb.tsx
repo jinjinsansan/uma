@@ -124,12 +124,12 @@ export default function AnimatedOrb({
       setIsShrinking(true);
       setPulseMode('conditions');
       
-      // 1秒後に縮小アニメーション完了
+      // 0.6秒後に縮小アニメーション完了（より高速に）
       setTimeout(() => {
         console.log('縮小アニメーション完了');
         setIsShrinking(false);
         setPulseMode('normal');
-      }, 1000);
+      }, 600);
     }
   }, [isConditionsSelected]);
 
@@ -257,17 +257,19 @@ export default function AnimatedOrb({
   };
 
   const getPulseAnimation = () => {
-    // 8条件選択時の縮小アニメーション（より劇的に）
+    // 8条件選択時の縮小アニメーション（最優先）
     if (isShrinking) {
+      console.log('縮小アニメーション実行中');
       return {
-        scale: [1, 0.5, 0.2, 0.05],
+        scale: [1, 0.3, 0.1, 0.02],
       };
     }
     
-    // 予想結果表示時の拡大アニメーション（より劇的に）
+    // 予想結果表示時の拡大アニメーション（最優先）
     if (isExpanding) {
+      console.log('拡大アニメーション実行中');
       return {
-        scale: [0.05, 1.8, 1.3, 1],
+        scale: [0.02, 2.0, 1.5, 1],
       };
     }
     
@@ -292,13 +294,15 @@ export default function AnimatedOrb({
         };
       case 'conditions':
         // 8条件選択時：高速縮小（より劇的に）
+        console.log('conditionsモードのアニメーション実行中');
         return {
-          scale: [1, 0.5, 0.2, 0.05],
+          scale: [1, 0.3, 0.1, 0.02],
         };
       case 'result':
         // 予想結果表示時：高速拡大（より劇的に）
+        console.log('resultモードのアニメーション実行中');
         return {
-          scale: [0.05, 1.8, 1.3, 1],
+          scale: [0.02, 2.0, 1.5, 1],
         };
       default:
         // 通常時：緩やかな伸び縮み
@@ -311,8 +315,9 @@ export default function AnimatedOrb({
   const getPulseTransition = () => {
     // 8条件選択時の高速縮小（より高速に）
     if (isShrinking) {
+      console.log('縮小トランジション実行中');
       return {
-        duration: 0.8,
+        duration: 0.6,
         repeat: 0,
         ease: "easeInOut",
       };
@@ -320,8 +325,9 @@ export default function AnimatedOrb({
     
     // 予想結果表示時の高速拡大（より高速に）
     if (isExpanding) {
+      console.log('拡大トランジション実行中');
       return {
-        duration: 0.8,
+        duration: 0.6,
         repeat: 0,
         ease: "easeInOut",
       };
@@ -353,15 +359,17 @@ export default function AnimatedOrb({
         };
       case 'conditions':
         // 8条件選択時：高速縮小（より高速に）
+        console.log('conditionsモードのトランジション実行中');
         return {
-          duration: 0.8,
+          duration: 0.6,
           repeat: 0,
           ease: "easeInOut",
         };
       case 'result':
         // 予想結果表示時：高速拡大（より高速に）
+        console.log('resultモードのトランジション実行中');
         return {
-          duration: 0.8,
+          duration: 0.6,
           repeat: 0,
           ease: "easeInOut",
         };

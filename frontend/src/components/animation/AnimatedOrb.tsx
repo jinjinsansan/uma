@@ -26,6 +26,12 @@ const CONFIDENCE_COLORS = {
   }
 };
 
+// デフォルトのグリーン色
+const DEFAULT_GREEN = {
+  background: 'radial-gradient(circle at 30% 30%, #4ade80 0%, #22c55e 25%, #16a34a 50%, #15803d 75%, #166534 100%)',
+  shadow: '0 0 50px rgba(0, 0, 0, 0.15), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
+};
+
 // ランダムな色の配列（より明るく美しい色）
 const RANDOM_COLORS = [
   { background: 'radial-gradient(circle at 30% 30%, #ff6b6b 0%, #ff8e8e 25%, #ffa5a5 50%, #ffb3b3 75%, #ffc0c0 100%)', shadow: '0 0 60px rgba(255, 107, 107, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)' },
@@ -114,12 +120,14 @@ export default function AnimatedOrb({
   // 8条件選択時のアニメーション
   useEffect(() => {
     if (isConditionsSelected) {
+      console.log('8条件選択時のアニメーション開始');
       setIsShrinking(true);
       setPulseMode('conditions');
       
       // 1秒後に縮小アニメーション完了
       setTimeout(() => {
         setIsShrinking(false);
+        setPulseMode('normal');
       }, 1000);
     }
   }, [isConditionsSelected]);
@@ -127,6 +135,7 @@ export default function AnimatedOrb({
   // 予想結果表示時のアニメーション
   useEffect(() => {
     if (isPredictionResult) {
+      console.log('予想結果表示時のアニメーション開始');
       // ランダムな色を選択
       const randomColor = RANDOM_COLORS[Math.floor(Math.random() * RANDOM_COLORS.length)];
       setCurrentRandomColor(randomColor);
@@ -135,7 +144,7 @@ export default function AnimatedOrb({
       setIsExpanding(true);
       setPulseMode('result');
       
-      // 3秒後に元の色に戻す
+      // 3秒後に元のグリーン色に戻す
       setTimeout(() => {
         setCurrentRandomColor(null);
         setIsExpanding(false);
@@ -214,17 +223,14 @@ export default function AnimatedOrb({
     if (currentConfidence === 'high' || currentConfidence === 'medium' || currentConfidence === 'low') {
       if (isColorChanging) {
         // 色変化中のアニメーション（よりスムーズに）
-        const baseColor = {
-          background: 'radial-gradient(circle at 30% 30%, #4ade80 0%, #22c55e 25%, #16a34a 50%, #15803d 75%, #166534 100%)',
-          boxShadow: '0 0 50px rgba(0, 0, 0, 0.15), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)'
-        };
+        const baseColor = DEFAULT_GREEN;
         
         const targetColor = CONFIDENCE_COLORS[currentConfidence as keyof typeof CONFIDENCE_COLORS];
         
         // より滑らかな色の変化
         return {
           background: colorChangeProgress > 0.3 ? targetColor.background : baseColor.background,
-          boxShadow: colorChangeProgress > 0.3 ? targetColor.shadow : baseColor.boxShadow,
+          boxShadow: colorChangeProgress > 0.3 ? targetColor.shadow : baseColor.shadow,
           transition: 'all 0.2s ease-in-out'
         };
       } else {
@@ -237,7 +243,13 @@ export default function AnimatedOrb({
         };
       }
     }
-    return {};
+    
+    // デフォルトはグリーン色
+    return {
+      background: DEFAULT_GREEN.background,
+      boxShadow: DEFAULT_GREEN.shadow,
+      transition: 'all 0.3s ease-in-out'
+    };
   };
 
   const getPulseAnimation = () => {

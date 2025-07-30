@@ -43,11 +43,14 @@ export default function ChatInterface() {
 
   // 8条件選択時のアニメーション
   useEffect(() => {
+    console.log('selectedConditions:', selectedConditions);
     if (selectedConditions.length === 4) {
+      console.log('4つの条件が選択されました。アニメーション開始');
       setIsConditionsSelected(true);
       
       // 1秒後にアニメーション完了
       setTimeout(() => {
+        console.log('アニメーション完了');
         setIsConditionsSelected(false);
       }, 1000);
     }

@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict
-import openai
 import os
 from datetime import datetime
 import json
@@ -619,18 +618,14 @@ async def predict_race(request: PredictRequest):
             horses = []
             for horse_name, horse_data in HORSE_DETAILED_DATA.items():
                 horse = {
-                    "name": horse_name,
-                    "base_score": horse_data["base_score"],
+                    "horse_name": horse_name,
+                    "horse_id": f"@00{random.randint(200000, 999999)}",
                     "condition_rates": horse_data["condition_rates"]
                 }
                 horses.append(horse)
             
-            for horse in horses:
-                final_score = prediction_engine.calculate_final_score(horse, request.selected_conditions)
-                horse["final_score"] = final_score
-            
-            horses.sort(key=lambda x: x["final_score"], reverse=True)
-            results = horses
+            # TFJVコネクターでサンプルデータも計算
+            results = tfjv_connector.calculate_real_scores(horses, request.selected_conditions)
         
         # ランキングを追加
         for i, horse in enumerate(results):
@@ -640,7 +635,7 @@ async def predict_race(request: PredictRequest):
         confidence = tfjv_connector._determine_confidence(
             results[0]["final_score"] if results else 0,
             [horse.get("final_score", 0) for horse in results]
-        )
+        ) if results else "low"
         
         # OpenAIによる詳細解説を生成
         analysis = get_prediction_analysis(results, request.selected_conditions, confidence)

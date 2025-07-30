@@ -126,6 +126,7 @@ export default function AnimatedOrb({
       
       // 1秒後に縮小アニメーション完了
       setTimeout(() => {
+        console.log('縮小アニメーション完了');
         setIsShrinking(false);
         setPulseMode('normal');
       }, 1000);
@@ -146,9 +147,12 @@ export default function AnimatedOrb({
       
       // 3秒後に元のグリーン色に戻す
       setTimeout(() => {
+        console.log('予想結果アニメーション完了、グリーンに戻す');
         setCurrentRandomColor(null);
         setIsExpanding(false);
         setPulseMode('normal');
+        // 信頼度もリセット
+        setCurrentConfidence('waiting');
       }, 3000);
     }
   }, [isPredictionResult]);
@@ -206,7 +210,7 @@ export default function AnimatedOrb({
       return {
         background: currentRandomColor.background,
         boxShadow: currentRandomColor.shadow,
-        transition: 'all 0.5s ease-in-out'
+        transition: 'all 0.8s ease-in-out'
       };
     }
     
@@ -215,12 +219,12 @@ export default function AnimatedOrb({
       return {
         background: 'radial-gradient(circle at 30% 30%, #ff6b6b 0%, #ff8e8e 25%, #ffa5a5 50%, #ffb3b3 75%, #ffc0c0 100%)',
         boxShadow: '0 0 60px rgba(255, 107, 107, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)',
-        transition: 'all 0.3s ease-in-out'
+        transition: 'all 0.5s ease-in-out'
       };
     }
     
-    // 予想指数出力時のみ信頼度に応じた色を適用
-    if (currentConfidence === 'high' || currentConfidence === 'medium' || currentConfidence === 'low') {
+    // 予想指数出力時のみ信頼度に応じた色を適用（currentRandomColorがnullの場合のみ）
+    if ((currentConfidence === 'high' || currentConfidence === 'medium' || currentConfidence === 'low') && !currentRandomColor) {
       if (isColorChanging) {
         // 色変化中のアニメーション（よりスムーズに）
         const baseColor = DEFAULT_GREEN;
@@ -231,7 +235,7 @@ export default function AnimatedOrb({
         return {
           background: colorChangeProgress > 0.3 ? targetColor.background : baseColor.background,
           boxShadow: colorChangeProgress > 0.3 ? targetColor.shadow : baseColor.shadow,
-          transition: 'all 0.2s ease-in-out'
+          transition: 'all 0.3s ease-in-out'
         };
       } else {
         // 色変化完了後
@@ -239,31 +243,31 @@ export default function AnimatedOrb({
         return {
           background: targetColor.background,
           boxShadow: targetColor.shadow,
-          transition: 'all 0.3s ease-in-out'
+          transition: 'all 0.5s ease-in-out'
         };
       }
     }
     
-    // デフォルトはグリーン色
+    // デフォルトはグリーン色（予想結果表示後は確実にここに戻る）
     return {
       background: DEFAULT_GREEN.background,
       boxShadow: DEFAULT_GREEN.shadow,
-      transition: 'all 0.3s ease-in-out'
+      transition: 'all 0.5s ease-in-out'
     };
   };
 
   const getPulseAnimation = () => {
-    // 8条件選択時の縮小アニメーション
+    // 8条件選択時の縮小アニメーション（より劇的に）
     if (isShrinking) {
       return {
-        scale: [1, 0.3, 0.2, 0.1],
+        scale: [1, 0.5, 0.2, 0.05],
       };
     }
     
-    // 予想結果表示時の拡大アニメーション
+    // 予想結果表示時の拡大アニメーション（より劇的に）
     if (isExpanding) {
       return {
-        scale: [0.1, 1.5, 1.2, 1],
+        scale: [0.05, 1.8, 1.3, 1],
       };
     }
     
@@ -287,14 +291,14 @@ export default function AnimatedOrb({
           scale: [1, 1.4, 0.7, 1.3, 1],
         };
       case 'conditions':
-        // 8条件選択時：高速縮小
+        // 8条件選択時：高速縮小（より劇的に）
         return {
-          scale: [1, 0.3, 0.2, 0.1],
+          scale: [1, 0.5, 0.2, 0.05],
         };
       case 'result':
-        // 予想結果表示時：高速拡大
+        // 予想結果表示時：高速拡大（より劇的に）
         return {
-          scale: [0.1, 1.5, 1.2, 1],
+          scale: [0.05, 1.8, 1.3, 1],
         };
       default:
         // 通常時：緩やかな伸び縮み
@@ -305,19 +309,19 @@ export default function AnimatedOrb({
   };
 
   const getPulseTransition = () => {
-    // 8条件選択時の高速縮小
+    // 8条件選択時の高速縮小（より高速に）
     if (isShrinking) {
       return {
-        duration: 1.0,
+        duration: 0.8,
         repeat: 0,
         ease: "easeInOut",
       };
     }
     
-    // 予想結果表示時の高速拡大
+    // 予想結果表示時の高速拡大（より高速に）
     if (isExpanding) {
       return {
-        duration: 1.0,
+        duration: 0.8,
         repeat: 0,
         ease: "easeInOut",
       };
@@ -348,16 +352,16 @@ export default function AnimatedOrb({
           ease: "easeInOut",
         };
       case 'conditions':
-        // 8条件選択時：高速縮小
+        // 8条件選択時：高速縮小（より高速に）
         return {
-          duration: 1.0,
+          duration: 0.8,
           repeat: 0,
           ease: "easeInOut",
         };
       case 'result':
-        // 予想結果表示時：高速拡大
+        // 予想結果表示時：高速拡大（より高速に）
         return {
-          duration: 1.0,
+          duration: 0.8,
           repeat: 0,
           ease: "easeInOut",
         };

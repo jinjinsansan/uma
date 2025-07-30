@@ -92,36 +92,36 @@ const CONDITIONS = [
 
 export default function ConditionSelector({ onComplete }: ConditionSelectorProps) {
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
-  const { addMessage, setLoading } = useChatStore();
+  const { addMessage, setLoading, setSelectedConditions: setStoreSelectedConditions } = useChatStore();
 
   const handleConditionClick = (conditionId: string) => {
     if (selectedConditions.includes(conditionId)) {
-      setSelectedConditions(selectedConditions.filter(id => id !== conditionId));
+      const newSelected = selectedConditions.filter(id => id !== conditionId);
+      setSelectedConditions(newSelected);
+      setStoreSelectedConditions(newSelected);
     } else if (selectedConditions.length < 4) {
-      setSelectedConditions([...selectedConditions, conditionId]);
+      const newSelected = [...selectedConditions, conditionId];
+      setSelectedConditions(newSelected);
+      setStoreSelectedConditions(newSelected);
     }
   };
 
   const getPriorityLabel = (index: number) => {
-    const labels = ['1st', '2nd', '3rd', '4th'];
-    return labels[index];
+    const labels = ['1位', '2位', '3位', '4位'];
+    return labels[index] || '';
   };
 
   const getWeightPercentage = (index: number) => {
     const weights = [40, 30, 20, 10];
-    return weights[index];
+    return weights[index] || 0;
   };
 
   const getConfidenceText = (confidence: string) => {
     switch (confidence) {
-      case 'high':
-        return '高信頼度';
-      case 'medium':
-        return '中信頼度';
-      case 'low':
-        return '低信頼度';
-      default:
-        return '中信頼度';
+      case 'high': return '高信頼度';
+      case 'medium': return '中信頼度';
+      case 'low': return '低信頼度';
+      default: return '中信頼度';
     }
   };
 
@@ -201,38 +201,42 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
         })}
       </div>
 
-              {selectedConditions.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 rounded-lg"
-          >
-            <h4 className="font-semibold text-blue-800 mb-2 text-sm sm:text-base">選択された条件:</h4>
-            <div className="space-y-1 sm:space-y-2">
-              {selectedConditions.map((conditionId, index) => {
-                const condition = CONDITIONS.find(c => c.id === conditionId);
-                return (
-                  <div key={conditionId} className="flex justify-between items-center">
-                    <span className="text-blue-700 text-xs sm:text-sm">{condition?.name}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
-              <p className="text-xs text-green-700">
-                📊 TFJV実データを使用した高精度予想
-              </p>
-            </div>
-          </motion.div>
-        )}
+      {selectedConditions.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 rounded-lg"
+        >
+          <h4 className="font-semibold text-blue-800 mb-2 text-sm sm:text-base">選択された条件:</h4>
+          <div className="space-y-1 sm:space-y-2">
+            {selectedConditions.map((conditionId, index) => {
+              const condition = CONDITIONS.find(c => c.id === conditionId);
+              return (
+                <div key={conditionId} className="flex justify-between items-center">
+                  <span className="text-blue-700 text-xs sm:text-sm">{condition?.name}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
+            <p className="text-xs text-green-700">
+              📊 TFJV実データを使用した高精度予想
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       <div className="flex justify-center">
         <motion.button
           onClick={handleConfirm}
           disabled={selectedConditions.length === 0}
-          className="px-6 sm:px-8 py-2 sm:py-3 bg-blue-600 text-white rounded-full font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg text-sm sm:text-base"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          className={`px-6 py-3 rounded-lg font-semibold text-white transition-all ${
+            selectedConditions.length === 0
+              ? 'bg-gray-300 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700'
+          }`}
+          whileHover={selectedConditions.length > 0 ? { scale: 1.05 } : {}}
+          whileTap={selectedConditions.length > 0 ? { scale: 0.95 } : {}}
         >
           予想実行
         </motion.button>

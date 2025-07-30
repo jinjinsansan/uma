@@ -48,11 +48,14 @@ export default function ChatInterface() {
       console.log('4つの条件が選択されました。アニメーション開始');
       setIsConditionsSelected(true);
       
-      // 1秒後にアニメーション完了
+      // 0.6秒後にアニメーション完了（AnimatedOrbと合わせる）
       setTimeout(() => {
         console.log('アニメーション完了');
         setIsConditionsSelected(false);
-      }, 1000);
+      }, 600);
+    } else {
+      // 条件が4つ未満の場合はアニメーションをリセット
+      setIsConditionsSelected(false);
     }
   }, [selectedConditions]);
 

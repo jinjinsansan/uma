@@ -123,6 +123,8 @@ export default function AnimatedOrb({
       console.log('8条件選択時のアニメーション開始');
       setIsShrinking(true);
       setPulseMode('conditions');
+      // アニメーションキーを強制的に更新
+      setOrbAnimationKey(prev => prev + 1);
       
       // 0.6秒後に縮小アニメーション完了（より高速に）
       setTimeout(() => {
@@ -130,8 +132,14 @@ export default function AnimatedOrb({
         setIsShrinking(false);
         setPulseMode('normal');
       }, 600);
+    } else {
+      // 条件が選択されていない場合は状態をリセット
+      setIsShrinking(false);
+      if (pulseMode === 'conditions') {
+        setPulseMode('normal');
+      }
     }
-  }, [isConditionsSelected]);
+  }, [isConditionsSelected, pulseMode]);
 
   // 予想結果表示時のアニメーション
   useEffect(() => {
@@ -259,7 +267,7 @@ export default function AnimatedOrb({
   const getPulseAnimation = () => {
     // 8条件選択時の縮小アニメーション（最優先）
     if (isShrinking) {
-      console.log('縮小アニメーション実行中');
+      console.log('縮小アニメーション実行中 - scale:', [1, 0.3, 0.1, 0.02]);
       return {
         scale: [1, 0.3, 0.1, 0.02],
       };
@@ -267,7 +275,7 @@ export default function AnimatedOrb({
     
     // 予想結果表示時の拡大アニメーション（最優先）
     if (isExpanding) {
-      console.log('拡大アニメーション実行中');
+      console.log('拡大アニメーション実行中 - scale:', [0.02, 2.0, 1.5, 1]);
       return {
         scale: [0.02, 2.0, 1.5, 1],
       };
@@ -294,13 +302,13 @@ export default function AnimatedOrb({
         };
       case 'conditions':
         // 8条件選択時：高速縮小（より劇的に）
-        console.log('conditionsモードのアニメーション実行中');
+        console.log('conditionsモードのアニメーション実行中 - scale:', [1, 0.3, 0.1, 0.02]);
         return {
           scale: [1, 0.3, 0.1, 0.02],
         };
       case 'result':
         // 予想結果表示時：高速拡大（より劇的に）
-        console.log('resultモードのアニメーション実行中');
+        console.log('resultモードのアニメーション実行中 - scale:', [0.02, 2.0, 1.5, 1]);
         return {
           scale: [0.02, 2.0, 1.5, 1],
         };
@@ -315,7 +323,7 @@ export default function AnimatedOrb({
   const getPulseTransition = () => {
     // 8条件選択時の高速縮小（より高速に）
     if (isShrinking) {
-      console.log('縮小トランジション実行中');
+      console.log('縮小トランジション実行中 - duration: 0.6s');
       return {
         duration: 0.6,
         repeat: 0,
@@ -325,7 +333,7 @@ export default function AnimatedOrb({
     
     // 予想結果表示時の高速拡大（より高速に）
     if (isExpanding) {
-      console.log('拡大トランジション実行中');
+      console.log('拡大トランジション実行中 - duration: 0.6s');
       return {
         duration: 0.6,
         repeat: 0,
@@ -359,7 +367,7 @@ export default function AnimatedOrb({
         };
       case 'conditions':
         // 8条件選択時：高速縮小（より高速に）
-        console.log('conditionsモードのトランジション実行中');
+        console.log('conditionsモードのトランジション実行中 - duration: 0.6s');
         return {
           duration: 0.6,
           repeat: 0,
@@ -367,7 +375,7 @@ export default function AnimatedOrb({
         };
       case 'result':
         // 予想結果表示時：高速拡大（より高速に）
-        console.log('resultモードのトランジション実行中');
+        console.log('resultモードのトランジション実行中 - duration: 0.6s');
         return {
           duration: 0.6,
           repeat: 0,

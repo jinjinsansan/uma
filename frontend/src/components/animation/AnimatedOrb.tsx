@@ -5,6 +5,7 @@ import { ConfidenceLevel } from '../../types/race';
 interface AnimatedOrbProps {
   confidence: ConfidenceLevel;
   isProcessing?: boolean;
+  lastMessage?: string;
 }
 
 // 信頼度別の色定義
@@ -23,14 +24,69 @@ const CONFIDENCE_COLORS = {
   }
 };
 
-export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbProps) {
+export default function AnimatedOrb({ confidence, isProcessing, lastMessage }: AnimatedOrbProps) {
   const [currentConfidence, setCurrentConfidence] = useState<ConfidenceLevel>('waiting');
   const [isColorChanging, setIsColorChanging] = useState(false);
   const [colorChangeProgress, setColorChangeProgress] = useState(0);
+  const [pulseMode, setPulseMode] = useState<'normal' | 'racing' | 'prediction'>('normal');
+  const [isOrbTopic, setIsOrbTopic] = useState(false);
+  const [orbAnimationKey, setOrbAnimationKey] = useState(0);
 
   useEffect(() => {
     setCurrentConfidence(confidence);
-  }, [confidence]);
+    
+    // 球体に関する話題かどうかを判定
+    const orbKeywords = [
+      '球体', 'ボール', '球', 'オーブ', 'orb', '丸い', '円', '玉', '球体の', 'ボールの',
+      '球の', 'オーブの', '球体が', 'ボールが', '球が', 'オーブが', '球体は', 'ボールは',
+      '球は', 'オーブは', '球体を', 'ボールを', '球を', 'オーブを', '球体に', 'ボールに',
+      '球に', 'オーブに', '球体で', 'ボールで', '球で', 'オーブで', '球体と', 'ボールと',
+      '球と', 'オーブと', '球体も', 'ボールも', '球も', 'オーブも', '球体や', 'ボールや',
+      '球や', 'オーブや', '球体の色', 'ボールの色', '球の色', 'オーブの色', '球体の動き',
+      'ボールの動き', '球の動き', 'オーブの動き', '球体の大きさ', 'ボールの大きさ',
+      '球の大きさ', 'オーブの大きさ', '球体の形', 'ボールの形', '球の形', 'オーブの形',
+      '球体の位置', 'ボールの位置', '球の位置', 'オーブの位置', '球体の変化', 'ボールの変化',
+      '球の変化', 'オーブの変化', '球体のアニメーション', 'ボールのアニメーション',
+      '球のアニメーション', 'オーブのアニメーション', '球体の演出', 'ボールの演出',
+      '球の演出', 'オーブの演出', '球体の効果', 'ボールの効果', '球の効果', 'オーブの効果'
+    ];
+    
+    const isOrbRelated = lastMessage ? orbKeywords.some(keyword => 
+      lastMessage.toLowerCase().includes(keyword.toLowerCase())
+    ) : false;
+    
+    setIsOrbTopic(isOrbRelated);
+    
+    // 球体に関する話題が検出されたらアニメーションキーを更新
+    if (isOrbRelated) {
+      setOrbAnimationKey(prev => prev + 1);
+    }
+    
+    // パルスモードを設定
+    if (confidence === 'high' || confidence === 'medium' || confidence === 'low') {
+      setPulseMode('prediction');
+    } else if (confidence === 'chatting') {
+      // チャット中は競馬関連の話題かどうかを判定
+      const racingKeywords = [
+        '競馬', 'レース', '馬', '騎手', '調教師', '血統', '距離', '馬場', '芝', 'ダート',
+        '単勝', '複勝', '馬連', '馬単', '三連複', '三連単', 'ワイド', '枠連',
+        '1着', '2着', '3着', '着差', 'タイム', '上がり', '上がり3F', '上がり4F',
+        '人気', 'オッズ', '本命', '対抗', '穴', '穴馬', '逃げ', '先行', '差し', '追込',
+        '右回り', '左回り', '重', '良', '稍重', '不良', '東京', '阪神', '京都', '中山',
+        '新潟', '福島', '小倉', '札幌', '函館', '中京', '名古屋', '金沢', '高知',
+        'ディープインパクト', 'シンボリルドルフ', 'オグリキャップ', 'トウカイテイオー',
+        'メジロマックイーン', 'ナリタブライアン', 'サイレンススズカ', 'エルコンドルパサー'
+      ];
+      
+      const isRacingTopic = lastMessage && racingKeywords.some(keyword => 
+        lastMessage.toLowerCase().includes(keyword.toLowerCase())
+      );
+      
+      setPulseMode(isRacingTopic ? 'racing' : 'normal');
+    } else {
+      setPulseMode('normal');
+    }
+  }, [confidence, lastMessage]);
 
   // 予想指数出力時（high, medium, low）に信頼度に応じた色に変化
   useEffect(() => {
@@ -80,6 +136,15 @@ export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbPro
   };
 
   const getOrbStyle = () => {
+    // 球体に関する話題の場合は特別な色を適用
+    if (isOrbTopic) {
+      return {
+        background: 'radial-gradient(circle at 30% 30%, #ff6b6b 0%, #ff8e8e 25%, #ffa5a5 50%, #ffb3b3 75%, #ffc0c0 100%)',
+        boxShadow: '0 0 60px rgba(255, 107, 107, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)',
+        transition: 'all 0.3s ease-in-out'
+      };
+    }
+    
     // 予想指数出力時のみ信頼度に応じた色を適用
     if (currentConfidence === 'high' || currentConfidence === 'medium' || currentConfidence === 'low') {
       if (isColorChanging) {
@@ -109,6 +174,69 @@ export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbPro
     return {};
   };
 
+  const getPulseAnimation = () => {
+    // 球体に関する話題の場合は特別なアニメーション
+    if (isOrbTopic) {
+      return {
+        scale: [1, 1.2, 0.9, 1.1, 1],
+        y: [0, -20, 20, -10, 0],
+      };
+    }
+    
+    switch (pulseMode) {
+      case 'racing':
+        // 競馬関連話題時：心臓のドキドキスピード（1回のみ）
+        return {
+          scale: [1, 1.3, 0.8, 1.2, 1],
+        };
+      case 'prediction':
+        // 予想指数出力時：心臓のドキドキスピード（1回のみ）
+        return {
+          scale: [1, 1.4, 0.7, 1.3, 1],
+        };
+      default:
+        // 通常時：緩やかな伸び縮み
+        return {
+          scale: [1, 1.15, 1],
+        };
+    }
+  };
+
+  const getPulseTransition = () => {
+    // 球体に関する話題の場合は特別なトランジション
+    if (isOrbTopic) {
+      return {
+        duration: 2.0,
+        repeat: 1,
+        ease: "easeInOut",
+      };
+    }
+    
+    switch (pulseMode) {
+      case 'racing':
+        // 競馬関連話題時：心臓のドキドキスピード
+        return {
+          duration: 1.2,
+          repeat: 1,
+          ease: "easeInOut",
+        };
+      case 'prediction':
+        // 予想指数出力時：心臓のドキドキスピード
+        return {
+          duration: 1.5,
+          repeat: 1,
+          ease: "easeInOut",
+        };
+      default:
+        // 通常時：緩やかな伸び縮み
+        return {
+          duration: 6,
+          repeat: Infinity,
+          ease: "easeInOut",
+        };
+    }
+  };
+
   return (
     <div className="orb-container">
       {/* 半透明の背景円 */}
@@ -121,16 +249,11 @@ export default function AnimatedOrb({ confidence, isProcessing }: AnimatedOrbPro
         }}
       />
       <motion.div
+        key={orbAnimationKey}
         className={getOrbClass()}
         style={getOrbStyle()}
-        animate={{
-          scale: [1, 1.15, 1],
-        }}
-        transition={{
-          duration: 6,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
+        animate={getPulseAnimation()}
+        transition={getPulseTransition()}
         whileHover={{
           scale: 1.1,
           filter: "brightness(1.3)",

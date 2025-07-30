@@ -31,6 +31,12 @@ export default function ChatInterface() {
     return 'waiting';
   };
 
+  const getLastMessageContent = (): string => {
+    if (messages.length === 0) return '';
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage.content || '';
+  };
+
   // 球体の位置を動的に調整
   useEffect(() => {
     if (messages.length > 0) {
@@ -90,7 +96,11 @@ export default function ChatInterface() {
           ease: "easeInOut",
         }}
       >
-        <AnimatedOrb confidence={getOrbConfidence()} isProcessing={isLoading} />
+        <AnimatedOrb 
+          confidence={getOrbConfidence()} 
+          isProcessing={isLoading} 
+          lastMessage={getLastMessageContent()}
+        />
       </motion.div>
 
       {/* スクロール可能なチャットエリア */}

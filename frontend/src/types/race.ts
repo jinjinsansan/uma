@@ -22,6 +22,12 @@ export interface PredictionResult {
   confidence: 'high' | 'medium' | 'low';
   selectedConditions: string[];
   calculationTime: string;
+  analysis?: string;
+  dataSource?: {
+    source: string;
+    description: string;
+    last_update?: string;
+  };
 }
 
 export interface Condition {

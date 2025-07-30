@@ -92,6 +92,13 @@ export default function MessageList({ messages }: MessageListProps) {
               {message.raceInfo && (
                 <p className="text-xs opacity-75 mt-1">{message.raceInfo}</p>
               )}
+              {message.predictionResult?.dataSource && (
+                <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
+                  <p className="text-xs text-green-700">
+                    📊 {message.predictionResult.dataSource.source}: {message.predictionResult.dataSource.description}
+                  </p>
+                </div>
+              )}
             </div>
           </motion.div>
         ))}

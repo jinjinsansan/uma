@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 import openai
 import os
 from datetime import datetime
@@ -9,6 +9,7 @@ import json
 import logging
 import random
 import math
+from tfjv_integration import TFJVDataConnector
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -35,6 +36,9 @@ app.add_middleware(
 from openai import OpenAI
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# TFJVデータコネクター初期化
+tfjv_connector = TFJVDataConnector()
 
 # 環境変数が設定されていない場合の警告
 if not client.api_key:
@@ -571,62 +575,86 @@ async def get_conditions():
         logger.error(f"Error in get_conditions: {e}")
         raise HTTPException(status_code=500, detail=f"条件の取得に失敗しました: {str(e)}")
 
+@app.get("/tfjv/horses")
+async def get_tfjv_horses():
+    """TFJVから馬データを取得"""
+    try:
+        horses = tfjv_connector.get_race_horses()
+        data_source = tfjv_connector.get_data_source_info()
+        
+        logger.info(f"TFJV馬データ取得: {len(horses)}頭")
+        return {
+            "horses": horses,
+            "data_source": data_source,
+            "success": True
+        }
+    except Exception as e:
+        logger.error(f"TFJV馬データ取得エラー: {e}")
+        return {
+            "horses": [],
+            "data_source": {"source": "エラー", "description": "データ取得に失敗しました"},
+            "success": False,
+            "error": str(e)
+        }
+
 @app.post("/predict")
 async def predict_race(request: PredictRequest):
-    """レース予想を実行（8条件計算式完璧実装）"""
+    """レース予想を実行（TFJV実データ統合）"""
     try:
         logger.info(f"Prediction request received: {request}")
         logger.info(f"Selected conditions: {request.selected_conditions}")
         
-        # 馬のデータをコピー
-        horses = []
-        for horse_name, horse_data in HORSE_DETAILED_DATA.items():
-            horse = {
-                "name": horse_name,
-                "base_score": horse_data["base_score"],
-                "running_style": horse_data["running_style"],
-                "course_direction": horse_data["course_direction"],
-                "distance_category": horse_data["distance_category"],
-                "interval_category": horse_data["interval_category"],
-                "course_specific": horse_data["course_specific"],
-                "horse_count": horse_data["horse_count"],
-                "track_condition": horse_data["track_condition"],
-                "season_category": horse_data["season_category"],
-                "condition_rates": horse_data["condition_rates"]
-            }
-            horses.append(horse)
+        # TFJVから馬データを取得
+        tfjv_horses = tfjv_connector.get_race_horses()
+        data_source = tfjv_connector.get_data_source_info()
         
-        logger.info(f"Processing {len(horses)} horses")
+        logger.info(f"TFJVから{len(tfjv_horses)}頭の馬データを取得")
         
-        # 各馬の最終指数を計算
-        for horse in horses:
-            logger.info(f"Processing horse: {horse['name']}")
-            final_score = prediction_engine.calculate_final_score(horse, request.selected_conditions)
-            horse["final_score"] = final_score
-            logger.info(f"Final score for {horse['name']}: {final_score}")
+        # TFJV実データで計算
+        results = tfjv_connector.calculate_real_scores(tfjv_horses, request.selected_conditions)
         
-        # スコアでソート（降順）
-        horses.sort(key=lambda x: x["final_score"], reverse=True)
+        if not results:
+            logger.warning("TFJV計算結果が空のため、サンプルデータで計算")
+            # フォールバック: サンプルデータで計算
+            horses = []
+            for horse_name, horse_data in HORSE_DETAILED_DATA.items():
+                horse = {
+                    "name": horse_name,
+                    "base_score": horse_data["base_score"],
+                    "condition_rates": horse_data["condition_rates"]
+                }
+                horses.append(horse)
+            
+            for horse in horses:
+                final_score = prediction_engine.calculate_final_score(horse, request.selected_conditions)
+                horse["final_score"] = final_score
+            
+            horses.sort(key=lambda x: x["final_score"], reverse=True)
+            results = horses
         
         # ランキングを追加
-        for i, horse in enumerate(horses):
+        for i, horse in enumerate(results):
             horse["rank"] = i + 1
         
         # 信頼度を決定
-        confidence = prediction_engine.determine_confidence(horses)
+        confidence = tfjv_connector._determine_confidence(
+            results[0]["final_score"] if results else 0,
+            [horse.get("final_score", 0) for horse in results]
+        )
         
         # OpenAIによる詳細解説を生成
-        analysis = get_prediction_analysis(horses, request.selected_conditions, confidence)
+        analysis = get_prediction_analysis(results, request.selected_conditions, confidence)
         
         result = {
-            "horses": horses,
+            "horses": results,
             "confidence": confidence,
             "selectedConditions": request.selected_conditions,
             "calculationTime": datetime.now().isoformat(),
-            "analysis": analysis
+            "analysis": analysis,
+            "dataSource": data_source
         }
         
-        logger.info(f"Prediction completed: {result}")
+        logger.info(f"TFJV予想完了: {len(results)}頭、信頼度: {confidence}")
         return result
     except Exception as e:
         logger.error(f"Error in predict_race: {e}")

@@ -201,25 +201,30 @@ export default function ConditionSelector({ onComplete }: ConditionSelectorProps
         })}
       </div>
 
-      {selectedConditions.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 rounded-lg"
-        >
-          <h4 className="font-semibold text-blue-800 mb-2 text-sm sm:text-base">選択された条件:</h4>
-          <div className="space-y-1 sm:space-y-2">
-            {selectedConditions.map((conditionId, index) => {
-              const condition = CONDITIONS.find(c => c.id === conditionId);
-              return (
-                <div key={conditionId} className="flex justify-between items-center">
-                  <span className="text-blue-700 text-xs sm:text-sm">{condition?.name}</span>
-                </div>
-              );
-            })}
-          </div>
-        </motion.div>
-      )}
+              {selectedConditions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 rounded-lg"
+          >
+            <h4 className="font-semibold text-blue-800 mb-2 text-sm sm:text-base">選択された条件:</h4>
+            <div className="space-y-1 sm:space-y-2">
+              {selectedConditions.map((conditionId, index) => {
+                const condition = CONDITIONS.find(c => c.id === conditionId);
+                return (
+                  <div key={conditionId} className="flex justify-between items-center">
+                    <span className="text-blue-700 text-xs sm:text-sm">{condition?.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
+              <p className="text-xs text-green-700">
+                📊 TFJV実データを使用した高精度予想
+              </p>
+            </div>
+          </motion.div>
+        )}
 
       <div className="flex justify-center">
         <motion.button

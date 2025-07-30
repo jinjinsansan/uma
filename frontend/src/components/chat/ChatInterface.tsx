@@ -93,11 +93,11 @@ export default function ChatInterface() {
   }, [messages]);
 
   return (
-    <div className="min-h-screen flex flex-col relative">
+    <div className="min-h-screen flex flex-col relative bg-white">
       {/* ビューポートの調整 */}
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
       
-      <header className="flex justify-between items-center p-4 sm:p-6">
+      <header className="flex justify-between items-center p-4 sm:p-6 bg-white">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2">
             <Zap className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
@@ -142,7 +142,7 @@ export default function ChatInterface() {
 
       {/* スクロール可能なチャットエリア */}
       <main 
-        className="flex-1 flex flex-col items-center px-4 sm:px-6 pb-32 sm:pb-40"
+        className="flex-1 flex flex-col items-center px-4 sm:px-6 pb-32 sm:pb-40 overflow-y-auto"
         style={{ 
           paddingTop: orbPosition === 'center' && !isKeyboardVisible ? '20px' : '80px'
         }}
@@ -165,9 +165,9 @@ export default function ChatInterface() {
         )}
       </main>
 
-      {/* 新しいチャット入力エリア（画面下端から上に移動） */}
+      {/* 新しいチャット入力エリア（境界線を削除して全体と同じ色に） */}
       <div 
-        className="fixed bottom-8 left-0 right-0 p-3 sm:p-6 bg-white/90 backdrop-blur-md border-t border-gray-200 z-20 shadow-lg"
+        className="fixed bottom-8 left-0 right-0 p-3 sm:p-6 bg-white z-20 shadow-lg"
         style={{
           paddingBottom: 'env(safe-area-inset-bottom)'
         }}
@@ -179,7 +179,7 @@ export default function ChatInterface() {
       </div>
 
       {/* 下部の空白エリア */}
-      <div className="h-8 sm:h-12"></div>
+      <div className="h-8 sm:h-12 bg-white"></div>
     </div>
   );
 }

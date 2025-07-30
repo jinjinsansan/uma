@@ -6,6 +6,8 @@ interface AnimatedOrbProps {
   confidence: ConfidenceLevel;
   isProcessing?: boolean;
   lastMessage?: string;
+  isConditionsSelected?: boolean;
+  isPredictionResult?: boolean;
 }
 
 // 信頼度別の色定義
@@ -24,13 +26,34 @@ const CONFIDENCE_COLORS = {
   }
 };
 
-export default function AnimatedOrb({ confidence, isProcessing, lastMessage }: AnimatedOrbProps) {
+// ランダムな色の配列
+const RANDOM_COLORS = [
+  { background: 'radial-gradient(circle at 30% 30%, #ff6b6b 0%, #ff8e8e 25%, #ffa5a5 50%, #ffb3b3 75%, #ffc0c0 100%)', shadow: '0 0 60px rgba(255, 107, 107, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)' },
+  { background: 'radial-gradient(circle at 30% 30%, #4ecdc4 0%, #44a08d 25%, #3a8b7a 50%, #307667 75%, #266154 100%)', shadow: '0 0 60px rgba(78, 205, 196, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)' },
+  { background: 'radial-gradient(circle at 30% 30%, #45b7d1 0%, #3a9bb8 25%, #2f7f9f 50%, #246386 75%, #19476d 100%)', shadow: '0 0 60px rgba(69, 183, 209, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)' },
+  { background: 'radial-gradient(circle at 30% 30%, #96ceb4 0%, #7fb8a0 25%, #68a28c 50%, #518c78 75%, #3a7664 100%)', shadow: '0 0 60px rgba(150, 206, 180, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)' },
+  { background: 'radial-gradient(circle at 30% 30%, #feca57 0%, #ff9ff3 25%, #54a0ff 50%, #5f27cd 75%, #341f97 100%)', shadow: '0 0 60px rgba(254, 202, 87, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)' },
+  { background: 'radial-gradient(circle at 30% 30%, #ff9ff3 0%, #f368e0 25%, #e056fd 50%, #c44569 75%, #a55eea 100%)', shadow: '0 0 60px rgba(255, 159, 243, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)' },
+  { background: 'radial-gradient(circle at 30% 30%, #54a0ff 0%, #2e86de 25%, #0c2461 50%, #1e3799 75%, #4a69bd 100%)', shadow: '0 0 60px rgba(84, 160, 255, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)' },
+  { background: 'radial-gradient(circle at 30% 30%, #5f27cd 0%, #341f97 25%, #0c2461 50%, #1e3799 75%, #4a69bd 100%)', shadow: '0 0 60px rgba(95, 39, 205, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)' }
+];
+
+export default function AnimatedOrb({ 
+  confidence, 
+  isProcessing, 
+  lastMessage, 
+  isConditionsSelected = false,
+  isPredictionResult = false 
+}: AnimatedOrbProps) {
   const [currentConfidence, setCurrentConfidence] = useState<ConfidenceLevel>('waiting');
   const [isColorChanging, setIsColorChanging] = useState(false);
   const [colorChangeProgress, setColorChangeProgress] = useState(0);
-  const [pulseMode, setPulseMode] = useState<'normal' | 'racing' | 'prediction'>('normal');
+  const [pulseMode, setPulseMode] = useState<'normal' | 'racing' | 'prediction' | 'conditions' | 'result'>('normal');
   const [isOrbTopic, setIsOrbTopic] = useState(false);
   const [orbAnimationKey, setOrbAnimationKey] = useState(0);
+  const [currentRandomColor, setCurrentRandomColor] = useState<typeof RANDOM_COLORS[0] | null>(null);
+  const [isShrinking, setIsShrinking] = useState(false);
+  const [isExpanding, setIsExpanding] = useState(false);
 
   useEffect(() => {
     setCurrentConfidence(confidence);
@@ -88,6 +111,39 @@ export default function AnimatedOrb({ confidence, isProcessing, lastMessage }: A
     }
   }, [confidence, lastMessage]);
 
+  // 8条件選択時のアニメーション
+  useEffect(() => {
+    if (isConditionsSelected) {
+      setIsShrinking(true);
+      setPulseMode('conditions');
+      
+      // 1秒後に縮小アニメーション完了
+      setTimeout(() => {
+        setIsShrinking(false);
+      }, 1000);
+    }
+  }, [isConditionsSelected]);
+
+  // 予想結果表示時のアニメーション
+  useEffect(() => {
+    if (isPredictionResult) {
+      // ランダムな色を選択
+      const randomColor = RANDOM_COLORS[Math.floor(Math.random() * RANDOM_COLORS.length)];
+      setCurrentRandomColor(randomColor);
+      
+      // 拡大アニメーション開始
+      setIsExpanding(true);
+      setPulseMode('result');
+      
+      // 3秒後に元の色に戻す
+      setTimeout(() => {
+        setCurrentRandomColor(null);
+        setIsExpanding(false);
+        setPulseMode('normal');
+      }, 3000);
+    }
+  }, [isPredictionResult]);
+
   // 予想指数出力時（high, medium, low）に信頼度に応じた色に変化
   useEffect(() => {
     if (confidence === 'high' || confidence === 'medium' || confidence === 'low') {
@@ -136,6 +192,15 @@ export default function AnimatedOrb({ confidence, isProcessing, lastMessage }: A
   };
 
   const getOrbStyle = () => {
+    // 予想結果表示時のランダム色
+    if (currentRandomColor) {
+      return {
+        background: currentRandomColor.background,
+        boxShadow: currentRandomColor.shadow,
+        transition: 'all 0.3s ease-in-out'
+      };
+    }
+    
     // 球体に関する話題の場合は特別な色を適用
     if (isOrbTopic) {
       return {
@@ -175,6 +240,20 @@ export default function AnimatedOrb({ confidence, isProcessing, lastMessage }: A
   };
 
   const getPulseAnimation = () => {
+    // 8条件選択時の縮小アニメーション
+    if (isShrinking) {
+      return {
+        scale: [1, 0.3, 0.2, 0.1],
+      };
+    }
+    
+    // 予想結果表示時の拡大アニメーション
+    if (isExpanding) {
+      return {
+        scale: [0.1, 1.5, 1.2, 1],
+      };
+    }
+    
     // 球体に関する話題の場合は特別なアニメーション
     if (isOrbTopic) {
       return {
@@ -194,6 +273,16 @@ export default function AnimatedOrb({ confidence, isProcessing, lastMessage }: A
         return {
           scale: [1, 1.4, 0.7, 1.3, 1],
         };
+      case 'conditions':
+        // 8条件選択時：高速縮小
+        return {
+          scale: [1, 0.3, 0.2, 0.1],
+        };
+      case 'result':
+        // 予想結果表示時：高速拡大
+        return {
+          scale: [0.1, 1.5, 1.2, 1],
+        };
       default:
         // 通常時：緩やかな伸び縮み
         return {
@@ -203,6 +292,24 @@ export default function AnimatedOrb({ confidence, isProcessing, lastMessage }: A
   };
 
   const getPulseTransition = () => {
+    // 8条件選択時の高速縮小
+    if (isShrinking) {
+      return {
+        duration: 1.0,
+        repeat: 0,
+        ease: "easeInOut",
+      };
+    }
+    
+    // 予想結果表示時の高速拡大
+    if (isExpanding) {
+      return {
+        duration: 1.0,
+        repeat: 0,
+        ease: "easeInOut",
+      };
+    }
+    
     // 球体に関する話題の場合は特別なトランジション
     if (isOrbTopic) {
       return {
@@ -225,6 +332,20 @@ export default function AnimatedOrb({ confidence, isProcessing, lastMessage }: A
         return {
           duration: 1.5,
           repeat: 1,
+          ease: "easeInOut",
+        };
+      case 'conditions':
+        // 8条件選択時：高速縮小
+        return {
+          duration: 1.0,
+          repeat: 0,
+          ease: "easeInOut",
+        };
+      case 'result':
+        // 予想結果表示時：高速拡大
+        return {
+          duration: 1.0,
+          repeat: 0,
           ease: "easeInOut",
         };
       default:

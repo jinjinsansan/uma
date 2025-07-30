@@ -14,6 +14,8 @@ export default function ChatInterface() {
   const [showConditions, setShowConditions] = useState(false);
   const [orbPosition, setOrbPosition] = useState<'center' | 'top'>('center');
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [isConditionsSelected, setIsConditionsSelected] = useState(false);
+  const [isPredictionResult, setIsPredictionResult] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const getOrbConfidence = (): ConfidenceLevel => {
@@ -38,6 +40,31 @@ export default function ChatInterface() {
     const lastMessage = messages[messages.length - 1];
     return lastMessage.content || '';
   };
+
+  // 8条件選択時のアニメーション
+  useEffect(() => {
+    if (selectedConditions.length === 4) {
+      setIsConditionsSelected(true);
+      
+      // 1秒後にアニメーション完了
+      setTimeout(() => {
+        setIsConditionsSelected(false);
+      }, 1000);
+    }
+  }, [selectedConditions]);
+
+  // 予想結果表示時のアニメーション
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.predictionResult) {
+      setIsPredictionResult(true);
+      
+      // 3秒後にアニメーション完了
+      setTimeout(() => {
+        setIsPredictionResult(false);
+      }, 3000);
+    }
+  }, [messages]);
 
   // キーボード表示の検出
   useEffect(() => {
@@ -136,6 +163,8 @@ export default function ChatInterface() {
             confidence={getOrbConfidence()} 
             isProcessing={isLoading} 
             lastMessage={getLastMessageContent()}
+            isConditionsSelected={isConditionsSelected}
+            isPredictionResult={isPredictionResult}
           />
         </motion.div>
       )}

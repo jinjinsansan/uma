@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useChatStore } from '../../store/chatStore';
+import { api } from '../../lib/api';
 
 interface QuickAction {
   id: string;
@@ -45,18 +47,21 @@ interface ImprovedChatInputProps {
   placeholder?: string;
   maxLength?: number;
   disabled?: boolean;
+  onShowConditions?: () => void;
 }
 
 export const ImprovedChatInput: React.FC<ImprovedChatInputProps> = ({
   onSendMessage,
   placeholder = "競馬について何でもお気軽にお聞きください... 詳しい分析や予想をお手伝いします！",
   maxLength = 2000,
-  disabled = false
+  disabled = false,
+  onShowConditions
 }) => {
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { addMessage, setLoading, isLoading } = useChatStore();
 
   // Auto-resize textarea
   const autoResize = () => {
@@ -98,10 +103,51 @@ export const ImprovedChatInput: React.FC<ImprovedChatInputProps> = ({
     setIsSending(true);
 
     try {
-      // Call the provided onSendMessage function
-      if (onSendMessage) {
-        await onSendMessage(trimmedMessage);
-      }
+      // ユーザーメッセージを即座に追加
+      addMessage({
+        type: 'user',
+        content: trimmedMessage,
+      });
+
+      // AIの応答を少し遅延させて自然な会話感を演出
+      setTimeout(async () => {
+        setLoading(true);
+
+        try {
+          // まずバックエンドサーバーの状態を確認
+          const isServerHealthy = await api.healthCheck();
+          if (!isServerHealthy) {
+            throw new Error('バックエンドサーバーが起動していません。サーバーを起動してから再度お試しください。');
+          }
+
+          const response = await api.chat(trimmedMessage);
+          
+          // AIメッセージを滑らかに追加
+          addMessage({
+            type: 'ai',
+            content: response.message,
+          });
+
+          if (response.type === 'conditions' && onShowConditions) {
+            // 条件選択を少し遅延させて自然な流れを作る
+            setTimeout(() => {
+              onShowConditions();
+            }, 1000);
+          }
+        } catch (error) {
+          console.error('Chat error:', error);
+          
+          // エラーメッセージを取得
+          const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました。';
+          
+          addMessage({
+            type: 'ai',
+            content: `エラーが発生しました: ${errorMessage}`,
+          });
+        } finally {
+          setLoading(false);
+        }
+      }, 300); // 300msの遅延で自然な会話感を演出
 
       // Show success feedback
       setShowSuccess(true);

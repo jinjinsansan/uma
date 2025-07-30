@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Zap, Crown } from 'lucide-react';
 import AnimatedOrb from '../animation/AnimatedOrb';
 import MessageList from './MessageList';
-import MessageInput from './MessageInput';
 import ConditionSelector from './ConditionSelector';
 import { useChatStore } from '../../store/chatStore';
 import { ConfidenceLevel } from '../../types/race';
@@ -93,14 +92,6 @@ export default function ChatInterface() {
     scrollToBottom();
   }, [messages]);
 
-  // 新しいメッセージハンドラー（既存の機能を呼び出す）
-  const handleNewChatMessage = async (message: string) => {
-    // 既存のチャット機能を呼び出す（既存のMessageInputと同じ動作）
-    console.log('New improved chat input:', message);
-    // ここで既存のメッセージ送信機能を呼び出す
-    // 例: 既存のsendMessage(message) 関数があれば、それを呼ぶ
-  };
-
   return (
     <div className="min-h-screen flex flex-col relative">
       {/* ビューポートの調整 */}
@@ -133,7 +124,7 @@ export default function ChatInterface() {
             transform: 'translate(-50%, -50%)',
           }}
           animate={{
-            top: orbPosition === 'center' ? '75vh' : '15vh', // 初期位置を75vhに変更
+            top: orbPosition === 'center' ? '25vh' : '10vh', // 球体の位置を上部に調整
             opacity: isKeyboardVisible ? 0 : 1,
           }}
           transition={{
@@ -174,24 +165,16 @@ export default function ChatInterface() {
         )}
       </main>
 
-      {/* 既存の入力エリア（下部に固定） */}
+      {/* 新しいチャット入力エリア（メインの入力エリアとして使用） */}
       <div 
-        className="chat-input-container fixed bottom-0 left-0 right-0 p-3 sm:p-6 bg-white/90 backdrop-blur-md border-t border-gray-200 z-20 shadow-lg"
+        className="fixed bottom-0 left-0 right-0 p-3 sm:p-6 bg-white/90 backdrop-blur-md border-t border-gray-200 z-20 shadow-lg"
         style={{
           paddingBottom: 'env(safe-area-inset-bottom)'
         }}
       >
-        <MessageInput onShowConditions={() => setShowConditions(true)} />
-      </div>
-
-      {/* 新しいチャット入力エリア（試験的に追加） */}
-      <div className="mt-8 border-t border-gray-200 pt-8 pb-32">
-        <h3 className="text-lg font-semibold mb-4 text-gray-700 text-center">
-          新しいチャット入力エリア（試験中）
-        </h3>
         <ImprovedChatInput 
-          onSendMessage={handleNewChatMessage}
-          placeholder="改善されたチャット入力エリアをお試しください..."
+          onShowConditions={() => setShowConditions(true)}
+          placeholder="競馬について何でもお気軽にお聞きください..."
         />
       </div>
     </div>

@@ -59,7 +59,6 @@ export const ImprovedChatInput: React.FC<ImprovedChatInputProps> = ({
 }) => {
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { addMessage, setLoading, isLoading } = useChatStore();
 
@@ -149,15 +148,9 @@ export const ImprovedChatInput: React.FC<ImprovedChatInputProps> = ({
         }
       }, 300); // 300msの遅延で自然な会話感を演出
 
-      // Show success feedback
-      setShowSuccess(true);
-      
       // Clear input after successful send
-      setTimeout(() => {
-        setMessage('');
-        autoResize();
-        setShowSuccess(false);
-      }, 2000);
+      setMessage('');
+      autoResize();
 
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -270,19 +263,6 @@ export const ImprovedChatInput: React.FC<ImprovedChatInputProps> = ({
             </button>
           </div>
         </div>
-
-        {/* Success Message */}
-        {showSuccess && (
-          <div className="absolute inset-0 flex items-center justify-center bg-green-600/95 text-white 
-                        font-semibold rounded-xl backdrop-blur-sm animate-fade-in">
-            <div className="flex items-center gap-2">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z"/>
-              </svg>
-              <span>メッセージを送信しました！</span>
-            </div>
-          </div>
-        )}
       </div>
 
       <style jsx>{`
@@ -290,15 +270,8 @@ export const ImprovedChatInput: React.FC<ImprovedChatInputProps> = ({
           0% { transform: translateX(-100%); }
           100% { transform: translateX(100%); }
         }
-        @keyframes fade-in {
-          0% { opacity: 0; }
-          100% { opacity: 1; }
-        }
         .animate-shimmer {
           animation: shimmer 1s infinite;
-        }
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
         }
       `}</style>
     </div>

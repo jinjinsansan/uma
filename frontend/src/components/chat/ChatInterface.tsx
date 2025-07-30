@@ -142,7 +142,7 @@ export default function ChatInterface() {
 
       {/* スクロール可能なチャットエリア */}
       <main 
-        className="flex-1 flex flex-col items-center px-4 sm:px-6 pb-20 sm:pb-32"
+        className="flex-1 flex flex-col items-center px-4 sm:px-6 pb-32 sm:pb-40"
         style={{ 
           paddingTop: orbPosition === 'center' && !isKeyboardVisible ? '20px' : '80px'
         }}
@@ -165,9 +165,9 @@ export default function ChatInterface() {
         )}
       </main>
 
-      {/* 新しいチャット入力エリア（メインの入力エリアとして使用） */}
+      {/* 新しいチャット入力エリア（画面下端から上に移動） */}
       <div 
-        className="fixed bottom-0 left-0 right-0 p-3 sm:p-6 bg-white/90 backdrop-blur-md border-t border-gray-200 z-20 shadow-lg"
+        className="fixed bottom-8 left-0 right-0 p-3 sm:p-6 bg-white/90 backdrop-blur-md border-t border-gray-200 z-20 shadow-lg"
         style={{
           paddingBottom: 'env(safe-area-inset-bottom)'
         }}
@@ -177,6 +177,9 @@ export default function ChatInterface() {
           placeholder="競馬について何でもお気軽にお聞きください..."
         />
       </div>
+
+      {/* 下部の空白エリア */}
+      <div className="h-8 sm:h-12"></div>
     </div>
   );
 }

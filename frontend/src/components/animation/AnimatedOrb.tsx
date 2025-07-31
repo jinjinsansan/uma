@@ -146,6 +146,9 @@ export default function AnimatedOrb({
   useEffect(() => {
     if (isPredictionResult && !isConditionsSelected) { // 8条件選択時は実行しない
       console.log('🎨 予想結果表示時のアニメーション開始');
+      console.log('isPredictionResult:', isPredictionResult);
+      console.log('isConditionsSelected:', isConditionsSelected);
+      
       // ランダムな色を選択
       const randomColor = RANDOM_COLORS[Math.floor(Math.random() * RANDOM_COLORS.length)];
       setCurrentRandomColor(randomColor);
@@ -157,6 +160,7 @@ export default function AnimatedOrb({
       // 10秒後に元のグリーン色に戻す
       const timer = setTimeout(() => {
         console.log('🔄 10秒経過、グリーンに戻します');
+        console.log('setCurrentRandomColor(null) を実行');
         setCurrentRandomColor(null);
         setIsExpanding(false);
         setPulseMode('normal');
@@ -165,7 +169,10 @@ export default function AnimatedOrb({
       }, 10000);
       
       // クリーンアップ関数を追加
-      return () => clearTimeout(timer);
+      return () => {
+        console.log('🧹 予想結果アニメーションのクリーンアップ');
+        clearTimeout(timer);
+      };
     }
   }, [isPredictionResult, isConditionsSelected]);
 

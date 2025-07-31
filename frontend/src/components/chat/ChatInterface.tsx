@@ -68,12 +68,14 @@ export default function ChatInterface() {
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
     if (lastMessage?.predictionResult) {
+      console.log('🎯 予想結果表示時のアニメーション開始');
       setIsPredictionResult(true);
       
-      // 3秒後にアニメーション完了
+      // 10秒後にアニメーション完了（AnimatedOrbと合わせる）
       setTimeout(() => {
+        console.log('🔄 10秒経過、予想結果アニメーション完了');
         setIsPredictionResult(false);
-      }, 3000);
+      }, 10000);
     }
   }, [messages]);
 

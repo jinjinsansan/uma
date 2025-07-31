@@ -153,14 +153,14 @@ export default function AnimatedOrb({
       setIsExpanding(true);
       setPulseMode('result');
       
-      // 3秒後に元のグリーン色に戻す
+      // 10秒後に元のグリーン色に戻す
       const timer = setTimeout(() => {
         setCurrentRandomColor(null);
         setIsExpanding(false);
         setPulseMode('normal');
         // 信頼度もリセット
         setCurrentConfidence('waiting');
-      }, 3000);
+      }, 10000);
       
       // クリーンアップ関数を追加
       return () => clearTimeout(timer);
@@ -198,6 +198,18 @@ export default function AnimatedOrb({
       setColorChangeProgress(0);
     }
   }, [confidence]);
+
+  // 予想結果表示時の色リセット（10秒後）
+  useEffect(() => {
+    if (isPredictionResult && !isConditionsSelected) {
+      const resetTimer = setTimeout(() => {
+        setCurrentRandomColor(null);
+        setCurrentConfidence('waiting');
+      }, 10000);
+      
+      return () => clearTimeout(resetTimer);
+    }
+  }, [isPredictionResult, isConditionsSelected]);
 
   const getOrbClass = () => {
     switch (currentConfidence) {

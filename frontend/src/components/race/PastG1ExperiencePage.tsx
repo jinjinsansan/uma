@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Trophy, Calendar, MapPin, Clock, Users, Star } from 'lucide-react';
+import RaceSpecificConditionSelector from './RaceSpecificConditionSelector';
 
 interface Race {
   race_code: string;
@@ -31,6 +32,10 @@ const PastG1ExperiencePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [totalRaces, setTotalRaces] = useState(0);
+  
+  // 新8条件画面の状態管理
+  const [showRaceConditions, setShowRaceConditions] = useState(false);
+  const [selectedRace, setSelectedRace] = useState<Race | null>(null);
 
   useEffect(() => {
     fetchPastG1Races();
@@ -58,12 +63,29 @@ const PastG1ExperiencePage: React.FC = () => {
   };
 
   const handleRaceSelect = (raceCode: string) => {
-    // TODO: Phase 3で実装 - レース選択後の処理
-    console.log('Selected G1 race:', raceCode);
-    alert(`G1レース選択: ${raceCode}\n（Phase 3で8条件画面に移動予定）`);
+    const selectedRace = races.find(race => race.race_code === raceCode);
+    if (selectedRace) {
+      setSelectedRace(selectedRace);
+      setShowRaceConditions(true);
+    }
+  };
+
+  const handleBackToRaceSelection = () => {
+    setShowRaceConditions(false);
+    setSelectedRace(null);
   };
 
   const years = [2024, 2023, 2022];
+
+  // 新8条件画面が表示されている場合
+  if (showRaceConditions && selectedRace) {
+    return (
+      <RaceSpecificConditionSelector
+        selectedRace={selectedRace}
+        onBack={handleBackToRaceSelection}
+      />
+    );
+  }
 
   if (loading) {
     return (

@@ -267,10 +267,10 @@ export default function AnimatedOrb({
   };
 
   const getPulseAnimation = () => {
-    // 8条件選択時の縮小アニメーション（最優先）
+    // 8条件選択時の左右揺れアニメーション（最優先）
     if (isShrinking) {
       return {
-        scale: [1, 0.3, 0.1, 0.02],
+        x: [0, -30, 30, -20, 20, -10, 10, 0],
       };
     }
     
@@ -299,9 +299,9 @@ export default function AnimatedOrb({
           scale: [1, 1.4, 0.7, 1.3, 1],
         };
       case 'conditions':
-        // 8条件選択時：高速縮小（より劇的に）
+        // 8条件選択時：左右揺れ
         return {
-          scale: [1, 0.3, 0.1, 0.02],
+          x: [0, -30, 30, -20, 20, -10, 10, 0],
         };
       case 'result':
         // 予想結果表示時：高速拡大（より劇的に）
@@ -317,7 +317,7 @@ export default function AnimatedOrb({
   };
 
   const getPulseTransition = () => {
-    // 8条件選択時の高速縮小（より高速に）
+    // 8条件選択時の左右揺れ（高速）
     if (isShrinking) {
       return {
         duration: 0.6,
@@ -360,7 +360,7 @@ export default function AnimatedOrb({
           ease: "easeInOut",
         };
       case 'conditions':
-        // 8条件選択時：高速縮小（より高速に）
+        // 8条件選択時：左右揺れ（高速）
         return {
           duration: 0.6,
           repeat: 0,

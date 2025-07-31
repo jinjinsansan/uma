@@ -60,6 +60,7 @@ export default function AnimatedOrb({
   const [currentRandomColor, setCurrentRandomColor] = useState<typeof RANDOM_COLORS[0] | null>(null);
   const [isShrinking, setIsShrinking] = useState(false);
   const [isExpanding, setIsExpanding] = useState(false);
+  const [isPredictionAnimationActive, setIsPredictionAnimationActive] = useState(false);
 
   useEffect(() => {
     setCurrentConfidence(confidence);
@@ -144,11 +145,13 @@ export default function AnimatedOrb({
 
   // 予想結果表示時のアニメーション
   useEffect(() => {
-    if (isPredictionResult && !isConditionsSelected && !currentRandomColor) { // 8条件選択時は実行しない、かつランダム色が未設定の場合のみ
+    if (isPredictionResult && !isConditionsSelected && !isPredictionAnimationActive) { // 8条件選択時は実行しない、かつアニメーションが未実行の場合のみ
       console.log('🎨 予想結果表示時のアニメーション開始');
       console.log('isPredictionResult:', isPredictionResult);
       console.log('isConditionsSelected:', isConditionsSelected);
-      console.log('currentRandomColor:', currentRandomColor);
+      
+      // アニメーション開始フラグを設定
+      setIsPredictionAnimationActive(true);
       
       // ランダムな色を選択
       const randomColor = RANDOM_COLORS[Math.floor(Math.random() * RANDOM_COLORS.length)];
@@ -165,6 +168,7 @@ export default function AnimatedOrb({
         setCurrentRandomColor(null);
         setIsExpanding(false);
         setPulseMode('normal');
+        setIsPredictionAnimationActive(false);
         // 信頼度もリセット
         setCurrentConfidence('waiting');
       }, 10000);
@@ -173,9 +177,10 @@ export default function AnimatedOrb({
       return () => {
         console.log('🧹 予想結果アニメーションのクリーンアップ');
         clearTimeout(timer);
+        setIsPredictionAnimationActive(false);
       };
     }
-  }, [isPredictionResult, isConditionsSelected, currentRandomColor]);
+  }, [isPredictionResult, isConditionsSelected, isPredictionAnimationActive]);
 
   // 予想指数出力時（high, medium, low）に信頼度に応じた色に変化
   useEffect(() => {

@@ -146,10 +146,6 @@ export default function AnimatedOrb({
   // 予想結果表示時のアニメーション
   useEffect(() => {
     if (isPredictionResult && !isConditionsSelected && !isPredictionAnimationActive.current) { // 8条件選択時は実行しない、かつアニメーションが未実行の場合のみ
-      console.log('🎨 予想結果表示時のアニメーション開始');
-      console.log('isPredictionResult:', isPredictionResult);
-      console.log('isConditionsSelected:', isConditionsSelected);
-      
       // アニメーション開始フラグを設定
       isPredictionAnimationActive.current = true;
       
@@ -166,8 +162,6 @@ export default function AnimatedOrb({
       
       // 10秒後に元のグリーン色に戻す
       const timer = setTimeout(() => {
-        console.log('🔄 10秒経過、グリーンに戻します');
-        console.log('setCurrentRandomColor(null) を実行');
         setCurrentRandomColor(null);
         setIsExpanding(false);
         setPulseMode('normal');
@@ -178,7 +172,6 @@ export default function AnimatedOrb({
       
       // クリーンアップ関数を追加
       return () => {
-        console.log('🧹 予想結果アニメーションのクリーンアップ');
         clearTimeout(timer);
         isPredictionAnimationActive.current = false;
       };
@@ -235,7 +228,6 @@ export default function AnimatedOrb({
   const getOrbStyle = () => {
     // 予想結果表示時のランダム色（スムーズな変化）
     if (currentRandomColor) {
-      console.log('🎨 ランダム色を適用中:', currentRandomColor.background.substring(0, 50) + '...');
       return {
         background: currentRandomColor.background,
         boxShadow: currentRandomColor.shadow,
@@ -245,7 +237,6 @@ export default function AnimatedOrb({
     
     // 球体に関する話題の場合は特別な色を適用
     if (isOrbTopic) {
-      console.log('🔴 球体話題色を適用中');
       return {
         background: 'radial-gradient(circle at 30% 30%, #ff6b6b 0%, #ff8e8e 25%, #ffa5a5 50%, #ffb3b3 75%, #ffc0c0 100%)',
         boxShadow: '0 0 60px rgba(255, 107, 107, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)',
@@ -255,7 +246,6 @@ export default function AnimatedOrb({
     
     // 予想指数出力時のみ信頼度に応じた色を適用（currentRandomColorがnullの場合のみ）
     if ((currentConfidence === 'high' || currentConfidence === 'medium' || currentConfidence === 'low') && !currentRandomColor) {
-      console.log('📊 信頼度色を適用中:', currentConfidence);
       if (isColorChanging) {
         // 色変化中のアニメーション（よりスムーズに）
         const baseColor = DEFAULT_GREEN;
@@ -280,7 +270,6 @@ export default function AnimatedOrb({
     }
     
     // デフォルトはグリーン色（予想結果表示後は確実にここに戻る）
-    console.log('🌿 デフォルトグリーン色を適用中');
     return {
       background: DEFAULT_GREEN.background,
       boxShadow: DEFAULT_GREEN.shadow,
@@ -291,25 +280,13 @@ export default function AnimatedOrb({
   const getPulseAnimation = () => {
     // 8条件選択時の左右揺れアニメーション（最優先）
     if (isShrinking) {
-      console.log('🎯 8条件選択時の左右揺れアニメーション実行');
       return {
         x: [0, -30, 30, -20, 20, -10, 10, 0],
       };
     }
     
-    // 予想結果表示時の拡大 + 左右揺れアニメーション
-    if (isExpanding && !isShrinking && pulseMode === 'result') {
-      console.log('🎯 予想結果表示時の拡大 + 左右揺れアニメーション実行');
-      console.log('isExpanding:', isExpanding, 'pulseMode:', pulseMode);
-      return {
-        x: [0, -25, 25, -20, 20, -15, 15, -10, 10, -5, 5, 0],
-      };
-    }
-    
     // 予想結果表示時の拡大アニメーション（その他の場合）
     if (isExpanding && !isShrinking) {
-      console.log('🎯 予想結果表示時の拡大アニメーション実行（その他）');
-      console.log('isExpanding:', isExpanding, 'pulseMode:', pulseMode);
       return {
         scale: [0.02, 2.0, 1.5, 1],
       };
@@ -338,10 +315,9 @@ export default function AnimatedOrb({
           x: [0, -30, 30, -20, 20, -10, 10, 0],
         };
       case 'result':
-        // 予想結果表示時：左右揺れのみ
-        console.log('🎯 予想結果表示時のswitch文での左右揺れアニメーション実行');
+        // 予想結果表示時：拡大アニメーション
         return {
-          x: [0, -25, 25, -20, 20, -15, 15, -10, 10, -5, 5, 0],
+          scale: [0.02, 2.0, 1.5, 1],
         };
       default:
         // 通常時：緩やかな伸び縮み
@@ -361,11 +337,11 @@ export default function AnimatedOrb({
       };
     }
     
-    // 予想結果表示時の10秒間の左右揺れ
+    // 予想結果表示時の高速拡大
     if (isExpanding && pulseMode === 'result') {
       return {
-        duration: 2.0,
-        repeat: 5, // 2秒 × 5回 = 10秒
+        duration: 0.6,
+        repeat: 0,
         ease: "easeInOut",
       };
     }
@@ -411,10 +387,10 @@ export default function AnimatedOrb({
           ease: "easeInOut",
         };
       case 'result':
-        // 予想結果表示時：10秒間の左右揺れ
+        // 予想結果表示時：高速拡大
         return {
-          duration: 2.0,
-          repeat: 5, // 2秒 × 5回 = 10秒
+          duration: 0.6,
+          repeat: 0,
           ease: "easeInOut",
         };
       default:

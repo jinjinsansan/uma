@@ -323,9 +323,10 @@ export default function AnimatedOrb({
           x: [0, -30, 30, -20, 20, -10, 10, 0],
         };
       case 'result':
-        // 予想結果表示時：高速拡大（より劇的に）
+        // 予想結果表示時：拡大 + 左右揺れ
         return {
           scale: [0.02, 2.0, 1.5, 1],
+          x: [0, -25, 25, -20, 20, -15, 15, -10, 10, -5, 5, 0],
         };
       default:
         // 通常時：緩やかな伸び縮み
@@ -386,10 +387,10 @@ export default function AnimatedOrb({
           ease: "easeInOut",
         };
       case 'result':
-        // 予想結果表示時：高速拡大（より高速に）
+        // 予想結果表示時：10秒間の左右揺れ
         return {
-          duration: 0.6,
-          repeat: 0,
+          duration: 2.0,
+          repeat: 5, // 2秒 × 5回 = 10秒
           ease: "easeInOut",
         };
       default:

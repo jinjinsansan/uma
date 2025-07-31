@@ -67,17 +67,23 @@ export default function ChatInterface() {
   // 予想結果表示時のアニメーション
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage?.predictionResult) {
+    if (lastMessage?.predictionResult && !isPredictionResult) {
       console.log('🎯 予想結果表示時のアニメーション開始');
       setIsPredictionResult(true);
       
       // 10秒後にアニメーション完了（AnimatedOrbと合わせる）
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         console.log('🔄 10秒経過、予想結果アニメーション完了');
         setIsPredictionResult(false);
       }, 10000);
+      
+      // クリーンアップ関数を追加
+      return () => {
+        console.log('🧹 ChatInterface 予想結果アニメーションのクリーンアップ');
+        clearTimeout(timer);
+      };
     }
-  }, [messages]);
+  }, [messages, isPredictionResult]);
 
   // キーボード表示の検出
   useEffect(() => {

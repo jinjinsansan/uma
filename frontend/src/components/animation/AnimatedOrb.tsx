@@ -144,10 +144,11 @@ export default function AnimatedOrb({
 
   // 予想結果表示時のアニメーション
   useEffect(() => {
-    if (isPredictionResult && !isConditionsSelected) { // 8条件選択時は実行しない
+    if (isPredictionResult && !isConditionsSelected && !currentRandomColor) { // 8条件選択時は実行しない、かつランダム色が未設定の場合のみ
       console.log('🎨 予想結果表示時のアニメーション開始');
       console.log('isPredictionResult:', isPredictionResult);
       console.log('isConditionsSelected:', isConditionsSelected);
+      console.log('currentRandomColor:', currentRandomColor);
       
       // ランダムな色を選択
       const randomColor = RANDOM_COLORS[Math.floor(Math.random() * RANDOM_COLORS.length)];
@@ -174,7 +175,7 @@ export default function AnimatedOrb({
         clearTimeout(timer);
       };
     }
-  }, [isPredictionResult, isConditionsSelected]);
+  }, [isPredictionResult, isConditionsSelected, currentRandomColor]);
 
   // 予想指数出力時（high, medium, low）に信頼度に応じた色に変化
   useEffect(() => {

@@ -12,6 +12,7 @@ from tfjv_integration import TFJVDataConnector
 from chat_prompts import KeibaAIPrompts
 from race_identifier import RaceIdentifier
 from race_data_service import RaceDataService
+from api.race_data import router as race_data_router
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -812,6 +813,9 @@ async def chat(request: ChatRequest):
     except Exception as e:
         logger.error(f"Error in chat: {e}")
         raise HTTPException(status_code=500, detail=f"チャット応答の生成に失敗しました: {str(e)}")
+
+# 新しいレースデータAPIルーターを追加
+app.include_router(race_data_router, tags=["race-data"])
 
 if __name__ == "__main__":
     import uvicorn

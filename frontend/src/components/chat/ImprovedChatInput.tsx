@@ -99,8 +99,6 @@ export const ImprovedChatInput: React.FC<ImprovedChatInputProps> = ({
     const trimmedMessage = message.trim();
     if (!trimmedMessage || isSending || disabled) return;
 
-    setIsSending(true);
-
     try {
       // ユーザーメッセージを即座に追加
       addMessage({

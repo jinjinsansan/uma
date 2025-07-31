@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Crown } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import AnimatedOrb from '../animation/AnimatedOrb';
 import MessageList from './MessageList';
 import ConditionSelector from './ConditionSelector';
@@ -8,6 +8,8 @@ import { useChatStore } from '../../store/chatStore';
 import { ConfidenceLevel } from '../../types/race';
 // 新しいコンポーネントをインポート（既存のimport文は変更しない）
 import { ImprovedChatInput } from './ImprovedChatInput';
+// Phase 2: レース選択ボタンをインポート
+import RaceSelectionButton from '../navigation/RaceSelectionButton';
 
 export default function ChatInterface() {
   const { messages, isLoading, selectedConditions } = useChatStore();
@@ -144,21 +146,23 @@ export default function ChatInterface() {
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
       
       <header className="flex justify-between items-center p-4 sm:p-6 bg-white flex-shrink-0">
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2">
-            <Zap className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
-              OracleAI
-            </h1>
-          </div>
+        <div className="flex items-center space-x-2">
+          <Zap className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+            OracleAI
+          </h1>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="bg-yellow-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-semibold shadow-lg text-sm sm:text-base"
-        >
-          Premium会員
-        </motion.button>
+        <div className="flex items-center space-x-3">
+          {/* Phase 2: レース選択ボタンを追加 */}
+          <RaceSelectionButton />
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-yellow-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-semibold shadow-lg text-sm sm:text-base"
+          >
+            Premium会員
+          </motion.button>
+        </div>
       </header>
 
       {/* 動的な位置の球体（キーボード表示時は非表示） */}

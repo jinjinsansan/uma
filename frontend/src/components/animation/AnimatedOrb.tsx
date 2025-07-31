@@ -161,6 +161,9 @@ export default function AnimatedOrb({
       setIsExpanding(true);
       setPulseMode('result');
       
+      // アニメーションキーを強制的に更新（一度だけ）
+      setOrbAnimationKey(prev => prev + 1);
+      
       // 10秒後に元のグリーン色に戻す
       const timer = setTimeout(() => {
         console.log('🔄 10秒経過、グリーンに戻します');
@@ -299,7 +302,6 @@ export default function AnimatedOrb({
       console.log('🎯 予想結果表示時の拡大 + 左右揺れアニメーション実行');
       console.log('isExpanding:', isExpanding, 'pulseMode:', pulseMode);
       return {
-        scale: [0.02, 2.0, 1.5, 1],
         x: [0, -25, 25, -20, 20, -15, 15, -10, 10, -5, 5, 0],
       };
     }
@@ -336,10 +338,9 @@ export default function AnimatedOrb({
           x: [0, -30, 30, -20, 20, -10, 10, 0],
         };
       case 'result':
-        // 予想結果表示時：拡大 + 左右揺れ
-        console.log('🎯 予想結果表示時のswitch文での拡大 + 左右揺れアニメーション実行');
+        // 予想結果表示時：左右揺れのみ
+        console.log('🎯 予想結果表示時のswitch文での左右揺れアニメーション実行');
         return {
-          scale: [0.02, 2.0, 1.5, 1],
           x: [0, -25, 25, -20, 20, -15, 15, -10, 10, -5, 5, 0],
         };
       default:

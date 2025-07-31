@@ -145,6 +145,7 @@ export default function AnimatedOrb({
   // 予想結果表示時のアニメーション
   useEffect(() => {
     if (isPredictionResult && !isConditionsSelected) { // 8条件選択時は実行しない
+      console.log('🎨 予想結果表示時のアニメーション開始');
       // ランダムな色を選択
       const randomColor = RANDOM_COLORS[Math.floor(Math.random() * RANDOM_COLORS.length)];
       setCurrentRandomColor(randomColor);
@@ -155,6 +156,7 @@ export default function AnimatedOrb({
       
       // 10秒後に元のグリーン色に戻す
       const timer = setTimeout(() => {
+        console.log('🔄 10秒経過、グリーンに戻します');
         setCurrentRandomColor(null);
         setIsExpanding(false);
         setPulseMode('normal');
@@ -199,18 +201,6 @@ export default function AnimatedOrb({
     }
   }, [confidence]);
 
-  // 予想結果表示時の色リセット（10秒後）
-  useEffect(() => {
-    if (isPredictionResult && !isConditionsSelected) {
-      const resetTimer = setTimeout(() => {
-        setCurrentRandomColor(null);
-        setCurrentConfidence('waiting');
-      }, 10000);
-      
-      return () => clearTimeout(resetTimer);
-    }
-  }, [isPredictionResult, isConditionsSelected]);
-
   const getOrbClass = () => {
     switch (currentConfidence) {
       case 'high':
@@ -229,6 +219,7 @@ export default function AnimatedOrb({
   const getOrbStyle = () => {
     // 予想結果表示時のランダム色（スムーズな変化）
     if (currentRandomColor) {
+      console.log('🎨 ランダム色を適用中:', currentRandomColor.background.substring(0, 50) + '...');
       return {
         background: currentRandomColor.background,
         boxShadow: currentRandomColor.shadow,
@@ -238,6 +229,7 @@ export default function AnimatedOrb({
     
     // 球体に関する話題の場合は特別な色を適用
     if (isOrbTopic) {
+      console.log('🔴 球体話題色を適用中');
       return {
         background: 'radial-gradient(circle at 30% 30%, #ff6b6b 0%, #ff8e8e 25%, #ffa5a5 50%, #ffb3b3 75%, #ffc0c0 100%)',
         boxShadow: '0 0 60px rgba(255, 107, 107, 0.6), inset 0 0 50px rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 -10px 20px rgba(0, 0, 0, 0.15)',
@@ -247,6 +239,7 @@ export default function AnimatedOrb({
     
     // 予想指数出力時のみ信頼度に応じた色を適用（currentRandomColorがnullの場合のみ）
     if ((currentConfidence === 'high' || currentConfidence === 'medium' || currentConfidence === 'low') && !currentRandomColor) {
+      console.log('📊 信頼度色を適用中:', currentConfidence);
       if (isColorChanging) {
         // 色変化中のアニメーション（よりスムーズに）
         const baseColor = DEFAULT_GREEN;
@@ -271,6 +264,7 @@ export default function AnimatedOrb({
     }
     
     // デフォルトはグリーン色（予想結果表示後は確実にここに戻る）
+    console.log('🌿 デフォルトグリーン色を適用中');
     return {
       background: DEFAULT_GREEN.background,
       boxShadow: DEFAULT_GREEN.shadow,

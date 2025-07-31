@@ -293,7 +293,15 @@ export default function AnimatedOrb({
       };
     }
     
-    // 予想結果表示時の拡大アニメーション（8条件選択時以外）
+    // 予想結果表示時の拡大 + 左右揺れアニメーション
+    if (isExpanding && !isShrinking && pulseMode === 'result') {
+      return {
+        scale: [0.02, 2.0, 1.5, 1],
+        x: [0, -25, 25, -20, 20, -15, 15, -10, 10, -5, 5, 0],
+      };
+    }
+    
+    // 予想結果表示時の拡大アニメーション（その他の場合）
     if (isExpanding && !isShrinking) {
       return {
         scale: [0.02, 2.0, 1.5, 1],
@@ -346,7 +354,16 @@ export default function AnimatedOrb({
       };
     }
     
-    // 予想結果表示時の高速拡大（より高速に）
+    // 予想結果表示時の10秒間の左右揺れ
+    if (isExpanding && pulseMode === 'result') {
+      return {
+        duration: 2.0,
+        repeat: 5, // 2秒 × 5回 = 10秒
+        ease: "easeInOut",
+      };
+    }
+    
+    // 予想結果表示時の高速拡大（その他の場合）
     if (isExpanding) {
       return {
         duration: 0.6,

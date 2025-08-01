@@ -3,12 +3,120 @@
     "horse_id": "ダンスインザダーク",
     "base_score": 100,
     "description": "ダンスインザダーク基準100点の指数計算システム",
-    "last_updated": "2024-12-01T00:00:00Z"
+    "last_updated": "2024-12-01T00:00:00Z",
+    "basic_performance": {
+      "total_races": 5,
+      "wins": 4,
+      "win_rate": 0.8,
+      "average_time": "1:34.5",
+      "average_popularity": 2.5,
+      "average_odds": 3.2
+    },
+    "distance_performance": {
+      "1600m": { "races": 2, "wins": 2, "win_rate": 1.0, "average_time": "1:34.2" },
+      "2000m": { "races": 2, "wins": 1, "win_rate": 0.5, "average_time": "2:01.8" },
+      "2400m": { "races": 1, "wins": 1, "win_rate": 1.0, "average_time": "2:25.3" }
+    },
+    "track_performance": {
+      "turf": { "races": 5, "wins": 4, "win_rate": 0.8 },
+      "dirt": { "races": 0, "wins": 0, "win_rate": 0.0 }
+    },
+    "track_condition_performance": {
+      "good": { "races": 4, "wins": 3, "win_rate": 0.75 },
+      "firm": { "races": 1, "wins": 1, "win_rate": 1.0 }
+    },
+    "weather_performance": {
+      "sunny": { "races": 3, "wins": 2, "win_rate": 0.67 },
+      "cloudy": { "races": 2, "wins": 2, "win_rate": 1.0 }
+    },
+    "jockey_performance": {
+      "武豊": { "races": 3, "wins": 3, "win_rate": 1.0 },
+      "その他": { "races": 2, "wins": 1, "win_rate": 0.5 }
+    },
+    "weight_performance": {
+      "ideal_range": { "min": 54.0, "max": 56.0 },
+      "average_weight": 55.2,
+      "weight_change_tolerance": 1.0
+    },
+    "bloodline": {
+      "father": "サンデーサイレンス",
+      "mother_father": "サンデーサイレンス",
+      "bloodline_strength": 95
+    }
   },
   "horse_racing_general": {
     "track_conditions": ["良", "重", "やや重", "不良"],
     "weather_conditions": ["晴", "曇", "雨", "雪"],
     "distance_categories": ["短距離", "マイル", "中距離", "長距離"],
     "last_updated": "2024-12-01T00:00:00Z"
+  },
+  "sql_evaluation_criteria": {
+    "distance_analysis": {
+      "description": "KYORI別勝率・連対率分析",
+      "weight": 0.15,
+      "sql_fields": ["KYORI", "CHAKUJUN", "NINKI"]
+    },
+    "track_condition_analysis": {
+      "description": "BABAJOTAI_CODE別成績分析",
+      "weight": 0.12,
+      "sql_fields": ["BABAJOTAI_CODE", "CHAKUJUN", "JIKAN"]
+    },
+    "weather_analysis": {
+      "description": "WEATHER_CODE別成績分析",
+      "weight": 0.10,
+      "sql_fields": ["WEATHER_CODE", "CHAKUJUN", "JIKAN"]
+    },
+    "popularity_analysis": {
+      "description": "NINKI別成績分析（人気薄での勝率等）",
+      "weight": 0.08,
+      "sql_fields": ["NINKI", "CHAKUJUN", "ODDS"]
+    },
+    "weight_carry_analysis": {
+      "description": "KINRYO別成績分析",
+      "weight": 0.10,
+      "sql_fields": ["KINRYO", "CHAKUJUN", "JIKAN"]
+    },
+    "horse_weight_analysis": {
+      "description": "WEIGHT, WEIGHT_CHANGE分析",
+      "weight": 0.08,
+      "sql_fields": ["WEIGHT", "WEIGHT_CHANGE", "CHAKUJUN"]
+    },
+    "jockey_compatibility": {
+      "description": "KISHI_CODE別成績分析",
+      "weight": 0.12,
+      "sql_fields": ["KISHI_CODE", "CHAKUJUN", "JIKAN"]
+    },
+    "trainer_evaluation": {
+      "description": "CHOKYOSHI_CODE別成績分析",
+      "weight": 0.08,
+      "sql_fields": ["CHOKYOSHI_CODE", "CHAKUJUN", "JIKAN"]
+    },
+    "bloodline_evaluation": {
+      "description": "CHICHI_BAMEI, HAHA_CHICHI_BAMEI分析",
+      "weight": 0.10,
+      "sql_fields": ["CHICHI_BAMEI", "HAHA_CHICHI_BAMEI", "CHAKUJUN"]
+    },
+    "corner_performance": {
+      "description": "CORNER_POSITION分析",
+      "weight": 0.05,
+      "sql_fields": ["CORNER_POSITION", "CHAKUJUN"]
+    },
+    "margin_analysis": {
+      "description": "MARGINから勝ち方の特徴分析",
+      "weight": 0.02,
+      "sql_fields": ["MARGIN", "CHAKUJUN"]
+    },
+    "time_index": {
+      "description": "JIKAN, TSUKA_JIKAN分析",
+      "weight": 0.08,
+      "sql_fields": ["JIKAN", "TSUKA_JIKAN", "CHAKUJUN"]
+    }
+  },
+  "d_logic_calculation_weights": {
+    "basic_ability": 0.30,
+    "environment_adaptation": 0.25,
+    "human_factors": 0.20,
+    "bloodline_physique": 0.15,
+    "racing_style": 0.10
   }
 } 

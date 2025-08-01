@@ -1,0 +1,21 @@
+{
+  "race_code": "test001",
+  "horses": [
+    {
+      "horse_id": "001",
+      "horse_name": "テスト馬1",
+      "jockey_name": "武豊",
+      "trainer_name": "テスト調教師1",
+      "weight": 55.0,
+      "weight_change": 0.0
+    },
+    {
+      "horse_id": "002",
+      "horse_name": "テスト馬2",
+      "jockey_name": "テスト騎手2",
+      "trainer_name": "テスト調教師2",
+      "weight": 54.5,
+      "weight_change": -0.5
+    }
+  ]
+} 

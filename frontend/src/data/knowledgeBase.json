@@ -1,0 +1,14 @@
+{
+  "dance_in_the_dark": {
+    "horse_id": "ダンスインザダーク",
+    "base_score": 100,
+    "description": "ダンスインザダーク基準100点の指数計算システム",
+    "last_updated": "2024-12-01T00:00:00Z"
+  },
+  "horse_racing_general": {
+    "track_conditions": ["良", "重", "やや重", "不良"],
+    "weather_conditions": ["晴", "曇", "雨", "雪"],
+    "distance_categories": ["短距離", "マイル", "中距離", "長距離"],
+    "last_updated": "2024-12-01T00:00:00Z"
+  }
+} 

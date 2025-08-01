@@ -13,6 +13,7 @@ from chat_prompts import KeibaAIPrompts
 from race_identifier import RaceIdentifier
 from race_data_service import RaceDataService
 from api.race_data import router as race_data_router
+from api.d_logic import router as d_logic_router
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -816,6 +817,7 @@ async def chat(request: ChatRequest):
 
 # 新しいレースデータAPIルーターを追加
 app.include_router(race_data_router, tags=["race-data"])
+app.include_router(d_logic_router, tags=["d-logic"])
 
 if __name__ == "__main__":
     import uvicorn

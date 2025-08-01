@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Trophy, Calendar, MapPin, Clock, Users, Star } from 'lucide-react';
-import RaceSpecificConditionSelector from './RaceSpecificConditionSelector';
 
 interface Race {
   race_code: string;
@@ -33,8 +32,7 @@ const PastG1ExperiencePage: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [totalRaces, setTotalRaces] = useState(0);
   
-  // 新8条件画面の状態管理
-  const [showRaceConditions, setShowRaceConditions] = useState(false);
+  // Dロジック体験用の状態管理
   const [selectedRace, setSelectedRace] = useState<Race | null>(null);
 
   useEffect(() => {
@@ -66,24 +64,28 @@ const PastG1ExperiencePage: React.FC = () => {
     const selectedRace = races.find(race => race.race_code === raceCode);
     if (selectedRace) {
       setSelectedRace(selectedRace);
-      setShowRaceConditions(true);
+      // TODO: Dロジック体験画面に遷移
+      console.log('Dロジック体験開始:', selectedRace);
     }
-  };
-
-  const handleBackToRaceSelection = () => {
-    setShowRaceConditions(false);
-    setSelectedRace(null);
   };
 
   const years = [2024, 2023, 2022];
 
-  // 新8条件画面が表示されている場合
-  if (showRaceConditions && selectedRace) {
+  // Dロジック体験画面の準備（将来実装予定）
+  if (selectedRace) {
     return (
-      <RaceSpecificConditionSelector
-        selectedRace={selectedRace}
-        onBack={handleBackToRaceSelection}
-      />
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Dロジック体験</h2>
+          <p className="text-gray-600 mb-4">選択されたレース: {selectedRace.kyosomei_hondai}</p>
+          <button 
+            onClick={() => setSelectedRace(null)}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            戻る
+          </button>
+        </div>
+      </div>
     );
   }
 

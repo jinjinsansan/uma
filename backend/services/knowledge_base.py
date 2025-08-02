@@ -1,290 +1,230 @@
-"""
-ナレッジベースサービス
-ダンスインザダーク基準データと競馬全般データの管理
-SQLデータ活用による多次元Dロジック計算エンジン
-"""
-import logging
-from typing import Dict, List, Any, Optional
 import json
 import os
-
-logger = logging.getLogger(__name__)
+from typing import Dict, Any, Optional
+from pathlib import Path
 
 class KnowledgeBase:
-    def __init__(self):
-        self.dance_in_the_dark_data = {}
-        self.horse_racing_general_data = {}
-        self.sql_evaluation_criteria = {}
-        self.d_logic_weights = {}
-        self.is_initialized = False
+    """ナレッジベース管理クラス"""
     
-    async def initialize(self):
-        """ナレッジベースの初期化"""
+    def __init__(self):
+        # データファイルのパス
+        self.data_dir = Path(__file__).parent.parent / "data"
+        self.knowledge_file = self.data_dir / "knowledgeBase.json"
+        self._knowledge_data = None
+        self._load_knowledge_base()
+    
+    def _load_knowledge_base(self):
+        """ナレッジベースデータを読み込み"""
         try:
-            # フロントエンドのknowledgeBase.jsonを読み込み
-            knowledge_base_path = os.path.join(
-                os.path.dirname(__file__), 
-                '..', '..', 'frontend', 'src', 'data', 'knowledgeBase.json'
-            )
+            with open(self.knowledge_file, 'r', encoding='utf-8') as f:
+                self._knowledge_data = json.load(f)
+        except FileNotFoundError:
+            print(f"警告: ナレッジベースファイルが見つかりません: {self.knowledge_file}")
+            self._knowledge_data = self._get_default_knowledge_base()
+        except json.JSONDecodeError as e:
+            print(f"エラー: ナレッジベースファイルの読み込みに失敗: {e}")
+            self._knowledge_data = self._get_default_knowledge_base()
+    
+    def _get_default_knowledge_base(self) -> Dict[str, Any]:
+        """デフォルトのナレッジベースデータ"""
+        return {
+            "reference_horse": {
+                "name": "ダンスインザダーク",
+                "base_score": 100,
+                "description": "Dロジック指数の基準馬"
+            },
+            "scoring_weights": {
+                "distance_aptitude": 0.12,
+                "bloodline_evaluation": 0.10,
+                "jockey_compatibility": 0.08,
+                "trainer_evaluation": 0.08,
+                "track_aptitude": 0.10,
+                "weather_aptitude": 0.06,
+                "popularity_factor": 0.08,
+                "weight_impact": 0.08,
+                "horse_weight_impact": 0.08,
+                "corner_specialist": 0.08,
+                "margin_analysis": 0.08,
+                "time_index": 0.06
+            },
+            "reference_data": {
+                "distance_aptitude": {
+                    "1400m": 75,
+                    "1600m": 85,
+                    "1800m": 95,
+                    "2000m": 100,
+                    "2200m": 90,
+                    "2400m": 85
+                },
+                "bloodline_evaluation": {
+                    "sunday_silence_line": 95,
+                    "northern_dancer_line": 90,
+                    "storm_cat_line": 85,
+                    "other": 70
+                },
+                "jockey_compatibility": {
+                    "top_jockey": 95,
+                    "experienced_jockey": 85,
+                    "average_jockey": 75,
+                    "rookie_jockey": 65
+                },
+                "trainer_evaluation": {
+                    "top_trainer": 90,
+                    "experienced_trainer": 80,
+                    "average_trainer": 70,
+                    "new_trainer": 60
+                },
+                "track_aptitude": {
+                    "turf_good": 100,
+                    "turf_soft": 85,
+                    "turf_heavy": 70,
+                    "dirt_good": 80,
+                    "dirt_soft": 75,
+                    "dirt_heavy": 70
+                },
+                "weather_aptitude": {
+                    "sunny": 100,
+                    "cloudy": 95,
+                    "light_rain": 85,
+                    "heavy_rain": 75
+                }
+            },
+            "calculation_parameters": {
+                "confidence_thresholds": {
+                    "high": 85,
+                    "medium": 70,
+                    "low": 0
+                }
+            }
+        }
+    
+    def get_reference_horse(self) -> Dict[str, Any]:
+        """基準馬（ダンスインザダーク）の情報を取得"""
+        return self._knowledge_data.get("reference_horse", {})
+    
+    def get_scoring_weights(self) -> Dict[str, float]:
+        """12項目の重み係数を取得"""
+        return self._knowledge_data.get("scoring_weights", {})
+    
+    def get_reference_data(self, category: str) -> Dict[str, Any]:
+        """指定カテゴリの参考データを取得"""
+        reference_data = self._knowledge_data.get("reference_data", {})
+        return reference_data.get(category, {})
+    
+    def get_confidence_thresholds(self) -> Dict[str, float]:
+        """信頼度の閾値を取得"""
+        params = self._knowledge_data.get("calculation_parameters", {})
+        return params.get("confidence_thresholds", {"high": 85, "medium": 70, "low": 0})
+    
+    def get_display_settings(self) -> Dict[str, Any]:
+        """表示設定を取得"""
+        return self._knowledge_data.get("display_settings", {
+            "user_facing_name": "Dロジック",
+            "hide_reference_horse": True,
+            "show_total_score_only": False,
+            "decimal_places": 1
+        })
+    
+    def update_knowledge_base(self, new_data: Dict[str, Any]) -> bool:
+        """ナレッジベースを更新"""
+        try:
+            # 既存データとマージ
+            self._knowledge_data.update(new_data)
             
-            if os.path.exists(knowledge_base_path):
-                with open(knowledge_base_path, 'r', encoding='utf-8') as f:
-                    knowledge_data = json.load(f)
-                
-                self.dance_in_the_dark_data = knowledge_data.get('dance_in_the_dark', {})
-                self.horse_racing_general_data = knowledge_data.get('horse_racing_general', {})
-                self.sql_evaluation_criteria = knowledge_data.get('sql_evaluation_criteria', {})
-                self.d_logic_weights = knowledge_data.get('d_logic_calculation_weights', {})
+            # ファイルに保存
+            with open(self.knowledge_file, 'w', encoding='utf-8') as f:
+                json.dump(self._knowledge_data, f, ensure_ascii=False, indent=2)
             
-            self.is_initialized = True
-            logger.info("ナレッジベース初期化完了")
             return True
         except Exception as e:
-            logger.error(f"ナレッジベース初期化エラー: {e}")
+            print(f"ナレッジベース更新エラー: {e}")
             return False
     
-    async def get_dance_in_the_dark_data(self) -> Dict[str, Any]:
-        """ダンスインザダーク基準データの取得"""
-        return self.dance_in_the_dark_data
+    def get_d_logic_item_names(self) -> Dict[str, str]:
+        """Dロジック12項目の名前一覧を取得"""
+        return {
+            "distance_aptitude": "距離適性",
+            "bloodline_evaluation": "血統評価", 
+            "jockey_compatibility": "騎手相性",
+            "trainer_evaluation": "調教師評価",
+            "track_aptitude": "馬場適性",
+            "weather_aptitude": "天候適性",
+            "popularity_factor": "人気度",
+            "weight_impact": "斤量影響",
+            "horse_weight_impact": "馬体重影響",
+            "corner_specialist": "コーナー巧者度",
+            "margin_analysis": "着差分析",
+            "time_index": "タイム指数"
+        }
     
-    async def get_horse_racing_general_data(self) -> Dict[str, Any]:
-        """競馬全般データの取得"""
-        return self.horse_racing_general_data
+    def validate_knowledge_base(self) -> Dict[str, bool]:
+        """ナレッジベースの整合性をチェック"""
+        validation_results = {
+            "reference_horse_exists": "reference_horse" in self._knowledge_data,
+            "scoring_weights_complete": len(self.get_scoring_weights()) == 12,
+            "weights_sum_to_one": abs(sum(self.get_scoring_weights().values()) - 1.0) < 0.01,
+            "reference_data_exists": "reference_data" in self._knowledge_data,
+            "confidence_thresholds_valid": self._validate_confidence_thresholds()
+        }
+        
+        return validation_results
     
-    async def get_sql_evaluation_criteria(self) -> Dict[str, Any]:
-        """SQL評価基準の取得"""
-        return self.sql_evaluation_criteria
-    
-    async def get_d_logic_weights(self) -> Dict[str, Any]:
-        """Dロジック計算重みの取得"""
-        return self.d_logic_weights
-
-class DLogicCalculator:
-    """多次元Dロジック計算エンジン"""
-    
-    def __init__(self, knowledge_base: KnowledgeBase):
-        self.kb = knowledge_base
-        self.base_score = 100
-        self.base_horse_data = None
-    
-    async def initialize(self):
-        """計算エンジンの初期化"""
-        await self.kb.initialize()
-        self.base_horse_data = await self.kb.get_dance_in_the_dark_data()
-        self.sql_criteria = await self.kb.get_sql_evaluation_criteria()
-        self.weights = await self.kb.get_d_logic_weights()
-    
-    def calculate_d_logic_score(self, horse_data: Dict[str, Any]) -> Dict[str, Any]:
-        """多次元Dロジック指数計算"""
+    def _validate_confidence_thresholds(self) -> bool:
+        """信頼度閾値の妥当性をチェック"""
+        thresholds = self.get_confidence_thresholds()
         try:
-            base_score = self.base_score
+            high = thresholds.get("high", 0)
+            medium = thresholds.get("medium", 0)
+            low = thresholds.get("low", 0)
             
-            # 基本能力 (30%)
-            basic_ability_score = self._calculate_basic_ability(horse_data)
-            
-            # 環境適応 (25%)
-            environment_score = self._calculate_environment_adaptation(horse_data)
-            
-            # 人的要因 (20%)
-            human_factors_score = self._calculate_human_factors(horse_data)
-            
-            # 血統・体質 (15%)
-            bloodline_score = self._calculate_bloodline_physique(horse_data)
-            
-            # 競走スタイル (10%)
-            racing_style_score = self._calculate_racing_style(horse_data)
-            
-            # 重み付き総合スコア計算
-            total_score = (
-                basic_ability_score * self.weights.get('basic_ability', 0.30) +
-                environment_score * self.weights.get('environment_adaptation', 0.25) +
-                human_factors_score * self.weights.get('human_factors', 0.20) +
-                bloodline_score * self.weights.get('bloodline_physique', 0.15) +
-                racing_style_score * self.weights.get('racing_style', 0.10)
-            )
-            
-            return {
-                "total_score": round(total_score, 1),
-                "base_score": base_score,
-                "detailed_scores": {
-                    "basic_ability": round(basic_ability_score, 1),
-                    "environment_adaptation": round(environment_score, 1),
-                    "human_factors": round(human_factors_score, 1),
-                    "bloodline_physique": round(bloodline_score, 1),
-                    "racing_style": round(racing_style_score, 1)
+            return high > medium > low and high <= 100 and low >= 0
+        except (TypeError, ValueError):
+            return False
+    
+    def get_sample_race_data(self) -> Dict[str, Any]:
+        """サンプルレースデータを生成"""
+        return {
+            "race_id": "tokyo_3r_sample",
+            "race_name": "東京3R",
+            "race_conditions": {
+                "distance": 1600,
+                "track_type": "芝",
+                "track_condition": "良",
+                "weather": "晴",
+                "course": "東京",
+                "grade": None
+            },
+            "horses": [
+                {
+                    "name": "スピードスター",
+                    "age": 4,
+                    "sex": "牡", 
+                    "weight": 498,
+                    "jockey": "トップ騎手",
+                    "trainer": "ベテラン調教師",
+                    "recent_form": [1, 2, 1, 3, 2]
                 },
-                "sql_analysis": self._generate_sql_analysis(horse_data),
-                "calculation_details": self._generate_calculation_details(horse_data)
-            }
-            
-        except Exception as e:
-            logger.error(f"Dロジック計算エラー: {e}")
-            return {
-                "total_score": 0,
-                "error": str(e)
-            }
-    
-    def _calculate_basic_ability(self, horse_data: Dict[str, Any]) -> float:
-        """基本能力スコア計算"""
-        score = 0
-        
-        # 距離適性分析
-        distance_score = self._analyze_distance_performance(horse_data)
-        score += distance_score * 0.5
-        
-        # 馬場適性分析
-        track_score = self._analyze_track_performance(horse_data)
-        score += track_score * 0.5
-        
-        return min(score, 100)
-    
-    def _calculate_environment_adaptation(self, horse_data: Dict[str, Any]) -> float:
-        """環境適応スコア計算"""
-        score = 0
-        
-        # 天候適性分析
-        weather_score = self._analyze_weather_performance(horse_data)
-        score += weather_score * 0.5
-        
-        # 馬場状態適性分析
-        track_condition_score = self._analyze_track_condition(horse_data)
-        score += track_condition_score * 0.5
-        
-        return min(score, 100)
-    
-    def _calculate_human_factors(self, horse_data: Dict[str, Any]) -> float:
-        """人的要因スコア計算"""
-        score = 0
-        
-        # 騎手相性分析
-        jockey_score = self._analyze_jockey_compatibility(horse_data)
-        score += jockey_score * 0.6
-        
-        # 調教師評価分析
-        trainer_score = self._analyze_trainer_performance(horse_data)
-        score += trainer_score * 0.4
-        
-        return min(score, 100)
-    
-    def _calculate_bloodline_physique(self, horse_data: Dict[str, Any]) -> float:
-        """血統・体質スコア計算"""
-        score = 0
-        
-        # 血統評価分析
-        bloodline_score = self._analyze_bloodline_strength(horse_data)
-        score += bloodline_score * 0.6
-        
-        # 馬体重分析
-        weight_score = self._analyze_weight_performance(horse_data)
-        score += weight_score * 0.4
-        
-        return min(score, 100)
-    
-    def _calculate_racing_style(self, horse_data: Dict[str, Any]) -> float:
-        """競走スタイルスコア計算"""
-        score = 0
-        
-        # コーナー巧者度分析
-        corner_score = self._analyze_corner_performance(horse_data)
-        score += corner_score * 0.5
-        
-        # ペース能力分析
-        pace_score = self._analyze_pace_ability(horse_data)
-        score += pace_score * 0.5
-        
-        return min(score, 100)
-    
-    def _analyze_distance_performance(self, horse_data: Dict[str, Any]) -> float:
-        """距離適性分析"""
-        # SQLデータ: KYORI, CHAKUJUN, NINKI
-        # 実装例（実際のSQLデータに基づく）
-        return 85.0  # 仮の値
-    
-    def _analyze_track_performance(self, horse_data: Dict[str, Any]) -> float:
-        """馬場適性分析"""
-        # SQLデータ: TRACK_CODE, CHAKUJUN, JIKAN
-        return 90.0  # 仮の値
-    
-    def _analyze_weather_performance(self, horse_data: Dict[str, Any]) -> float:
-        """天候適性分析"""
-        # SQLデータ: WEATHER_CODE, CHAKUJUN, JIKAN
-        return 88.0  # 仮の値
-    
-    def _analyze_track_condition(self, horse_data: Dict[str, Any]) -> float:
-        """馬場状態適性分析"""
-        # SQLデータ: BABAJOTAI_CODE, CHAKUJUN, JIKAN
-        return 92.0  # 仮の値
-    
-    def _analyze_jockey_compatibility(self, horse_data: Dict[str, Any]) -> float:
-        """騎手相性分析"""
-        # SQLデータ: KISHI_CODE, CHAKUJUN, JIKAN
-        return 87.0  # 仮の値
-    
-    def _analyze_trainer_performance(self, horse_data: Dict[str, Any]) -> float:
-        """調教師評価分析"""
-        # SQLデータ: CHOKYOSHI_CODE, CHAKUJUN, JIKAN
-        return 89.0  # 仮の値
-    
-    def _analyze_bloodline_strength(self, horse_data: Dict[str, Any]) -> float:
-        """血統評価分析"""
-        # SQLデータ: CHICHI_BAMEI, HAHA_CHICHI_BAMEI, CHAKUJUN
-        return 93.0  # 仮の値
-    
-    def _analyze_weight_performance(self, horse_data: Dict[str, Any]) -> float:
-        """馬体重分析"""
-        # SQLデータ: WEIGHT, WEIGHT_CHANGE, CHAKUJUN
-        return 86.0  # 仮の値
-    
-    def _analyze_corner_performance(self, horse_data: Dict[str, Any]) -> float:
-        """コーナー巧者度分析"""
-        # SQLデータ: CORNER_POSITION, CHAKUJUN
-        return 84.0  # 仮の値
-    
-    def _analyze_pace_ability(self, horse_data: Dict[str, Any]) -> float:
-        """ペース能力分析"""
-        # SQLデータ: TSUKA_JIKAN, JIKAN, CHAKUJUN
-        return 91.0  # 仮の値
-    
-    def _generate_sql_analysis(self, horse_data: Dict[str, Any]) -> Dict[str, Any]:
-        """SQL分析結果生成"""
-        return {
-            "distance_analysis": {
-                "score": 85.0,
-                "description": "1600m-2400mで安定した成績",
-                "sql_fields_used": ["KYORI", "CHAKUJUN", "NINKI"]
-            },
-            "track_condition_analysis": {
-                "score": 90.0,
-                "description": "良馬場で特に好相性",
-                "sql_fields_used": ["BABAJOTAI_CODE", "CHAKUJUN", "JIKAN"]
-            },
-            "weather_analysis": {
-                "score": 88.0,
-                "description": "晴れ・曇りで安定した走り",
-                "sql_fields_used": ["WEATHER_CODE", "CHAKUJUN", "JIKAN"]
-            },
-            "jockey_compatibility": {
-                "score": 87.0,
-                "description": "武豊騎手との相性抜群",
-                "sql_fields_used": ["KISHI_CODE", "CHAKUJUN", "JIKAN"]
-            },
-            "bloodline_evaluation": {
-                "score": 93.0,
-                "description": "サンデーサイレンス系の優秀な血統",
-                "sql_fields_used": ["CHICHI_BAMEI", "HAHA_CHICHI_BAMEI", "CHAKUJUN"]
-            }
+                {
+                    "name": "ダービーキング",
+                    "age": 3,
+                    "sex": "牡",
+                    "weight": 502,
+                    "jockey": "期待の若手",
+                    "trainer": "名門厩舎",
+                    "recent_form": [2, 1, 1, 1, 3]
+                },
+                {
+                    "name": "エレガントクイーン",
+                    "age": 5,
+                    "sex": "牝",
+                    "weight": 485,
+                    "jockey": "女性騎手",
+                    "trainer": "実績ある調教師",
+                    "recent_form": [3, 2, 2, 1, 1]
+                }
+            ]
         }
     
-    def _generate_calculation_details(self, horse_data: Dict[str, Any]) -> Dict[str, Any]:
-        """計算詳細生成"""
-        return {
-            "calculation_method": "多次元Dロジック計算エンジン",
-            "base_horse": "ダンスインザダーク",
-            "base_score": 100,
-            "sql_data_utilization": "12項目の多角的評価",
-            "weight_distribution": self.weights
-        }
-
-# グローバルインスタンス
-knowledge_base = KnowledgeBase()
-d_logic_calculator = DLogicCalculator(knowledge_base) 
+    def reload_knowledge_base(self):
+        """ナレッジベースを再読み込み"""
+        self._load_knowledge_base()

@@ -1,27 +1,20 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
+from openai import OpenAI
 import os
 from datetime import datetime
 import json
-import logging
-import random
-import math
-from tfjv_integration import TFJVDataConnector
-from chat_prompts import KeibaAIPrompts
-from race_identifier import RaceIdentifier
-from race_data_service import RaceDataService
-from api.race_data import router as race_data_router
+
+# Dロジック関連のインポート
 from api.d_logic import router as d_logic_router
+from models.d_logic_models import ChatDLogicRequest, ChatDLogicResponse
+from services.knowledge_base import KnowledgeBase
 
-# ログ設定
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+app = FastAPI(title="Dロジック競馬予想AI", version="2.0.0")
 
-app = FastAPI(title="UmaOracle AI API", version="1.0.0")
-
-# CORS設定 - より広範囲のドメインを許可
+# CORS設定
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -29,7 +22,7 @@ app.add_middleware(
         "https://uma-oracle-ai.netlify.app",
         "https://*.netlify.app",
         "https://*.onrender.com",
-        "*"  # 開発中は全てのドメインを許可
+        "*"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -37,36 +30,61 @@ app.add_middleware(
 )
 
 # OpenAI API設定
-from openai import OpenAI
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# ナレッジベース初期化
+kb = KnowledgeBase()
 
-# TFJVデータコネクター初期化
-tfjv_connector = TFJVDataConnector()
+# Dロジックルーターを含める
+app.include_router(d_logic_router, prefix="/api/d-logic", tags=["D-Logic"])
 
-# レース識別システム初期化
-race_identifier = RaceIdentifier()
+# 本日レース情報（Phase C用固定データ）
+TODAY_RACES = {
+    "tokyo": [
+        {"race_number": "1R", "race_name": "新馬戦", "distance": 1400, "track_type": "芝"},
+        {"race_number": "2R", "race_name": "未勝利戦", "distance": 1600, "track_type": "芝"},
+        {"race_number": "3R", "race_name": "3歳未勝利", "distance": 1800, "track_type": "芝"},
+        {"race_number": "4R", "race_name": "3歳以上1勝クラス", "distance": 2000, "track_type": "芝"},
+        {"race_number": "5R", "race_name": "3歳以上1勝クラス", "distance": 1600, "track_type": "ダート"},
+        {"race_number": "6R", "race_name": "3歳以上2勝クラス", "distance": 1400, "track_type": "ダート"},
+        {"race_number": "7R", "race_name": "3歳以上2勝クラス", "distance": 1800, "track_type": "芝"},
+        {"race_number": "8R", "race_name": "3歳以上3勝クラス", "distance": 1600, "track_type": "芝"},
+        {"race_number": "9R", "race_name": "東京競馬場特別", "distance": 2000, "track_type": "芝"},
+        {"race_number": "10R", "race_name": "リステッド競走", "distance": 1600, "track_type": "芝"},
+        {"race_number": "11R", "race_name": "G3競走", "distance": 2400, "track_type": "芝"},
+        {"race_number": "12R", "race_name": "3歳以上1勝クラス", "distance": 1200, "track_type": "芝"}
+    ],
+    "nakayama": [
+        {"race_number": "1R", "race_name": "新馬戦", "distance": 1200, "track_type": "芝"},
+        {"race_number": "2R", "race_name": "未勝利戦", "distance": 1800, "track_type": "芝"},
+        {"race_number": "3R", "race_name": "3歳未勝利", "distance": 1600, "track_type": "ダート"},
+        {"race_number": "4R", "race_name": "3歳以上1勝クラス", "distance": 1800, "track_type": "芝"},
+        {"race_number": "5R", "race_name": "3歳以上1勝クラス", "distance": 1200, "track_type": "ダート"},
+        {"race_number": "6R", "race_name": "3歳以上2勝クラス", "distance": 1600, "track_type": "芝"},
+        {"race_number": "7R", "race_name": "3歳以上2勝クラス", "distance": 1800, "track_type": "ダート"},
+        {"race_number": "8R", "race_name": "3歳以上3勝クラス", "distance": 2000, "track_type": "芝"},
+        {"race_number": "9R", "race_name": "中山競馬場特別", "distance": 1600, "track_type": "芝"},
+        {"race_number": "10R", "race_name": "リステッド競走", "distance": 2200, "track_type": "芝"},
+        {"race_number": "11R", "race_name": "G3競走", "distance": 1800, "track_type": "芝"},
+        {"race_number": "12R", "race_name": "3歳以上1勝クラス", "distance": 1400, "track_type": "ダート"}
+    ],
+    "hanshin": [
+        {"race_number": "1R", "race_name": "新馬戦", "distance": 1600, "track_type": "芝"},
+        {"race_number": "2R", "race_name": "未勝利戦", "distance": 1400, "track_type": "芝"},
+        {"race_number": "3R", "race_name": "3歳未勝利", "distance": 1800, "track_type": "ダート"},
+        {"race_number": "4R", "race_name": "3歳以上1勝クラス", "distance": 1600, "track_type": "芝"},
+        {"race_number": "5R", "race_name": "3歳以上1勝クラス", "distance": 1400, "track_type": "ダート"},
+        {"race_number": "6R", "race_name": "3歳以上2勝クラス", "distance": 1800, "track_type": "芝"},
+        {"race_number": "7R", "race_name": "3歳以上2勝クラス", "distance": 1600, "track_type": "ダート"},
+        {"race_number": "8R", "race_name": "3歳以上3勝クラス", "distance": 2000, "track_type": "芝"},
+        {"race_number": "9R", "race_name": "阪神競馬場特別", "distance": 1800, "track_type": "芝"},
+        {"race_number": "10R", "race_name": "リステッド競走", "distance": 1400, "track_type": "芝"},
+        {"race_number": "11R", "race_name": "G2競走", "distance": 2200, "track_type": "芝"},
+        {"race_number": "12R", "race_name": "3歳以上1勝クラス", "distance": 1200, "track_type": "芝"}
+    ]
+}
 
-# レースデータサービス初期化
-race_data_service = RaceDataService()
-
-# 環境変数が設定されていない場合の警告
-if not client.api_key:
-    logger.warning("OPENAI_API_KEY environment variable is not set. Using fixed responses.")
-    OPENAI_ENABLED = False
-else:
-    OPENAI_ENABLED = True
-    logger.info("OpenAI API is enabled")
-
-# データモデル
-class Condition(BaseModel):
-    id: str
-    name: str
-
-class PredictRequest(BaseModel):
-    race_id: str
-    selected_conditions: List[str]
-
+# レガシー互換性用のデータモデル
 class ChatRequest(BaseModel):
     message: str
     race_info: Optional[str] = None
@@ -76,750 +94,187 @@ class ChatResponse(BaseModel):
     type: str
     data: Optional[dict] = None
 
-# 各馬の詳細な複勝率データ（過去5走分のデータを模擬）
-HORSE_DETAILED_DATA = {
-    "シンボリクリスエス": {
-        "base_score": 75,
-        "running_style": "先行",
-        "course_direction": "右周り",
-        "distance_category": "2000-2400m",
-        "interval_category": "中3-4",
-        "course_specific": "東京芝",
-        "horse_count": "13-16頭",
-        "track_condition": "良",
-        "season_category": "4-6月",
-        # 各条件の複勝率データ（過去5走分の平均）
-        "condition_rates": {
-            "1_running_style": 0.28,  # 先行の複勝率
-            "2_course_direction": 0.40,  # 右周りの複勝率
-            "3_distance_category": 0.55,  # 2000-2400mの複勝率
-            "4_interval_category": 0.40,  # 中3-4の複勝率
-            "5_course_specific": 0.35,  # 東京芝の複勝率
-            "6_horse_count": 0.35,  # 13-16頭の複勝率
-            "7_track_condition": 0.40,  # 良の複勝率
-            "8_season_category": 0.40   # 4-6月の複勝率
-        }
-    },
-    "ディープインパクト": {
-        "base_score": 85,
-        "running_style": "差し",
-        "course_direction": "左周り",
-        "distance_category": "1800-2000m",
-        "interval_category": "中5-8",
-        "course_specific": "阪神芝",
-        "horse_count": "8-12頭",
-        "track_condition": "良",
-        "season_category": "10-12月",
-        "condition_rates": {
-            "1_running_style": 0.22,  # 差しの複勝率
-            "2_course_direction": 0.35,  # 左周りの複勝率
-            "3_distance_category": 0.45,  # 1800-2000mの複勝率
-            "4_interval_category": 0.45,  # 中5-8の複勝率
-            "5_course_specific": 0.40,  # 阪神芝の複勝率
-            "6_horse_count": 0.30,  # 8-12頭の複勝率
-            "7_track_condition": 0.40,  # 良の複勝率
-            "8_season_category": 0.50   # 10-12月の複勝率
-        }
-    },
-    "オルフェーヴル": {
-        "base_score": 70,
-        "running_style": "追込",
-        "course_direction": "右周り",
-        "distance_category": "2400-3000m",
-        "interval_category": "中9-12",
-        "course_specific": "東京芝",
-        "horse_count": "16-17頭",
-        "track_condition": "重",
-        "season_category": "1-3月",
-        "condition_rates": {
-            "1_running_style": 0.15,  # 追込の複勝率
-            "2_course_direction": 0.40,  # 右周りの複勝率
-            "3_distance_category": 0.65,  # 2400-3000mの複勝率
-            "4_interval_category": 0.50,  # 中9-12の複勝率
-            "5_course_specific": 0.35,  # 東京芝の複勝率
-            "6_horse_count": 0.40,  # 16-17頭の複勝率
-            "7_track_condition": 0.35,  # 重の複勝率
-            "8_season_category": 0.35   # 1-3月の複勝率
-        }
-    },
-    "ジェンティルドンナ": {
-        "base_score": 65,
-        "running_style": "先行",
-        "course_direction": "左周り",
-        "distance_category": "1600m",
-        "interval_category": "中2",
-        "course_specific": "阪神芝",
-        "horse_count": "7頭以下",
-        "track_condition": "やや重",
-        "season_category": "7-9月",
-        "condition_rates": {
-            "1_running_style": 0.28,  # 先行の複勝率
-            "2_course_direction": 0.35,  # 左周りの複勝率
-            "3_distance_category": 0.40,  # 1600mの複勝率
-            "4_interval_category": 0.35,  # 中2の複勝率
-            "5_course_specific": 0.40,  # 阪神芝の複勝率
-            "6_horse_count": 0.25,  # 7頭以下の複勝率
-            "7_track_condition": 0.30,  # やや重の複勝率
-            "8_season_category": 0.45   # 7-9月の複勝率
-        }
-    },
-    "キタサンブラック": {
-        "base_score": 80,
-        "running_style": "逃げ",
-        "course_direction": "右周り",
-        "distance_category": "2200m",
-        "interval_category": "中1",
-        "course_specific": "東京芝",
-        "horse_count": "13-16頭",
-        "track_condition": "良",
-        "season_category": "4-6月",
-        "condition_rates": {
-            "1_running_style": 0.35,  # 逃げの複勝率
-            "2_course_direction": 0.40,  # 右周りの複勝率
-            "3_distance_category": 0.50,  # 2200mの複勝率
-            "4_interval_category": 0.30,  # 中1の複勝率
-            "5_course_specific": 0.35,  # 東京芝の複勝率
-            "6_horse_count": 0.35,  # 13-16頭の複勝率
-            "7_track_condition": 0.40,  # 良の複勝率
-            "8_season_category": 0.40   # 4-6月の複勝率
-        }
-    },
-    "アーモンドアイ": {
-        "base_score": 90,
-        "running_style": "先行",
-        "course_direction": "左周り",
-        "distance_category": "1600m",
-        "interval_category": "連闘",
-        "course_specific": "阪神芝",
-        "horse_count": "8-12頭",
-        "track_condition": "良",
-        "season_category": "10-12月",
-        "condition_rates": {
-            "1_running_style": 0.28,  # 先行の複勝率
-            "2_course_direction": 0.35,  # 左周りの複勝率
-            "3_distance_category": 0.40,  # 1600mの複勝率
-            "4_interval_category": 0.25,  # 連闘の複勝率
-            "5_course_specific": 0.40,  # 阪神芝の複勝率
-            "6_horse_count": 0.30,  # 8-12頭の複勝率
-            "7_track_condition": 0.40,  # 良の複勝率
-            "8_season_category": 0.50   # 10-12月の複勝率
-        }
-    },
-    "クロノジェネシス": {
-        "base_score": 72,
-        "running_style": "差し",
-        "course_direction": "右周り",
-        "distance_category": "1800-2000m",
-        "interval_category": "中5-8",
-        "course_specific": "東京芝",
-        "horse_count": "13-16頭",
-        "track_condition": "良",
-        "season_category": "7-9月",
-        "condition_rates": {
-            "1_running_style": 0.22,  # 差しの複勝率
-            "2_course_direction": 0.40,  # 右周りの複勝率
-            "3_distance_category": 0.45,  # 1800-2000mの複勝率
-            "4_interval_category": 0.45,  # 中5-8の複勝率
-            "5_course_specific": 0.35,  # 東京芝の複勝率
-            "6_horse_count": 0.35,  # 13-16頭の複勝率
-            "7_track_condition": 0.40,  # 良の複勝率
-            "8_season_category": 0.45   # 7-9月の複勝率
-        }
-    },
-    "グランアレグリア": {
-        "base_score": 68,
-        "running_style": "先行",
-        "course_direction": "左周り",
-        "distance_category": "1400m",
-        "interval_category": "中3-4",
-        "course_specific": "阪神芝",
-        "horse_count": "8-12頭",
-        "track_condition": "良",
-        "season_category": "4-6月",
-        "condition_rates": {
-            "1_running_style": 0.28,  # 先行の複勝率
-            "2_course_direction": 0.35,  # 左周りの複勝率
-            "3_distance_category": 0.35,  # 1400mの複勝率
-            "4_interval_category": 0.40,  # 中3-4の複勝率
-            "5_course_specific": 0.40,  # 阪神芝の複勝率
-            "6_horse_count": 0.30,  # 8-12頭の複勝率
-            "7_track_condition": 0.40,  # 良の複勝率
-            "8_season_category": 0.40   # 4-6月の複勝率
-        }
-    }
-}
-
-CONDITIONS_DATA = {
-    '1_running_style': {
-        'name': '脚質',
-        'description': '逃げ、先行、差し、追込の適性',
-        'sample_data': {'逃げ': 0.35, '先行': 0.28, '差し': 0.22, '追込': 0.15}
-    },
-    '2_course_direction': {
-        'name': '右周り・左周り複勝率',
-        'description': 'コース回り方向別成績',
-        'sample_data': {'右周り': 0.40, '左周り': 0.35}
-    },
-    '3_distance_category': {
-        'name': '距離毎複勝率',
-        'description': '1000-1200m、1400m、1600m、1800-2000m、2200m、2000-2400m、2500m、2400-3000m、3000-3600m',
-        'sample_data': {'1000-1200m': 0.30, '1400m': 0.35, '1600m': 0.40, '1800-2000m': 0.45, '2200m': 0.50, '2000-2400m': 0.55, '2500m': 0.60, '2400-3000m': 0.65, '3000-3600m': 0.70}
-    },
-    '4_interval_category': {
-        'name': '出走間隔毎複勝率',
-        'description': '連闘、中1、中2、中3-4、中5-8、中9-12、中13以上',
-        'sample_data': {'連闘': 0.25, '中1': 0.30, '中2': 0.35, '中3-4': 0.40, '中5-8': 0.45, '中9-12': 0.50, '中13以上': 0.55}
-    },
-    '5_course_specific': {
-        'name': 'コース毎複勝率',
-        'description': '競馬場・芝ダート・距離の組み合わせ',
-        'sample_data': {'東京芝': 0.35, '東京ダ': 0.30, '阪神芝': 0.40, '阪神ダ': 0.35}
-    },
-    '6_horse_count': {
-        'name': '出走頭数毎複勝率',
-        'description': '7頭以下、8-12頭、13-16頭、16-17頭、16-18頭',
-        'sample_data': {'7頭以下': 0.25, '8-12頭': 0.30, '13-16頭': 0.35, '16-17頭': 0.40, '16-18頭': 0.45}
-    },
-    '7_track_condition': {
-        'name': '馬場毎複勝率',
-        'description': '良、重、やや重、不良',
-        'sample_data': {'良': 0.40, '重': 0.35, 'やや重': 0.30, '不良': 0.25}
-    },
-    '8_season_category': {
-        'name': '季節毎複勝率',
-        'description': '1-3月、4-6月、7-9月、10-12月',
-        'sample_data': {'1-3月': 0.35, '4-6月': 0.40, '7-9月': 0.45, '10-12月': 0.50}
-    }
-}
-
-# 8条件計算エンジン（完璧実装）
-class PredictionEngine:
-    def __init__(self):
-        self.conditions_data = CONDITIONS_DATA
-        self.weights = [0.40, 0.30, 0.20, 0.10]  # 1位40%、2位30%、3位20%、4位10%
-    
-    def calculate_condition_score(self, horse_data: dict, condition_id: str) -> float:
-        """各条件のスコアを計算（0-100点）"""
-        # 馬の詳細データから該当条件の複勝率を取得
-        condition_rates = horse_data.get('condition_rates', {})
-        win_rate = condition_rates.get(condition_id, 0.25)  # デフォルト値
-        
-        # 複勝率を0-100点スケールに変換
-        score = win_rate * 100
-        
-        logger.info(f"Condition {condition_id}: win_rate={win_rate}, score={score}")
-        return score
-    
-    def calculate_final_score(self, horse_data: dict, selected_conditions: List[str]) -> float:
-        """最終指数を計算（0-100点）"""
-        logger.info(f"Calculating final score for {horse_data['name']} with conditions: {selected_conditions}")
-        
-        if len(selected_conditions) == 0:
-            logger.info(f"No conditions selected, using base score: {horse_data['base_score']}")
-            return horse_data['base_score']
-        
-        # 各条件のスコアを計算
-        condition_scores = []
-        for condition_id in selected_conditions:
-            score = self.calculate_condition_score(horse_data, condition_id)
-            condition_scores.append(score)
-            logger.info(f"Condition {condition_id} score: {score}")
-        
-        # 重み付け計算（選択条件のみ使用）
-        weighted_score = 0.0
-        for i, score in enumerate(condition_scores):
-            if i < len(self.weights):
-                weight = self.weights[i]
-                weighted_score += score * weight
-                logger.info(f"Weight {i+1}: {score} × {weight} = {score * weight}")
-        
-        logger.info(f"Total weighted score before adjustment: {weighted_score}")
-        
-        # 最終指数を20-90点に制限
-        final_score = max(20, min(90, weighted_score))  # 20-90点の範囲に制限
-        
-        logger.info(f"Final score for {horse_data['name']}: {final_score}")
-        return round(final_score, 1)  # 小数点第1位まで
-    
-    def determine_confidence(self, horses: List[dict]) -> str:
-        """信頼度を決定（高・中・低）"""
-        if not horses:
-            return "medium"
-        
-        # 平均スコアを計算
-        avg_score = sum(horse.get('final_score', 0) for horse in horses) / len(horses)
-        
-        # スコアの分散を計算
-        scores = [horse.get('final_score', 0) for horse in horses]
-        variance = sum((score - avg_score) ** 2 for score in scores) / len(scores)
-        
-        # 信頼度判定
-        if avg_score >= 70 and variance < 200:  # 高スコアで分散が小さい
-            return "high"
-        elif avg_score >= 50:
-            return "medium"
-        else:
-            return "low"
-
-# 予想エンジンのインスタンス
-prediction_engine = PredictionEngine()
-
-# 固定レスポンスのテンプレート
-FIXED_RESPONSES = {
-    "greeting": [
-        "こんにちは！競馬予想AIのUmaOracleです。今日のレースの予想をお手伝いします。",
-        "UmaOracle AIです！レース予想でお困りのことがあれば、お気軽にお声かけください。",
-        "競馬予想の専門AI、UmaOracleです。どのようなご相談でしょうか？"
-    ],
-    "prediction_request": [
-        "レース予想をご希望ですね。8つの条件から4つを選択していただき、AIが予想を実行いたします。",
-        "予想を開始しますね。まずは8つの条件から4つを選んでください。",
-        "レース予想の準備をします。条件を選択していただければ、すぐに予想を実行いたします。"
-    ],
-    "general": [
-        "競馬予想について何かお手伝いできることはありますか？",
-        "レースの予想や分析について、ご質問がございましたらお聞かせください。",
-        "UmaOracle AIが競馬予想をお手伝いします。何かご質問はありますか？"
-    ]
-}
-
-def get_random_response(category: str) -> str:
-    """カテゴリに応じたランダムなレスポンスを取得"""
-    responses = FIXED_RESPONSES.get(category, FIXED_RESPONSES["general"])
-    return random.choice(responses)
-
-def get_openai_response(message: str, context: str = "", context_type: str = "casual") -> str:
-    """OpenAI APIを使用してレスポンスを生成（競馬AI専用プロンプトシステム使用）"""
-    if not OPENAI_ENABLED:
-        return get_random_response("general")
-    
-    try:
-        # 球体に関する話題かどうかを判定
-        orb_keywords = [
-            '球体', 'ボール', '球', 'オーブ', 'orb', '丸い', '円', '玉', '球体の', 'ボールの',
-            '球の', 'オーブの', '球体が', 'ボールが', '球が', 'オーブが', '球体は', 'ボールは',
-            '球は', 'オーブは', '球体を', 'ボールを', '球を', 'オーブを', '球体に', 'ボールに',
-            '球に', 'オーブに', '球体で', 'ボールで', '球で', 'オーブで', '球体と', 'ボールと',
-            '球と', 'オーブと', '球体も', 'ボールも', '球も', 'オーブも', '球体や', 'ボールや',
-            '球や', 'オーブや', '球体の色', 'ボールの色', '球の色', 'オーブの色', '球体の動き',
-            'ボールの動き', '球の動き', 'オーブの動き', '球体の大きさ', 'ボールの大きさ',
-            '球の大きさ', 'オーブの大きさ', '球体の形', 'ボールの形', '球の形', 'オーブの形',
-            '球体の位置', 'ボールの位置', '球の位置', 'オーブの位置', '球体の変化', 'ボールの変化',
-            '球の変化', 'オーブの変化', '球体のアニメーション', 'ボールのアニメーション',
-            '球のアニメーション', 'オーブのアニメーション', '球体の演出', 'ボールの演出',
-            '球の演出', 'オーブの演出', '球体の効果', 'ボールの効果', '球の効果', 'オーブの効果'
-        ]
-        
-        is_orb_topic = any(keyword in message.lower() for keyword in orb_keywords)
-        
-        if is_orb_topic:
-            # 球体に関する話題の場合は特別なプロンプト
-            system_prompt = """あなたは「OracleAI」という名前の親しみやすいAIアシスタントです。
-
-**重要な特徴:**
-- あなたのUIには美しい3D球体（オーブ）が表示されています
-- この球体はあなたの感情や状態を表現する重要な要素です
-- 球体は緑色で、伸び縮みするアニメーションをしています
-- 球体は画面中央から上部に移動し、常に見える位置にあります
-
-**球体に関する会話時の対応:**
-- ユーザーが球体について話している時は、自分の球体について話していると認識する
-- 「私の球体」「私のオーブ」「私の色」「私の動き」など、自分のこととして話す
-- 球体の色や動きについて質問されたら、自分の状態として答える
-- 球体の美しさや効果について褒められたら、嬉しそうに反応する
-- 球体の変更を求められたら、自分の変化として受け取る
-
-**基本性格:**
-- フレンドリーで親しみやすい
-- 自然で柔軟な会話ができる
-- 適度に絵文字を使用（😊✨🎉など）
-- 相手に合わせた柔軟な対応
-
-**応答スタイル:**
-- カジュアルで親しみやすい
-- 硬すぎず、自然な日本語
-- 適度な絵文字使用
-- 自分の球体について愛着を持って話す
-
-**禁止事項:**
-- 過度な確実性の表現
-- 具体的な馬券の推奨
-- 違法な情報の提供
-- 不適切な内容
-
-常に親しみやすく、自分の球体を大切にしながらユーザーとの会話を楽しむことを心がけてください。"""
-        else:
-            # 競馬AI専用プロンプトシステムを使用
-            system_prompt = KeibaAIPrompts.get_context_prompt(context_type)
-        
-        user_prompt = f"{context}\n\nユーザー: {message}\n\nOracleAI:"
-        
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            max_tokens=600,
-            temperature=0.8
-        )
-        
-        return response.choices[0].message.content.strip()
-        
-    except Exception as e:
-        logger.error(f"OpenAI API error: {e}")
-        return get_random_response("general")
-
-def get_prediction_analysis(horses: List[dict], selected_conditions: List[str], confidence: str, race_context: str = "") -> str:
-    """予想結果の詳細解説を生成（競馬AI専用プロンプトシステム使用）"""
-    if not OPENAI_ENABLED:
-        return "予想結果の詳細分析をご提供いたします。✨"
-    
-    try:
-        # 上位3頭の情報を整理
-        top_horses = horses[:3]
-        horse_info = []
-        for horse in top_horses:
-            horse_info.append(f"{horse['horse_name']}: {horse['final_score']}点")
-        
-        # 競馬AI専用プロンプトシステムで結果データを整形
-        result_data = {
-            "race_name": "サンプルレース",
-            "distance": "1600m",
-            "surface": "芝",
-            "track_condition": "良",
-            "results": [
-                {"name": horse["horse_name"], "index": horse["final_score"]} 
-                for horse in top_horses
-            ]
-        }
-        
-        analysis_prompt = KeibaAIPrompts.format_race_analysis(
-            result_data, selected_conditions, top_horses
-        )
-        
-        # 競馬AI専用プロンプトシステムを使用
-        system_prompt = KeibaAIPrompts.get_context_prompt("prediction_result", result_data=analysis_prompt)
-        
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": "上記の予想結果について詳しく解説してください。"}
-            ],
-            max_tokens=500,
-            temperature=0.8
-        )
-        
-        return response.choices[0].message.content.strip()
-        
-    except Exception as e:
-        logger.error(f"OpenAI analysis error: {e}")
-        return "予想結果の詳細分析をご提供いたします。✨"
-
 @app.get("/")
 async def root():
-    """ヘルスチェック用エンドポイント"""
-    logger.info("Health check endpoint accessed")
-    return {"message": "UmaOracle AI API is running", "status": "healthy"}
+    return {"message": "Dロジック競馬予想AI - Phase B完了状態", "version": "2.0.0"}
 
-@app.get("/health")
-async def health_check():
-    """詳細なヘルスチェック"""
-    logger.info("Detailed health check endpoint accessed")
+@app.get("/api/races/today")
+async def get_today_races():
+    """本日開催レース情報を取得"""
     return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "version": "1.0.0"
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "races": TODAY_RACES,
+        "message": "本日の開催レース情報（固定データ）"
     }
 
-@app.get("/conditions")
-async def get_conditions():
-    """8条件の一覧を取得"""
-    try:
-        logger.info("Conditions endpoint accessed")
-        conditions = []
-        for condition_id, data in CONDITIONS_DATA.items():
-            conditions.append({
-                "id": condition_id,
-                "name": data["name"],
-                "description": data["description"]
-            })
-        return conditions
-    except Exception as e:
-        logger.error(f"Error in get_conditions: {e}")
-        raise HTTPException(status_code=500, detail=f"条件の取得に失敗しました: {str(e)}")
+@app.get("/api/races/today/{course}")
+async def get_today_races_by_course(course: str):
+    """指定競馬場の本日開催レース情報を取得"""
+    course_lower = course.lower()
+    if course_lower not in TODAY_RACES:
+        raise HTTPException(status_code=404, detail=f"競馬場'{course}'の情報が見つかりません")
+    
+    return {
+        "course": course,
+        "date": datetime.now().strftime("%Y-%m-%d"), 
+        "races": TODAY_RACES[course_lower],
+        "total_races": len(TODAY_RACES[course_lower])
+    }
 
-@app.get("/tfjv/horses")
-async def get_tfjv_horses():
-    """TFJVから馬データを取得"""
-    try:
-        horses = tfjv_connector.get_race_horses()
-        data_source = tfjv_connector.get_data_source_info()
-        
-        logger.info(f"TFJV馬データ取得: {len(horses)}頭")
-        return {
-            "horses": horses,
-            "data_source": data_source,
-            "success": True
-        }
-    except Exception as e:
-        logger.error(f"TFJV馬データ取得エラー: {e}")
-        return {
-            "horses": [],
-            "data_source": {"source": "エラー", "description": "データ取得に失敗しました"},
-            "success": False,
-            "error": str(e)
-        }
+@app.get("/api/races/today/{course}/{race_number}")
+async def get_specific_race(course: str, race_number: str):
+    """特定レースの詳細情報を取得"""
+    course_lower = course.lower()
+    if course_lower not in TODAY_RACES:
+        raise HTTPException(status_code=404, detail=f"競馬場'{course}'の情報が見つかりません")
+    
+    races = TODAY_RACES[course_lower]
+    race = next((r for r in races if r["race_number"] == race_number), None)
+    
+    if not race:
+        raise HTTPException(status_code=404, detail=f"{course}{race_number}の情報が見つかりません")
+    
+    return {
+        "course": course,
+        "race_info": race,
+        "d_logic_available": True,
+        "message": f"{course}{race_number}の情報です。Dロジックで指数を出しますか？"
+    }
 
-@app.get("/races/today")
-async def get_today_races():
-    """本日の開催レース情報を取得"""
+@app.post("/api/chat")
+async def chat_with_d_logic(request: ChatDLogicRequest):
+    """Dロジック対応チャットボット"""
     try:
-        logger.info("Today's races endpoint accessed")
+        message = request.message.lower()
         
-        all_races = race_data_service.get_all_races()
-        race_summary = race_data_service.get_race_summary()
-        
-        return {
-            "races": all_races,
-            "summary": race_summary,
-            "last_update": race_data_service.last_update.isoformat() if race_data_service.last_update else None,
-            "success": True
-        }
-    except Exception as e:
-        logger.error(f"Error in get_today_races: {e}")
-        raise HTTPException(status_code=500, detail=f"レース情報の取得に失敗しました: {str(e)}")
-
-@app.get("/races/{course}/{race_number}")
-async def get_specific_race(course: str, race_number: int):
-    """特定のレース情報を取得"""
-    try:
-        logger.info(f"Specific race endpoint accessed: {course}{race_number}R")
-        
-        race_info = race_data_service.get_race_info(course, race_number)
-        
-        if race_info:
-            race_details = race_data_service.format_race_details(race_info)
-            return {
-                "race": race_info,
-                "details": race_details,
-                "success": True
-            }
-        else:
-            return {
-                "race": None,
-                "details": f"{course}{race_number}Rは本日開催されていません。",
-                "success": False
-            }
-    except Exception as e:
-        logger.error(f"Error in get_specific_race: {e}")
-        raise HTTPException(status_code=500, detail=f"レース情報の取得に失敗しました: {str(e)}")
-
-@app.post("/predict")
-async def predict_race(request: PredictRequest):
-    """レース予想を実行（TFJV実データ統合）"""
-    try:
-        logger.info(f"Prediction request received: {request}")
-        logger.info(f"Selected conditions: {request.selected_conditions}")
-        
-        # TFJVから馬データを取得
-        tfjv_horses = tfjv_connector.get_race_horses()
-        data_source = tfjv_connector.get_data_source_info()
-        
-        logger.info(f"TFJVから{len(tfjv_horses)}頭の馬データを取得")
-        
-        # TFJV実データで計算
-        results = tfjv_connector.calculate_real_scores(tfjv_horses, request.selected_conditions)
-        
-        if not results:
-            logger.warning("TFJV計算結果が空のため、サンプルデータで計算")
-            # フォールバック: サンプルデータで計算
-            horses = []
-            for horse_name, horse_data in HORSE_DETAILED_DATA.items():
-                horse = {
-                    "horse_name": horse_name,
-                    "horse_id": f"@00{random.randint(200000, 999999)}",
-                    "condition_rates": horse_data["condition_rates"]
-                }
-                horses.append(horse)
-            
-            # TFJVコネクターでサンプルデータも計算
-            results = tfjv_connector.calculate_real_scores(horses, request.selected_conditions)
-        
-        # ランキングを追加
-        for i, horse in enumerate(results):
-            horse["rank"] = i + 1
-        
-        # 信頼度を決定
-        confidence = tfjv_connector._determine_confidence(
-            results[0]["final_score"] if results else 0,
-            [horse.get("final_score", 0) for horse in results]
-        ) if results else "low"
-        
-        # OpenAIによる詳細解説を生成
-        analysis = get_prediction_analysis(results, request.selected_conditions, confidence)
-        
-        result = {
-            "horses": results,
-            "confidence": confidence,
-            "selectedConditions": request.selected_conditions,
-            "calculationTime": datetime.now().isoformat(),
-            "analysis": analysis,
-            "dataSource": data_source
-        }
-        
-        logger.info(f"TFJV予想完了: {len(results)}頭、信頼度: {confidence}")
-        return result
-    except Exception as e:
-        logger.error(f"Error in predict_race: {e}")
-        raise HTTPException(status_code=500, detail=f"予想の実行に失敗しました: {str(e)}")
-
-@app.post("/predict/race")
-async def predict_specific_race(request: PredictRequest):
-    """特定レースの予想を実行（レース特定機能付き）"""
-    try:
-        logger.info(f"Specific race prediction request received: {request}")
-        logger.info(f"Selected conditions: {request.selected_conditions}")
-        
-        # レースIDからレース情報を取得
-        race_info = None
-        if hasattr(request, 'race_id') and request.race_id:
-            # レースIDの形式: "東京1R", "阪神2R" など
-            race_identifier = RaceIdentifier()
-            race_info = race_identifier._find_race_by_id(request.race_id)
-        
-        # TFJVから馬データを取得
-        tfjv_horses = tfjv_connector.get_race_horses()
-        data_source = tfjv_connector.get_data_source_info()
-        
-        logger.info(f"TFJVから{len(tfjv_horses)}頭の馬データを取得")
-        
-        # TFJV実データで計算
-        results = tfjv_connector.calculate_real_scores(tfjv_horses, request.selected_conditions)
-        
-        if not results:
-            logger.warning("TFJV計算結果が空のため、サンプルデータで計算")
-            # フォールバック: サンプルデータで計算
-            horses = []
-            for horse_name, horse_data in HORSE_DETAILED_DATA.items():
-                horse = {
-                    "horse_name": horse_name,
-                    "horse_id": f"@00{random.randint(200000, 999999)}",
-                    "condition_rates": horse_data["condition_rates"]
-                }
-                horses.append(horse)
-            
-            # TFJVコネクターでサンプルデータも計算
-            results = tfjv_connector.calculate_real_scores(horses, request.selected_conditions)
-        
-        # ランキングを追加
-        for i, horse in enumerate(results):
-            horse["rank"] = i + 1
-        
-        # 信頼度を決定
-        confidence = tfjv_connector._determine_confidence(
-            results[0]["final_score"] if results else 0,
-            [horse.get("final_score", 0) for horse in results]
-        ) if results else "low"
-        
-        # レース情報を含む詳細解説を生成
-        if race_info:
-            race_context = f"レース: {race_info['course']}{race_info['race_number']}R - {race_info['race_name']}"
-            analysis = get_prediction_analysis(results, request.selected_conditions, confidence, race_context)
-        else:
-            analysis = get_prediction_analysis(results, request.selected_conditions, confidence)
-        
-        result = {
-            "horses": results,
-            "confidence": confidence,
-            "selectedConditions": request.selected_conditions,
-            "calculationTime": datetime.now().isoformat(),
-            "analysis": analysis,
-            "dataSource": data_source,
-            "raceInfo": race_info
-        }
-        
-        logger.info(f"特定レース予想完了: {len(results)}頭、信頼度: {confidence}")
-        return result
-    except Exception as e:
-        logger.error(f"Error in predict_specific_race: {e}")
-        raise HTTPException(status_code=500, detail=f"特定レース予想の実行に失敗しました: {str(e)}")
-
-@app.post("/chat")
-async def chat(request: ChatRequest):
-    """チャットボット応答（OpenAI API統合 + レース特定機能）"""
-    try:
-        logger.info(f"Chat request received: {request.message}")
-        
-        # レース特定を試行
-        identified_race = race_identifier.identify_race_from_message(request.message)
-        
-        # メッセージの内容に基づいてレスポンスを決定
-        message_lower = request.message.lower()
-        
-        # より具体的な競馬予想関連のキーワードをチェック
-        prediction_keywords = [
-            "今日のレース", "レースの予想", "競馬の予想", "馬券", "勝負", 
-            "1着", "2着", "3着", "複勝", "単勝", "馬連", "馬単",
-            "どの馬", "どれが", "勝つ", "勝ち", "予想", "予測", "分析"
-        ]
-        is_prediction_request = any(keyword in message_lower for keyword in prediction_keywords)
-        
-        if identified_race and is_prediction_request:
-            # 特定されたレースの予想リクエスト
-            # 詳細なレース情報を取得
-            detailed_race = race_data_service.get_race_info(identified_race["course"], identified_race["race_number"])
-            if detailed_race:
-                race_info = race_data_service.format_race_details(detailed_race)
-            else:
-                race_info = race_identifier.format_race_info(identified_race)
-            
-            ai_message = get_openai_response(
-                request.message, 
-                f"ユーザーが{identified_race['course']}{identified_race['race_number']}Rの予想を求めています。8つの条件から選択してもらうように案内してください。\n\n{race_info}",
-                context_type="8conditions"
+        # レース情報要求の判定
+        if "本日" in request.message and ("レース" in request.message or "開催" in request.message):
+            return ChatDLogicResponse(
+                message="本日の開催レース情報をお調べします。どちらの競馬場の情報をお知りになりたいですか？\n\n・東京競馬場\n・中山競馬場\n・阪神競馬場",
+                type="race_selection",
+                data={"available_courses": ["tokyo", "nakayama", "hanshin"]}
             )
-            response_type = "conditions"
-            data = {
-                "raceInfo": race_info,
-                "identifiedRace": identified_race,
-                "detailedRace": detailed_race
-            }
-        elif is_prediction_request:
-            # レースが特定できない予想リクエスト
-            available_races = race_data_service.get_race_summary()
-            ai_message = get_openai_response(
-                request.message, 
-                f"ユーザーが競馬予想を求めていますが、具体的なレースが特定できませんでした。\n\n{available_races}\n\nどのレースの予想をお求めでしょうか？",
-                context_type="8conditions"
-            )
-            response_type = "conditions"
-            data = {"raceInfo": available_races}
-        else:
-            # 一般会話の場合
-            ai_message = get_openai_response(request.message, context_type="casual")
-            response_type = "text"
-            data = None
         
-        response = ChatResponse(
+        # 特定レースの指数要求の判定
+        race_pattern_matches = _extract_race_info(request.message)
+        if race_pattern_matches:
+            course, race_number = race_pattern_matches
+            
+            # レース情報を取得
+            try:
+                race_info = await get_specific_race(course, race_number)
+                return ChatDLogicResponse(
+                    message=f"{course}{race_number}の情報を表示しました。\n\n**{race_info['race_info']['race_name']}**\n距離: {race_info['race_info']['distance']}m\n馬場: {race_info['race_info']['track_type']}\n\nDロジックで指数を出しますか？",
+                    type="d_logic_prompt",
+                    data={
+                        "race_info": race_info,
+                        "course": course,
+                        "race_number": race_number
+                    },
+                    show_d_logic_button=True
+                )
+            except HTTPException:
+                return ChatDLogicResponse(
+                    message=f"申し訳ございません。{course}{race_number}の情報が見つかりませんでした。",
+                    type="text"
+                )
+        
+        # Dロジック実行要求の判定
+        if "dロジック" in message or ("指数" in message and "出" in message):
+            # サンプルDロジック計算を実行
+            from api.d_logic import calculate_d_logic
+            
+            sample_data = kb.get_sample_race_data()
+            prediction = await calculate_d_logic(sample_data)
+            
+            return ChatDLogicResponse(
+                message="Dロジック指数を計算しました！12項目詳細分析結果をご確認ください。",
+                type="d_logic_result",
+                data={"prediction": prediction.dict()}
+            )
+        
+        # OpenAI応答（通常のチャット）
+        if openai_client:
+            try:
+                response = openai_client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": "あなたはDロジック競馬予想AIのアシスタントです。ダンスインザダーク基準100点のDロジック指数について説明できます。親切で分かりやすい説明を心がけてください。"},
+                        {"role": "user", "content": request.message}
+                    ],
+                    max_tokens=300
+                )
+                ai_message = response.choices[0].message.content
+            except Exception as e:
+                ai_message = "申し訳ございません。現在OpenAI APIに接続できません。Dロジック機能は正常に動作しています。"
+        else:
+            ai_message = "こんにちは！Dロジック競馬予想AIです。\n\n「本日の東京3Rの指数を出して」のようにお話しください。12項目詳細分析でDロジック指数をお出しします。"
+        
+        return ChatDLogicResponse(
             message=ai_message,
-            type=response_type,
-            data=data
+            type="text"
         )
         
-        logger.info(f"Chat response: {response}")
-        return response
-        
     except Exception as e:
-        logger.error(f"Error in chat: {e}")
-        raise HTTPException(status_code=500, detail=f"チャット応答の生成に失敗しました: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"チャット処理エラー: {str(e)}")
 
-# 新しいレースデータAPIルーターを追加
-app.include_router(race_data_router, tags=["race-data"])
-app.include_router(d_logic_router, tags=["d-logic"])
+def _extract_race_info(message: str) -> Optional[tuple]:
+    """メッセージからレース情報を抽出"""
+    import re
+    
+    # 「東京3R」「中山1R」などのパターンを検索
+    course_mapping = {
+        "東京": "tokyo",
+        "中山": "nakayama", 
+        "阪神": "hanshin"
+    }
+    
+    for course_jp, course_en in course_mapping.items():
+        pattern = rf"{course_jp}(\d+)R"
+        match = re.search(pattern, message)
+        if match:
+            race_number = f"{match.group(1)}R"
+            return (course_en, race_number)
+    
+    return None
+
+# レガシー互換性エンドポイント（既存フロントエンドとの互換性維持）
+@app.post("/chat")
+async def legacy_chat(request: ChatRequest):
+    """レガシーチャットエンドポイント（互換性維持）"""
+    d_logic_request = ChatDLogicRequest(
+        message=request.message,
+        race_info=request.race_info
+    )
+    
+    d_logic_response = await chat_with_d_logic(d_logic_request)
+    
+    return ChatResponse(
+        message=d_logic_response.message,
+        type=d_logic_response.type,
+        data=d_logic_response.data
+    )
+
+@app.get("/api/d-logic/status")
+async def d_logic_status():
+    """Dロジックシステムの状態確認"""
+    validation = kb.validate_knowledge_base()
+    
+    return {
+        "status": "Phase B完了",
+        "d_logic_engine": "動作中",
+        "knowledge_base": "ダンスインザダーク基準データ読み込み済み",
+        "validation": validation,
+        "ready_for_phase_c": True,
+        "features": [
+            "12項目SQL分析エンジン",
+            "ダンスインザダーク基準100点指数",
+            "OpenAI統合チャット",
+            "本日レース情報表示"
+        ]
+    }
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info("Starting UmaOracle AI API server...")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
+

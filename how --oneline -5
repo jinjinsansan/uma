@@ -1,0 +1,10 @@
+[33mfddcc36[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Phase B完了: 多次元Dロジック指数システム本格実装 - SQL全活用・12項目評価・詳細分析・動作確認済み
+[33m1f9e296[m Phase A完了: Dロジック基盤整備完成 - 8条件削除・新API基盤・ナレッジベース・オーブアニメーション実装・動作確認済み
+[33mae1c6d4[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Phase 3実装完了: 新8条件ページと球体アニメーションシステム - 安全な独立実装方式でPhase 3を完成 - 新ファイル: RaceAnimatedOrb.tsx, RaceSpecificConditionSelector.tsx, useRaceOrbAnimation.ts - PastG1ExperiencePage.tsxに新8条件画面への遷移機能を追加 - 既存UIを一切変更せず、完全に独立したシステムとして実装 - 球体アニメーションの複製と新8条件ページでの統合
+[33m3e8788b[m Phase 2完了: レース選択機能とG1レース体験画面の実装完了
+[33m825538e[m[33m ([m[1;33mtag: [m[1;33mbackup-before-major-implementation[m[33m)[m Remove infinite console logs and simplify animations to color changes only
+[33mabff795[m Fix horizontal shake animation by removing scale conflict
+[33m86b8087[m Add debug logs to track animation execution path
+[33m70bf39c[m Fix prediction result animation: add horizontal shake with scale animation for 10 seconds
+[33m55250e6[m Add horizontal shake animation to prediction result: 10-second continuous movement with color change
+[33m9dcfca7[m Fix infinite loop in prediction result animation: use useRef instead of useState for isPredictionAnimationActive

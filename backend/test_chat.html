@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase C チャットテスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Phase C: 本日レース統合チャットテスト</h1>
+        
+        <div class="test-section">
+            <h2>メインテスト: 「本日の東京3Rの指数を出して」</h2>
+            <button onclick="testMainChat()">東京3R指数テスト実行</button>
+            <div id="mainResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>追加テスト: その他のパターン</h2>
+            <button onclick="testPattern1()">「東京3Rの指数教えて」</button>
+            <button onclick="testPattern2()">「3Rの指数を出して」</button>
+            <div id="patternResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>システム確認</h2>
+            <button onclick="checkStatus()">Dロジックシステム状態確認</button>
+            <div id="statusResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8001';
+        
+        async function testMainChat() {
+            const result = document.getElementById('mainResult');
+            result.textContent = 'テスト実行中...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: "本日の東京3Rの指数を出して",
+                        request_type: "d_logic"
+                    })
+                });
+                
+                const data = await response.json();
+                result.textContent = `ステータス: ${response.status}\n\n` + JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.textContent = `エラー: ${error.message}`;
+            }
+        }
+        
+        async function testPattern1() {
+            const result = document.getElementById('patternResult');
+            result.textContent = 'テスト実行中...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: "東京3Rの指数教えて",
+                        request_type: "d_logic"
+                    })
+                });
+                
+                const data = await response.json();
+                result.textContent = `ステータス: ${response.status}\n\n` + JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.textContent = `エラー: ${error.message}`;
+            }
+        }
+        
+        async function testPattern2() {
+            const result = document.getElementById('patternResult');
+            result.textContent = 'テスト実行中...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: "3Rの指数を出して",
+                        request_type: "d_logic"
+                    })
+                });
+                
+                const data = await response.json();
+                result.textContent = `ステータス: ${response.status}\n\n` + JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.textContent = `エラー: ${error.message}`;
+            }
+        }
+        
+        async function checkStatus() {
+            const result = document.getElementById('statusResult');
+            result.textContent = 'ステータス確認中...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/d-logic/status`);
+                const data = await response.json();
+                result.textContent = `ステータス: ${response.status}\n\n` + JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.textContent = `エラー: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

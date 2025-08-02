@@ -9,6 +9,7 @@ import json
 
 # Dロジック関連のインポート
 from api.d_logic import router as d_logic_router
+from api.today_races import router as today_races_router
 from models.d_logic_models import ChatDLogicRequest, ChatDLogicResponse
 from services.knowledge_base import KnowledgeBase
 
@@ -37,6 +38,7 @@ kb = KnowledgeBase()
 
 # Dロジックルーターを含める
 app.include_router(d_logic_router, prefix="/api/d-logic", tags=["D-Logic"])
+app.include_router(today_races_router, prefix="/api", tags=["Today-Races"])
 
 # 本日レース情報（Phase C用固定データ）
 TODAY_RACES = {
@@ -155,32 +157,69 @@ async def chat_with_d_logic(request: ChatDLogicRequest):
                 data={"available_courses": ["tokyo", "nakayama", "hanshin"]}
             )
         
-        # 特定レースの指数要求の判定
-        race_pattern_matches = _extract_race_info(request.message)
-        if race_pattern_matches:
-            course, race_number = race_pattern_matches
+        # レース情報抽出・Dロジック実行要求の判定
+        race_info = _extract_race_info(message)
+        if race_info and ("指数" in message or "dロジック" in message):
+            course_id, race_number = race_info
             
-            # レース情報を取得
+            # 本日レース詳細API経由でレース情報を取得
             try:
-                race_info = await get_specific_race(course, race_number)
+                from api.today_races import load_today_races_data
+                today_data = load_today_races_data()
+                
+                # 指定されたレースを検索
+                race_id = f"{course_id}_{race_number}r"
+                target_race = None
+                
+                for racecourse in today_data.get("racecourses", []):
+                    if racecourse.get("courseId") == course_id:
+                        for race in racecourse.get("races", []):
+                            if race.get("raceId") == race_id:
+                                target_race = race
+                                break
+                        break
+                
+                if target_race:
+                    # Dロジック計算を実行
+                    from api.d_logic import calculate_d_logic
+                    prediction = await calculate_d_logic(target_race)
+                    
+                    race_display_name = f"{racecourse.get('name', '競馬場')}{race_number}R {target_race.get('raceName', '')}"
+                    
+                    return ChatDLogicResponse(
+                        message=f"{race_display_name}のDロジック指数を計算しました！12項目詳細分析結果をご確認ください。",
+                        type="d_logic_result",
+                        data={
+                            "prediction": prediction.dict(),
+                            "race_info": {
+                                "raceName": race_display_name,
+                                "distance": target_race.get("distance", ""),
+                                "track": target_race.get("track", ""),
+                                "time": target_race.get("time", ""),
+                                "entryCount": target_race.get("entryCount", 0)
+                            }
+                        }
+                    )
+                else:
+                    return ChatDLogicResponse(
+                        message=f"申し訳ございません。{course_id.upper()}{race_number}Rのレース情報が見つかりませんでした。本日開催のレース情報をご確認ください。",
+                        type="error"
+                    )
+                    
+            except Exception as e:
+                # エラー時はサンプル計算にフォールバック
+                from api.d_logic import calculate_d_logic
+                sample_data = kb.get_sample_race_data()
+                prediction = await calculate_d_logic(sample_data)
+                
                 return ChatDLogicResponse(
-                    message=f"{course}{race_number}の情報を表示しました。\n\n**{race_info['race_info']['race_name']}**\n距離: {race_info['race_info']['distance']}m\n馬場: {race_info['race_info']['track_type']}\n\nDロジックで指数を出しますか？",
-                    type="d_logic_prompt",
-                    data={
-                        "race_info": race_info,
-                        "course": course,
-                        "race_number": race_number
-                    },
-                    show_d_logic_button=True
-                )
-            except HTTPException:
-                return ChatDLogicResponse(
-                    message=f"申し訳ございません。{course}{race_number}の情報が見つかりませんでした。",
-                    type="text"
+                    message="指定レースのデータ取得でエラーが発生しました。サンプルDロジック計算を表示します。",
+                    type="d_logic_result",
+                    data={"prediction": prediction.dict()}
                 )
         
-        # Dロジック実行要求の判定
-        if "dロジック" in message or ("指数" in message and "出" in message):
+        # 一般的なDロジック要求（レース指定なし）
+        elif "dロジック" in message or ("指数" in message and "出" in message):
             # サンプルDロジック計算を実行
             from api.d_logic import calculate_d_logic
             

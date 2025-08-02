@@ -23,12 +23,16 @@ const RaceSelectionHub: React.FC = () => {
 
   const checkTodayRaces = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/race-exists-today');
-      const data: RaceExistsResponse = await response.json();
-      setHasRacesToday(data.has_races);
+      // 新しい固定データAPIを使用
+      const response = await fetch('http://localhost:8000/api/today-races');
+      const data = await response.json();
+      
+      // 固定データが存在する場合は開催レースありとみなす
+      const hasRaces = data.success && data.data.racecourses.length > 0;
+      setHasRacesToday(hasRaces);
       
       // 開催レースがある場合は自動的に本日レースページに移動
-      if (data.has_races) {
+      if (hasRaces) {
         setCurrentView('today');
       }
     } catch (error) {

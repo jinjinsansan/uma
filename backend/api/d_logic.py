@@ -4,22 +4,24 @@ import json
 import os
 from datetime import datetime
 import random
+import asyncio
 
 from models.d_logic_models import (
     DLogicScore, HorseData, RaceConditions, 
     DLogicAnalysis, RacePrediction, 
     ChatDLogicRequest, ChatDLogicResponse
 )
-from services.knowledge_base import KnowledgeBase
+from services.integrated_d_logic_calculator import d_logic_calculator
+from services.enhanced_knowledge_base import enhanced_knowledge_base
 
 router = APIRouter()
-kb = KnowledgeBase()
 
 class DLogicEngine:
     """Dロジック12項目分析エンジン"""
     
     def __init__(self):
-        self.knowledge_base = kb
+        self.knowledge_base = enhanced_knowledge_base
+        self.calculator = d_logic_calculator
         
     def calculate_d_logic_score(self, horse: HorseData, race_conditions: RaceConditions) -> DLogicScore:
         """12項目のDロジックスコアを計算"""
@@ -355,4 +357,93 @@ async def get_sample_calculation():
         ]
     }
     
-    return await calculate_d_logic(sample_data) 
+    return await calculate_d_logic(sample_data)
+
+@router.post("/phase-d-analysis")
+async def phase_d_horse_analysis(request: Dict[str, Any]):
+    """Phase D最強馬分析API（直接MySQL分析）"""
+    try:
+        horse_name = request.get("horse_name", "")
+        if not horse_name:
+            raise HTTPException(status_code=400, detail="馬名が必要です")
+        
+        # Phase D統合計算エンジン初期化
+        await d_logic_calculator.initialize()
+        
+        # 馬データ作成
+        horse_data = {"horse_name": horse_name}
+        
+        # Phase D完全分析実行
+        result = d_logic_calculator.calculate_d_logic_score(horse_data)
+        
+        return {
+            "status": "success",
+            "horse_name": horse_name,
+            "analysis_result": result,
+            "phase_d_features": {
+                "database_scale": "959,620レコード・109,426頭・71年間",
+                "analysis_method": "ダンスインザダーク基準100点・12項目D-Logic",
+                "legendary_horses_database": len(enhanced_knowledge_base.get_legendary_horses()),
+                "calculation_engine": "Phase D統合分析エンジン"
+            },
+            "calculation_timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Phase D分析エラー: {str(e)}")
+
+@router.get("/legendary-horses")
+async def get_legendary_horses():
+    """伝説の最強馬一覧取得"""
+    try:
+        legendary_horses = enhanced_knowledge_base.get_legendary_horses()
+        winning_patterns = enhanced_knowledge_base.get_winning_patterns()
+        
+        # 最強馬TOP10取得
+        high_performers = winning_patterns.get("high_performers", [])[:10]
+        
+        return {
+            "status": "success",
+            "legendary_horses_count": len(legendary_horses),
+            "top_10_horses": high_performers,
+            "winning_patterns": {
+                "distance_specialists": len(winning_patterns.get("distance_specialists", [])),
+                "versatile_champions": len(winning_patterns.get("versatile_champions", [])),
+                "bloodline_excellence": len(winning_patterns.get("bloodline_excellence", []))
+            },
+            "database_info": {
+                "total_records": 959620,
+                "total_horses": 109426,
+                "data_span_years": 71,
+                "analysis_method": "ダンスインザダーク基準100点・12項目D-Logic"
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"伝説馬取得エラー: {str(e)}")
+
+@router.get("/knowledge-base-status")
+async def get_knowledge_base_status():
+    """Phase Dナレッジベース状態確認"""
+    try:
+        llm_context = enhanced_knowledge_base.get_llm_context()
+        
+        return {
+            "status": "active",
+            "phase_d_integration": "完了",
+            "database_summary": llm_context.get("database_summary", ""),
+            "analysis_method": llm_context.get("analysis_method", ""),
+            "top_legendary_horses_count": len(llm_context.get("top_legendary_horses", [])),
+            "winning_patterns_summary": llm_context.get("winning_patterns_summary", {}),
+            "prediction_accuracy": llm_context.get("prediction_accuracy", {}),
+            "last_updated": llm_context.get("last_updated", ""),
+            "integration_features": {
+                "mysql_engine": "統合済み",
+                "knowledge_base": "Phase D強化版",
+                "llm_context": "最強馬データ注入済み",
+                "calculation_engine": "瞬時D-Logic判定対応"
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"ナレッジベース状態取得エラー: {str(e)}") 

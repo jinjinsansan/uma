@@ -3,6 +3,7 @@ import logging
 from typing import Dict, Any, List
 from fastapi import HTTPException
 from config import OPENAI_API_KEY, OPENAI_MODEL, DEBUG
+from services.enhanced_knowledge_base import enhanced_knowledge_base
 
 logger = logging.getLogger(__name__)
 
@@ -84,34 +85,62 @@ Dロジック分析結果: {d_logic_result if d_logic_result else '未計算'}
             return "レース分析を生成中です。Dロジック指数の計算結果と合わせて詳細な分析をお届けします。"
     
     async def generate_d_logic_explanation(self, d_logic_result: Dict[str, Any]) -> str:
-        """Dロジック結果の自然言語説明を生成"""
+        """Dロジック結果の自然言語説明を生成（Phase D最強馬ナレッジベース活用）"""
         try:
-            system_prompt = """あなたは競馬予想の専門家です。Dロジック指数の結果を、一般の競馬ファンにも分かりやすく説明してください。
+            # Phase D ナレッジベースコンテキスト取得
+            knowledge_context = enhanced_knowledge_base.get_context_for_llm_prompt()
+            
+            system_prompt = f"""あなたは競馬予想の専門家です。以下のPhase D最強馬ナレッジベースを活用して、Dロジック指数の結果を分かりやすく説明してください。
+
+{knowledge_context}
 
 説明のポイント：
-- 総合指数の意味
-- 上位馬の特徴
-- 各カテゴリ（基本能力、環境適応、人的要因、血統・体質、競走スタイル）の評価
-- 予想の根拠
+- 総合指数の意味（ダンスインザダーク基準100点）
+- 上位馬の特徴と類似する伝説馬との比較
+- 12項目D-Logic分析結果の詳細解説
+- Phase D分析による科学的根拠
+- 予想の信頼度と的中可能性
 
-専門用語は避け、親しみやすい表現でお願いします。"""
+959,620レコード・109,426頭・71年間の日本競馬史上最大規模データベースから導出された結果であることを強調してください。"""
 
-            # Dロジック結果を自然言語に変換
+            # Dロジック結果を詳細分析
             horses_info = ""
+            legendary_comparison = ""
+            
             if 'horses' in d_logic_result:
+                legendary_horses = enhanced_knowledge_base.get_legendary_horses()
+                
                 for i, horse in enumerate(d_logic_result['horses'][:3]):  # 上位3頭
-                    horses_info += f"\n{i+1}位: {horse.get('horse_name', '不明')} - 指数{horse.get('d_logic_score', 0):.1f}点"
+                    horse_name = horse.get('horse_name', '不明')
+                    score = horse.get('total_score', 0)
+                    grade = horse.get('grade', '')
+                    analysis_source = horse.get('analysis_source', '')
+                    
+                    horses_info += f"\n{i+1}位: {horse_name} - 指数{score:.1f}点 ({grade})"
+                    horses_info += f"\n    分析元: {analysis_source}"
+                    
+                    # 伝説馬との比較
+                    if horse_name in legendary_horses:
+                        legendary_data = legendary_horses[horse_name]
+                        specialties = horse.get('specialties', [])
+                        win_rate = horse.get('horse_stats', {}).get('win_rate', 0)
+                        
+                        legendary_comparison += f"\n📊 {horse_name}は伝説の最強馬データベースに収録済み（勝率{win_rate:.1f}%）"
+                        if specialties:
+                            legendary_comparison += f"\n   特徴: {', '.join(specialties[:2])}"
 
             user_message = f"""
-Dロジック分析結果：
-- 計算方法: {d_logic_result.get('calculation_method', '多次元Dロジック計算')}
+Phase D完全分析結果：
+- 分析規模: {d_logic_result.get('sql_data_utilization', '959,620レコード・109,426頭・71年間')}
+- 計算方法: {d_logic_result.get('calculation_method', 'ダンスインザダーク基準100点・12項目D-Logic')}
 - 基準馬: {d_logic_result.get('base_horse', 'ダンスインザダーク')}
 - 基準スコア: {d_logic_result.get('base_score', 100)}点
-- 評価項目: {d_logic_result.get('sql_data_utilization', '12項目の多角的評価')}
 
-上位馬の指数{horses_info}
+上位馬の詳細指数{horses_info}
 
-この結果を分かりやすく説明してください。
+伝説馬との比較{legendary_comparison}
+
+この結果を、Phase D最強馬ナレッジベースと照らし合わせて詳しく解説してください。
 """
 
             messages = [

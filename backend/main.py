@@ -10,6 +10,7 @@ import json
 # Dロジック関連のインポート
 from api.d_logic import router as d_logic_router
 from api.today_races import router as today_races_router
+from api.chat import router as chat_router
 from models.d_logic_models import ChatDLogicRequest, ChatDLogicResponse
 from services.knowledge_base import KnowledgeBase
 
@@ -36,9 +37,10 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI
 # ナレッジベース初期化
 kb = KnowledgeBase()
 
-# Dロジックルーターを含める
+# ルーターを含める
 app.include_router(d_logic_router, prefix="/api/d-logic", tags=["D-Logic"])
 app.include_router(today_races_router, prefix="/api", tags=["Today-Races"])
+app.include_router(chat_router, tags=["Chat"])
 
 # 本日レース情報（Phase C用固定データ）
 TODAY_RACES = {

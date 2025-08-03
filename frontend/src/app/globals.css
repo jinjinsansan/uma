@@ -2,64 +2,290 @@
 @tailwind components;
 @tailwind utilities;
 
+/* D-Logic Theme - 黒×金デザインシステム */
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 255, 255, 255;
+  /* Color Palette */
+  --bg-main: #0a0a0a;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #2a2a2a;
+  --gold-primary: #ffd700;
+  --gold-secondary: #ffed4e;
+  --gold-accent: #b8860b;
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --text-accent: #ff4444;
+  --border-primary: #333333;
+  --shadow-gold: 0 0 20px rgba(255, 215, 0, 0.3);
+  --shadow-gold-strong: 0 0 30px rgba(255, 215, 0, 0.6);
+  
+  /* Loading Colors (15段階) */
+  --loading-1: #330000;
+  --loading-2: #440000;
+  --loading-3: #550000;
+  --loading-4: #663300;
+  --loading-5: #774400;
+  --loading-6: #885500;
+  --loading-7: #996600;
+  --loading-8: #aa7700;
+  --loading-9: #bb8800;
+  --loading-10: #cc9900;
+  --loading-11: #ddaa00;
+  --loading-12: #eebb00;
+  --loading-13: #ffcc00;
+  --loading-14: #ffdd00;
+  --loading-15: #ffed4e;
 }
 
-/* 完全に白い背景を保証 */
-html, body {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
-}
-
+/* Base Styles */
 * {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
+html,
 body {
-  color: rgb(var(--foreground-rgb));
-  background: #ffffff !important;
-  background-color: #ffffff !important;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: 'Noto Sans JP', sans-serif;
+  overflow-x: hidden;
   min-height: 100vh;
 }
 
-/* モバイルでも完全に白い背景を保証 */
-@media (max-width: 768px) {
-  html, body {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
+/* D-Logic Branding */
+.d-logo {
+  font-size: 8rem;
+  font-weight: 900;
+  color: var(--gold-primary);
+  text-shadow: var(--shadow-gold-strong);
+  font-family: 'Arial Black', sans-serif;
+}
+
+.d-logo-small {
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--gold-primary);
+  text-shadow: var(--shadow-gold);
+  font-family: 'Arial Black', sans-serif;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
   }
-  
-  body {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-  }
-  
-  main {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@media (max-width: 480px) {
-  html, body {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
+@keyframes zoomRotate {
+  0% {
+    transform: scale(0.1) rotate(-180deg);
+    opacity: 0;
   }
-  
-  body {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
+  50% {
+    opacity: 1;
   }
-  
-  main {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
   }
 }
 
-/* 3D球体スタイル */
+@keyframes pulseGold {
+  0%, 100% {
+    text-shadow: var(--shadow-gold);
+  }
+  50% {
+    text-shadow: var(--shadow-gold-strong);
+  }
+}
+
+@keyframes loadingColorChange {
+  0% { color: var(--loading-1); }
+  6.67% { color: var(--loading-2); }
+  13.33% { color: var(--loading-3); }
+  20% { color: var(--loading-4); }
+  26.67% { color: var(--loading-5); }
+  33.33% { color: var(--loading-6); }
+  40% { color: var(--loading-7); }
+  46.67% { color: var(--loading-8); }
+  53.33% { color: var(--loading-9); }
+  60% { color: var(--loading-10); }
+  66.67% { color: var(--loading-11); }
+  73.33% { color: var(--loading-12); }
+  80% { color: var(--loading-13); }
+  86.67% { color: var(--loading-14); }
+  93.33% { color: var(--loading-15); }
+  100% { color: var(--gold-primary); }
+}
+
+@keyframes intense-flash {
+  0% {
+    opacity: 1;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 1);
+  }
+  25% {
+    opacity: 0.1;
+    text-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 40px rgba(255, 215, 0, 1);
+  }
+  75% {
+    opacity: 0.2;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  }
+  100% {
+    opacity: 1;
+    text-shadow: 0 0 30px rgba(255, 215, 0, 1);
+  }
+}
+
+@keyframes gentle-pulse {
+  0% {
+    opacity: 1;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+  }
+  50% {
+    opacity: 0.7;
+    text-shadow: 0 0 30px rgba(255, 215, 0, 1);
+  }
+  100% {
+    opacity: 1;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+  }
+}
+
+/* Animation Classes */
+.fade-in-up {
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.zoom-rotate {
+  animation: zoomRotate 3s ease-out;
+}
+
+.pulse-gold {
+  animation: pulseGold 2s infinite;
+}
+
+.loading-color-change {
+  animation: loadingColorChange 3s ease-in-out infinite;
+}
+
+.animate-intense-flash {
+  animation: intense-flash 0.3s infinite;
+}
+
+.animate-gentle-pulse {
+  animation: gentle-pulse 2s ease-in-out infinite;
+}
+
+/* Custom Components */
+.glass-effect {
+  background: rgba(26, 26, 26, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-primary);
+}
+
+.gold-button {
+  background: linear-gradient(45deg, var(--gold-accent), var(--gold-primary));
+  color: var(--bg-main);
+  font-weight: 700;
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.gold-button:hover {
+  background: linear-gradient(45deg, var(--gold-primary), var(--gold-secondary));
+  box-shadow: var(--shadow-gold);
+  transform: translateY(-2px);
+}
+
+.outline-button {
+  background: transparent;
+  color: var(--gold-primary);
+  border: 2px solid var(--gold-primary);
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+  font-weight: 600;
+}
+
+.outline-button:hover {
+  background: var(--gold-primary);
+  color: var(--bg-main);
+  box-shadow: var(--shadow-gold);
+}
+
+/* Race Table Styles */
+.race-table {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-primary);
+}
+
+.race-table th {
+  background: var(--bg-tertiary);
+  color: var(--gold-primary);
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.race-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.race-table tr:hover {
+  background: rgba(255, 215, 0, 0.1);
+}
+
+/* Loading Spinner */
+.loading-d {
+  display: inline-block;
+  font-size: 4rem;
+  font-weight: 900;
+  font-family: 'Arial Black', sans-serif;
+  animation: loadingColorChange 3s ease-in-out infinite;
+}
+
+/* Utilities */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.section-padding {
+  padding: 80px 0;
+}
+
+.text-gradient {
+  background: linear-gradient(45deg, var(--gold-primary), var(--gold-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 3D球体スタイル (既存のOrb用) */
 .orb-container {
   width: 150px;
   height: 150px;
@@ -296,20 +522,35 @@ body {
   }
 }
 
+/* Responsive */
+@media (max-width: 768px) {
+  .d-logo {
+    font-size: 4rem;
+  }
+  
+  .container {
+    padding: 0 16px;
+  }
+  
+  .section-padding {
+    padding: 40px 0;
+  }
+}
+
 /* スクロールバーカスタマイズ */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--bg-secondary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--gold-accent);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--gold-primary);
 }

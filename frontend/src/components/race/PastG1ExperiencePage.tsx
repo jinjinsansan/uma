@@ -65,7 +65,6 @@ const PastG1ExperiencePage: React.FC = () => {
     if (selectedRace) {
       setSelectedRace(selectedRace);
       // TODO: Dロジック体験画面に遷移
-      console.log('Dロジック体験開始:', selectedRace);
     }
   };
 

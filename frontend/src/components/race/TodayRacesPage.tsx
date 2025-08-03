@@ -124,7 +124,7 @@ export default function TodayRacesPage({ onRaceSelect }: TodayRacesPageProps) {
                                 {race.raceName}
                               </h3>
                               <p className="text-sm text-gray-600">
-                                {race.distance} • {race.horses.length}頭
+                                {race.distance} • {race.horses?.length || 0}頭
                               </p>
                             </div>
                           </div>
@@ -143,12 +143,12 @@ export default function TodayRacesPage({ onRaceSelect }: TodayRacesPageProps) {
                       <div className="mt-3 pt-3 border-t border-gray-100">
                         <p className="text-sm text-gray-600 mb-2">出走馬:</p>
                         <div className="flex flex-wrap gap-2">
-                          {race.horses.map((horse, horseIndex) => (
+                          {race.horses?.map((horse, horseIndex) => (
                             <span
                               key={horseIndex}
                               className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs"
                             >
-                              {horse}
+                              {typeof horse === 'string' ? horse : horse.name}
                             </span>
                           ))}
                         </div>

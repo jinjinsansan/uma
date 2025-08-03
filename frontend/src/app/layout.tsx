@@ -9,8 +9,8 @@ const notoSansJP = Noto_Sans_JP({
 })
 
 export const metadata: Metadata = {
-  title: 'UmaOracle AI - 競馬予想AI',
-  description: 'JRAの過去データ + 独自計算式 + LLMを組み合わせた競馬予想AIチャットボット',
+  title: 'D-Logic AI - 革命的競馬予想システム',
+  description: '959,620レコードの膨大なデータとAI技術を融合した次世代D-Logic分析エンジン。ダンスインザダーク基準100点による科学的で客観的な12項目評価システム。',
 }
 
 export default function RootLayout({

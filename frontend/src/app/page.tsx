@@ -1,15 +1,7 @@
 'use client';
 
-import ChatInterface from '../components/chat/ChatInterface';
-import StarParticles from '../components/animation/StarParticles';
-import GradientBackground from '../components/animation/GradientBackground';
+import V0TopPageFixed from '../components/pages/V0TopPageFixed';
 
 export default function Home() {
-  return (
-    <main className="min-h-screen relative overflow-hidden" style={{ backgroundColor: '#ffffff' }}>
-      <GradientBackground />
-      <StarParticles />
-      <ChatInterface />
-    </main>
-  );
+  return <V0TopPageFixed />;
 }

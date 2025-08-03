@@ -1,13 +1,79 @@
 from fastapi import APIRouter, HTTPException
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import logging
+import re
 from services.openai_service import openai_service
 from services.today_race_fetcher import today_race_fetcher
 from services.integrated_d_logic_calculator import d_logic_calculator
+from services.dlogic_raw_data_manager import dlogic_manager
+from services.fast_dlogic_engine import FastDLogicEngine
 
 router = APIRouter(prefix="/api/chat", tags=["Chat"])
 
 logger = logging.getLogger(__name__)
+
+def extract_horse_name(text: str) -> Optional[str]:
+    """テキストから馬名を抽出"""
+    # 一般的な挨拶や質問は除外
+    general_patterns = [
+        "おはよう", "こんにちは", "こんばんは", "お疲れ", "ありがとう",
+        "あなた", "だれ", "誰", "何", "どう", "です", "ます", "でしょう"
+    ]
+    
+    # 一般的なパターンが含まれている場合は馬名とみなさない
+    lower_text = text.lower()
+    for pattern in general_patterns:
+        if pattern in lower_text:
+            return None
+    
+    # 馬名を示すキーワードがある場合のみ抽出
+    horse_indicators = ["の指数", "の分析", "について", "を分析", "の成績", "のスコア", "はどう"]
+    has_indicator = any(indicator in text for indicator in horse_indicators)
+    
+    # カタカナの馬名パターン（3文字以上）
+    katakana_pattern = r'[ァ-ヴー]{3,}'
+    matches = re.findall(katakana_pattern, text)
+    
+    # インジケーターがあるか、長いカタカナ文字列（5文字以上）がある場合のみ馬名とする
+    if matches:
+        longest_match = max(matches, key=len)
+        if has_indicator or len(longest_match) >= 5:
+            return longest_match
+    
+    return None
+
+async def get_horse_d_logic_analysis(horse_name: str) -> Dict[str, Any]:
+    """馬のD-Logic分析結果を取得"""
+    try:
+        # FastDLogicEngineを使用
+        fast_engine = FastDLogicEngine()
+        result = fast_engine.analyze_single_horse(horse_name)
+        
+        # FastDLogicEngineが正常な結果を返したかチェック（errorフィールドがなく、total_scoreがある場合）
+        if result and "error" not in result and "total_score" in result:
+            return {
+                "status": "success",
+                "calculation_method": "Phase D統合・独自基準100点・12項目D-Logic",
+                "horses": [{
+                    "name": horse_name,
+                    "total_score": result.get("total_score", 0),
+                    "grade": result.get("grade", "未評価"),
+                    "detailed_scores": result.get("d_logic_scores", {}),
+                    "analysis_source": result.get("data_source", "高速分析エンジン")
+                }]
+            }
+        else:
+            return {
+                "status": "error", 
+                "message": "分析結果が取得できませんでした"
+            }
+        
+    except Exception as e:
+        logger.error(f"D-Logic analysis error for {horse_name}: {e}")
+        return {
+            "status": "error",
+            "message": f"分析エラーが発生しました: {str(e)}"
+        }
 
 @router.post("/message")
 async def chat_message(request: Dict[str, Any]):
@@ -18,22 +84,133 @@ async def chat_message(request: Dict[str, Any]):
         
         logger.info(f"Chat message received: {user_message}")
         
-        # 馬名直接入力を最優先でチェック
+        # 馬名が含まれているかチェック
         horse_name = extract_horse_name(user_message)
+        
+        # D-Logic分析結果を準備（馬名がある場合）
+        d_logic_result = None
         if horse_name:
-            return await handle_horse_analysis_message(user_message, horse_name, chat_history)
+            d_logic_result = await get_horse_d_logic_analysis(horse_name)
         
-        # レース関連のキーワードをチェック
-        if any(keyword in user_message for keyword in ["Dロジック", "レース", "東京", "京都", "阪神"]):
-            return await handle_race_related_message(user_message, chat_history)
+        # OpenAI APIで自然な応答を生成
+        system_prompt = """あなたはD-Logic AI、競馬予想の専門家です。
+D-Logicは12項目の科学的指標で競走馬を評価する独自開発のシステムです。
+
+**重要**: 馬名が含まれる質問の場合、D-Logic分析結果が提供されたら、必ず以下の形式で詳細な12項目スコアを明記してください：
+
+🐎 [馬名] のD-Logic分析結果
+
+【総合評価】[X.X]点 - [ランク]
+
+📊 12項目詳細スコア（D-Logic基準100点満点）
+1. 距離適性: [X.X]点
+2. 血統評価: [X.X]点
+3. 騎手相性: [X.X]点
+4. 調教師評価: [X.X]点
+5. トラック適性: [X.X]点
+6. 天候適性: [X.X]点
+7. 人気度要因: [X.X]点
+8. 重量影響: [X.X]点
+9. 馬体重影響: [X.X]点
+10. コーナー専門度: [X.X]点
+11. 着差分析: [X.X]点
+12. タイム指数: [X.X]点
+
+その後に、スコアの特徴や強みについて解説してください。
+
+**絶対禁止事項**: 
+- 基準馬名やベースライン馬の名前を絶対に言及しない
+- 計算方法の詳細を説明しない
+- 内部アルゴリズムについて言及しない
+
+D-Logic 12項目説明：
+1. 距離適性 - 各距離での成績分析
+2. 血統評価 - 父系・母系の実績
+3. 騎手相性 - 騎手との組み合わせ
+4. 調教師評価 - 調教師の手腕
+5. トラック適性 - コース毎の得意度
+6. 天候適性 - 馬場状態対応力
+7. 人気度要因 - オッズとの相関
+8. 重量影響 - 斤量による影響
+9. 馬体重影響 - 体重変化の影響
+10. コーナー専門度 - 位置取りの巧さ
+11. 着差分析 - 勝負強さ
+12. タイム指数 - 絶対的なスピード
+
+データベース：959,620レコード、109,426頭、82,738レース、71年間の蓄積データ"""
+
+        # メッセージ履歴を構築
+        messages = [{"role": "system", "content": system_prompt}]
         
-        return await handle_general_message(user_message, chat_history)
+        # 過去の会話履歴を追加
+        for msg in chat_history[-10:]:  # 最新10件まで
+            messages.append({
+                "role": msg.get("role", "user"),
+                "content": msg.get("content", "")
+            })
+        
+        # 現在のメッセージを追加（D-Logic結果がある場合は含める）
+        current_message = user_message
+        if d_logic_result and d_logic_result.get("status") == "success":
+            horses = d_logic_result.get("horses", [])
+            if horses:
+                horse_data = horses[0]
+                detailed_scores = horse_data.get('detailed_scores', {})
+                
+                current_message += f"\n\n【D-Logic分析結果データ】\n"
+                current_message += f"馬名: {horse_data.get('name', horse_name)}\n"
+                current_message += f"総合評価: {horse_data.get('total_score', 0):.2f}点\n"
+                current_message += f"ランク: {horse_data.get('grade', '未評価')}\n"
+                current_message += f"分析ソース: {horse_data.get('analysis_source', '不明')}\n\n"
+                
+                current_message += "12項目詳細スコア:\n"
+                score_mapping = {
+                    "1_distance_aptitude": "1. 距離適性",
+                    "2_bloodline_evaluation": "2. 血統評価", 
+                    "3_jockey_compatibility": "3. 騎手相性",
+                    "4_trainer_evaluation": "4. 調教師評価",
+                    "5_track_aptitude": "5. トラック適性",
+                    "6_weather_aptitude": "6. 天候適性",
+                    "7_popularity_factor": "7. 人気度要因",
+                    "8_weight_impact": "8. 重量影響",
+                    "9_horse_weight_impact": "9. 馬体重影響",
+                    "10_corner_specialist_degree": "10. コーナー専門度",
+                    "11_margin_analysis": "11. 着差分析",
+                    "12_time_index": "12. タイム指数"
+                }
+                
+                for key, label in score_mapping.items():
+                    score = detailed_scores.get(key, 0)
+                    current_message += f"{label}: {score:.2f}点\n"
+                
+                current_message += f"\n上記のデータを使って、必ず指定された形式で12項目すべてのスコアを明記した応答を生成してください。"
+        
+        messages.append({"role": "user", "content": current_message})
+        
+        # OpenAI APIで応答生成
+        ai_response = await openai_service.chat_completion(messages)
+        
+        # レスポンスを構築
+        response_data = {
+            "status": "success",
+            "message": ai_response,
+            "has_d_logic": bool(d_logic_result),
+            "analysis_type": "openai_chat"
+        }
+        
+        # D-Logic結果がある場合は追加
+        if d_logic_result:
+            response_data["horse_name"] = horse_name
+            response_data["d_logic_result"] = d_logic_result
+        
+        return response_data
             
     except Exception as e:
         logger.error(f"Chat message processing error: {e}")
         raise HTTPException(status_code=500, detail="チャット処理中にエラーが発生しました")
 
-async def handle_race_related_message(user_message: str, chat_history: List[Dict[str, str]]) -> Dict[str, Any]:
+# 以下は旧実装（現在未使用）
+async def handle_race_related_message_legacy(user_message: str, chat_history: List[Dict[str, str]]) -> Dict[str, Any]:
     """レース関連メッセージの処理"""
     try:
         # レース検索

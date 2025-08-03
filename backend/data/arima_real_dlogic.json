@@ -1,0 +1,521 @@
+{
+  "race": "有馬記念",
+  "year": 2024,
+  "date": "2024-12-22",
+  "horses": [
+    {
+      "name": "レガレイラ",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "ダノンデサイル",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "アーバンシック",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "ベラジオオペラ",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "ドウデュース",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "ジャスティンパレス",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "シャフリヤール",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "ローシャムパーク",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "スターズオンアース",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "プログノーシス",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "ブローザホーン",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "ディープボンド",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "シュトルーヴェ",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "スタニングローズ",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "ダノンベルーガ",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    },
+    {
+      "name": "ハヤヤッコ",
+      "dLogicScore": 46,
+      "analysis": {
+        "total_score": 46.8,
+        "grade": "D (要改善)",
+        "detailed_scores": {
+          "距離適性": 40.0,
+          "血統評価": 43.0,
+          "騎手相性": 38.0,
+          "調教師評価": 40.0,
+          "馬場適性": 50.0,
+          "天候適性": 50.0,
+          "人気度": 50.0,
+          "斤量影響": 50.0,
+          "馬体重影響": 50.0,
+          "コーナー巧者度": 50.0,
+          "着差分析": 50.0,
+          "タイム指数": 50.0
+        },
+        "analysis_source": "簡易計算 (データ不足)",
+        "horse_stats": {
+          "total_races": 0,
+          "wins": 0,
+          "win_rate": 0,
+          "career_span": "データなし"
+        },
+        "confidence_level": "低 (簡易推定)",
+        "calculation_method": "基本データからの推定計算",
+        "specialties": []
+      }
+    }
+  ],
+  "total_horses": 16,
+  "analysis_completed": true
+}

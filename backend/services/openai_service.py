@@ -26,7 +26,8 @@ class OpenAIService:
             from openai import OpenAI
             client = OpenAI(api_key=self.api_key)
             
-            response = await client.chat.completions.acreate(
+            # 同期版のAPIを使用（asyncがない場合）
+            response = client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 max_tokens=500,

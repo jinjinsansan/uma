@@ -1,0 +1,2916 @@
+{
+  "reference_horse": {
+    "name": "ダンスインザダーク",
+    "base_score": 100,
+    "description": "Dロジック指数の基準馬（内部基準のため、ユーザーには表示しない）"
+  },
+  "scoring_weights": {
+    "distance_aptitude": 0.12,
+    "bloodline_evaluation": 0.1,
+    "jockey_compatibility": 0.08,
+    "trainer_evaluation": 0.08,
+    "track_aptitude": 0.1,
+    "weather_aptitude": 0.06,
+    "popularity_factor": 0.08,
+    "weight_impact": 0.08,
+    "horse_weight_impact": 0.08,
+    "corner_specialist": 0.08,
+    "margin_analysis": 0.08,
+    "time_index": 0.06
+  },
+  "reference_data": {
+    "distance_aptitude": {
+      "1400m": 75,
+      "1600m": 85,
+      "1800m": 95,
+      "2000m": 100,
+      "2200m": 90,
+      "2400m": 85
+    },
+    "bloodline_evaluation": {
+      "sunday_silence_line": 95,
+      "northern_dancer_line": 90,
+      "storm_cat_line": 85,
+      "other": 70
+    },
+    "jockey_compatibility": {
+      "top_jockey": 95,
+      "experienced_jockey": 85,
+      "average_jockey": 75,
+      "rookie_jockey": 65
+    },
+    "trainer_evaluation": {
+      "top_trainer": 90,
+      "experienced_trainer": 80,
+      "average_trainer": 70,
+      "new_trainer": 60
+    },
+    "track_aptitude": {
+      "turf_good": 100,
+      "turf_soft": 85,
+      "turf_heavy": 70,
+      "dirt_good": 80,
+      "dirt_soft": 75,
+      "dirt_heavy": 70
+    },
+    "weather_aptitude": {
+      "sunny": 100,
+      "cloudy": 95,
+      "light_rain": 85,
+      "heavy_rain": 75
+    }
+  },
+  "calculation_parameters": {
+    "confidence_thresholds": {
+      "high": 85,
+      "medium": 70,
+      "low": 0
+    },
+    "score_normalization": {
+      "min_score": 0,
+      "max_score": 100,
+      "baseline": 70
+    }
+  },
+  "display_settings": {
+    "user_facing_name": "Dロジック",
+    "hide_reference_horse": true,
+    "show_total_score_only": false,
+    "decimal_places": 1
+  },
+  "phase_d_data": {
+    "legendary_horses": {
+      "ブライアンズロマン": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 83.54797979797979,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 97.0,
+          "4_trainer_evaluation": 94.09836065573771,
+          "5_track_aptitude": 70.62068965517241,
+          "6_weather_aptitude": 73.4,
+          "7_popularity_factor": 2.107728337236534,
+          "8_weight_impact": 75.76229508196721,
+          "9_horse_weight_impact": 90.99590163934427,
+          "10_corner_specialist_degree": 35,
+          "11_margin_analysis": 95.57377049180327,
+          "12_time_index": 52.42213114754098
+        },
+        "dance_in_the_dark_total_score": 73.62027847165876,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 61,
+          "wins": 42,
+          "win_rate": 0.6885245901639344,
+          "finish_distribution": {
+            "1": 42,
+            "2": 11,
+            "3": 2,
+            "8": 1,
+            "6": 1,
+            "4": 2,
+            "7": 2
+          },
+          "career_span": {
+            "debut": "19931208",
+            "last_race": "20001031",
+            "span": "19931208 ～ 20001031"
+          }
+        },
+        "bamei": "ブライアンズロマン",
+        "total_races": 61,
+        "analysis_timestamp": "2025-08-02T14:47:33.339119"
+      },
+      "キングオブザロード": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 75.73333333333333,
+          "2_bloodline_evaluation": 98.36065573770492,
+          "3_jockey_compatibility": 73.82854182854183,
+          "4_trainer_evaluation": 74.08571428571429,
+          "5_track_aptitude": 63.016949152542374,
+          "6_weather_aptitude": 55.344632768361585,
+          "7_popularity_factor": 3.942307692307692,
+          "8_weight_impact": 71.44262295081967,
+          "9_horse_weight_impact": 91.13934426229508,
+          "10_corner_specialist_degree": 50,
+          "11_margin_analysis": 88.39344262295081,
+          "12_time_index": 49.316803278688525
+        },
+        "dance_in_the_dark_total_score": 67.1815226466236,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 61,
+          "wins": 30,
+          "win_rate": 0.4918032786885246,
+          "finish_distribution": {
+            "1": 30,
+            "2": 8,
+            "4": 3,
+            "7": 4,
+            "5": 3,
+            "3": 6,
+            "9": 1,
+            "13": 1,
+            "8": 4,
+            "6": 1
+          },
+          "career_span": {
+            "debut": "19940821",
+            "last_race": "19990912",
+            "span": "19940821 ～ 19990912"
+          }
+        },
+        "bamei": "キングオブザロード",
+        "total_races": 61,
+        "analysis_timestamp": "2025-08-02T14:47:33.334201"
+      },
+      "キンコーバトラ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 86.21428571428571,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 87.13852813852814,
+          "4_trainer_evaluation": 90.04444444444444,
+          "5_track_aptitude": 89.83333333333334,
+          "6_weather_aptitude": 89.5813953488372,
+          "7_popularity_factor": 2.0930232558139537,
+          "8_weight_impact": 74.44186046511628,
+          "9_horse_weight_impact": 87.66279069767442,
+          "10_corner_specialist_degree": 15,
+          "11_margin_analysis": 92.18604651162791,
+          "12_time_index": 53.65406976744186
+        },
+        "dance_in_the_dark_total_score": 73.52660317238445,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 43,
+          "wins": 26,
+          "win_rate": 0.6046511627906976,
+          "finish_distribution": {
+            "1": 26,
+            "2": 5,
+            "4": 4,
+            "6": 2,
+            "3": 2,
+            "7": 2,
+            "5": 1,
+            "10": 1
+          },
+          "career_span": {
+            "debut": "19911003",
+            "last_race": "19971109",
+            "span": "19911003 ～ 19971109"
+          }
+        },
+        "bamei": "キンコーバトラ",
+        "total_races": 43,
+        "analysis_timestamp": "2025-08-02T14:47:33.328162"
+      },
+      "ジェットシーザー": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 51.666666666666664,
+          "2_bloodline_evaluation": 94.54545454545455,
+          "3_jockey_compatibility": 56.955844155844154,
+          "4_trainer_evaluation": 53.64705882352941,
+          "5_track_aptitude": 56.568627450980394,
+          "6_weather_aptitude": 42.256410256410255,
+          "7_popularity_factor": 4.554195804195804,
+          "8_weight_impact": 67.04545454545455,
+          "9_horse_weight_impact": 83.52727272727273,
+          "10_corner_specialist_degree": 6.25,
+          "11_margin_analysis": 78.98181818181818,
+          "12_time_index": 49.847272727272724
+        },
+        "dance_in_the_dark_total_score": 54.59603087562251,
+        "performance_grade": "C (平均)",
+        "detailed_stats": {
+          "total_races": 55,
+          "wins": 26,
+          "win_rate": 0.4727272727272727,
+          "finish_distribution": {
+            "2": 2,
+            "1": 26,
+            "3": 2,
+            "8": 3,
+            "5": 3,
+            "7": 2,
+            "4": 4,
+            "10": 3,
+            "12": 3,
+            "9": 2,
+            "18": 1,
+            "13": 1,
+            "16": 1,
+            "6": 2
+          },
+          "career_span": {
+            "debut": "19920804",
+            "last_race": "19971010",
+            "span": "19920804 ～ 19971010"
+          }
+        },
+        "bamei": "ジェットシーザー",
+        "total_races": 55,
+        "analysis_timestamp": "2025-08-02T14:47:33.324517"
+      },
+      "オグリエンゼル": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 85.6108597285068,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 78.89655172413794,
+          "4_trainer_evaluation": 93.6,
+          "5_track_aptitude": 73.57575757575758,
+          "6_weather_aptitude": 73.57575757575758,
+          "7_popularity_factor": 0.9081632653061226,
+          "8_weight_impact": 77.88571428571429,
+          "9_horse_weight_impact": 89.71428571428571,
+          "10_corner_specialist_degree": 60,
+          "11_margin_analysis": 95.2,
+          "12_time_index": 64.65785714285714
+        },
+        "dance_in_the_dark_total_score": 75.8087296828187,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 35,
+          "wins": 24,
+          "win_rate": 0.6857142857142857,
+          "finish_distribution": {
+            "1": 24,
+            "0": 2,
+            "7": 1,
+            "5": 1,
+            "2": 4,
+            "3": 1,
+            "10": 1,
+            "6": 1
+          },
+          "career_span": {
+            "debut": "19951127",
+            "last_race": "20001228",
+            "span": "19951127 ～ 20001228"
+          }
+        },
+        "bamei": "オグリエンゼル",
+        "total_races": 35,
+        "analysis_timestamp": "2025-08-02T14:47:33.309643"
+      },
+      "アブクマポーロ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 90.04761904761905,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 92.5,
+          "4_trainer_evaluation": 94.94202898550725,
+          "5_track_aptitude": 78.92397660818713,
+          "6_weather_aptitude": 69.93548387096774,
+          "7_popularity_factor": 2.36328125,
+          "8_weight_impact": 76.796875,
+          "9_horse_weight_impact": 95.2890625,
+          "10_corner_specialist_degree": 62.5,
+          "11_margin_analysis": 95.6875,
+          "12_time_index": 55.0625
+        },
+        "dance_in_the_dark_total_score": 77.38246232194439,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 32,
+          "wins": 23,
+          "win_rate": 0.71875,
+          "finish_distribution": {
+            "1": 23,
+            "3": 3,
+            "2": 3,
+            "5": 1,
+            "4": 1,
+            "8": 1
+          },
+          "career_span": {
+            "debut": "19950505",
+            "last_race": "19990317",
+            "span": "19950505 ～ 19990317"
+          }
+        },
+        "bamei": "アブクマポーロ",
+        "total_races": 32,
+        "analysis_timestamp": "2025-08-02T14:47:33.293682"
+      },
+      "エフワンライデン": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 87.6521164021164,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 85.3623188405797,
+          "4_trainer_evaluation": 84.89855072463767,
+          "5_track_aptitude": 90.89655172413794,
+          "6_weather_aptitude": 90.89655172413794,
+          "7_popularity_factor": 1.9396551724137931,
+          "8_weight_impact": 76.24137931034483,
+          "9_horse_weight_impact": 93.86206896551724,
+          "10_corner_specialist_degree": 5,
+          "11_margin_analysis": 93.17241379310344,
+          "12_time_index": 59.08362068965517
+        },
+        "dance_in_the_dark_total_score": 73.62687052774282,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 29,
+          "wins": 22,
+          "win_rate": 0.7586206896551724,
+          "finish_distribution": {
+            "1": 22,
+            "2": 1,
+            "4": 2,
+            "6": 1,
+            "3": 1,
+            "16": 1,
+            "5": 1
+          },
+          "career_span": {
+            "debut": "19971003",
+            "last_race": "20010404",
+            "span": "19971003 ～ 20010404"
+          }
+        },
+        "bamei": "エフワンライデン",
+        "total_races": 29,
+        "analysis_timestamp": "2025-08-02T14:47:33.295057"
+      },
+      "アタゴホープ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 80.96666666666667,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 80.6007326007326,
+          "4_trainer_evaluation": 85.99909297052154,
+          "5_track_aptitude": 49.89473684210527,
+          "6_weather_aptitude": 44.46153846153846,
+          "7_popularity_factor": 1.6071428571428574,
+          "8_weight_impact": 73.725,
+          "9_horse_weight_impact": 90.3,
+          "10_corner_specialist_degree": 30,
+          "11_margin_analysis": 89.95,
+          "12_time_index": 54.996875
+        },
+        "dance_in_the_dark_total_score": 66.40321363625362,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 40,
+          "wins": 22,
+          "win_rate": 0.55,
+          "finish_distribution": {
+            "1": 22,
+            "3": 4,
+            "2": 4,
+            "4": 3,
+            "5": 1,
+            "7": 4,
+            "14": 1,
+            "6": 1
+          },
+          "career_span": {
+            "debut": "19961130",
+            "last_race": "20010430",
+            "span": "19961130 ～ 20010430"
+          }
+        },
+        "bamei": "アタゴホープ",
+        "total_races": 40,
+        "analysis_timestamp": "2025-08-02T14:47:33.330137"
+      },
+      "サンダーシュート": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 34.349946294307195,
+          "2_bloodline_evaluation": 56.41025641025641,
+          "3_jockey_compatibility": 56.46171023965142,
+          "4_trainer_evaluation": 48.78787878787879,
+          "5_track_aptitude": 38.85575757575758,
+          "6_weather_aptitude": 45.77777777777778,
+          "7_popularity_factor": 11.35846213971214,
+          "8_weight_impact": 63.48076923076923,
+          "9_horse_weight_impact": 75.21153846153847,
+          "10_corner_specialist_degree": 36.15384615384615,
+          "11_margin_analysis": 74.46153846153847,
+          "12_time_index": 46.33910256410256
+        },
+        "dance_in_the_dark_total_score": 48.968536718385835,
+        "performance_grade": "D (要改善)",
+        "detailed_stats": {
+          "total_races": 78,
+          "wins": 22,
+          "win_rate": 0.28205128205128205,
+          "finish_distribution": {
+            "14": 2,
+            "6": 8,
+            "8": 4,
+            "9": 4,
+            "12": 3,
+            "10": 4,
+            "15": 1,
+            "7": 7,
+            "1": 22,
+            "2": 3,
+            "4": 7,
+            "5": 5,
+            "3": 4,
+            "11": 3,
+            "0": 1
+          },
+          "career_span": {
+            "debut": "19910324",
+            "last_race": "19970707",
+            "span": "19910324 ～ 19970707"
+          }
+        },
+        "bamei": "サンダーシュート",
+        "total_races": 78,
+        "analysis_timestamp": "2025-08-02T14:47:41.543259"
+      },
+      "ロバリーハート": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 80.72839506172839,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 76.63101604278074,
+          "4_trainer_evaluation": 88.64516129032258,
+          "5_track_aptitude": 60.214285714285715,
+          "6_weather_aptitude": 59.90804597701149,
+          "7_popularity_factor": 3.2521994134897363,
+          "8_weight_impact": 74.43548387096774,
+          "9_horse_weight_impact": 78.95967741935483,
+          "10_corner_specialist_degree": 70,
+          "11_margin_analysis": 91.48387096774194,
+          "12_time_index": 57.700806451612905
+        },
+        "dance_in_the_dark_total_score": 71.48246858089259,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 31,
+          "wins": 21,
+          "win_rate": 0.6774193548387096,
+          "finish_distribution": {
+            "2": 1,
+            "3": 2,
+            "1": 21,
+            "5": 2,
+            "4": 2,
+            "6": 1,
+            "11": 2
+          },
+          "career_span": {
+            "debut": "19961126",
+            "last_race": "20001022",
+            "span": "19961126 ～ 20001022"
+          }
+        },
+        "bamei": "ロバリーハート",
+        "total_races": 31,
+        "analysis_timestamp": "2025-08-02T14:47:41.489435"
+      },
+      "メイセイオペラ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 89.15277777777777,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 90.65217391304347,
+          "4_trainer_evaluation": 84.24242424242425,
+          "5_track_aptitude": 74.38954248366014,
+          "6_weather_aptitude": 68.625,
+          "7_popularity_factor": 4.715909090909091,
+          "8_weight_impact": 71.54545454545455,
+          "9_horse_weight_impact": 89.08333333333333,
+          "10_corner_specialist_degree": 57.5,
+          "11_margin_analysis": 88.18181818181819,
+          "12_time_index": 49.54924242424242
+        },
+        "dance_in_the_dark_total_score": 73.45936546778688,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 33,
+          "wins": 21,
+          "win_rate": 0.6363636363636364,
+          "finish_distribution": {
+            "1": 21,
+            "7": 2,
+            "2": 2,
+            "3": 2,
+            "10": 2,
+            "4": 2,
+            "11": 1,
+            "14": 1
+          },
+          "career_span": {
+            "debut": "19960727",
+            "last_race": "20000622",
+            "span": "19960727 ～ 20000622"
+          }
+        },
+        "bamei": "メイセイオペラ",
+        "total_races": 33,
+        "analysis_timestamp": "2025-08-02T14:47:41.488103"
+      },
+      "リンデンニシキ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 74.8015873015873,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 65.96190476190476,
+          "4_trainer_evaluation": 60.470588235294116,
+          "5_track_aptitude": 81.14285714285714,
+          "6_weather_aptitude": 81.14285714285714,
+          "7_popularity_factor": 1.3392857142857142,
+          "8_weight_impact": 71.07142857142857,
+          "9_horse_weight_impact": 82.57142857142857,
+          "10_corner_specialist_degree": 25,
+          "11_margin_analysis": 85.85714285714286,
+          "12_time_index": 50.57083333333333
+        },
+        "dance_in_the_dark_total_score": 66.09097738268862,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 42,
+          "wins": 21,
+          "win_rate": 0.5,
+          "finish_distribution": {
+            "1": 21,
+            "4": 1,
+            "2": 6,
+            "6": 2,
+            "0": 2,
+            "3": 1,
+            "9": 2,
+            "16": 1,
+            "8": 1,
+            "13": 1,
+            "10": 1,
+            "12": 1,
+            "7": 1,
+            "5": 1
+          },
+          "career_span": {
+            "debut": "19940618",
+            "last_race": "19981226",
+            "span": "19940618 ～ 19981226"
+          }
+        },
+        "bamei": "リンデンニシキ",
+        "total_races": 42,
+        "analysis_timestamp": "2025-08-02T14:47:41.528325"
+      },
+      "オースミダイナー": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 70.81818181818181,
+          "2_bloodline_evaluation": 93.33333333333333,
+          "3_jockey_compatibility": 76.60909090909091,
+          "4_trainer_evaluation": 84.51282051282053,
+          "5_track_aptitude": 77.06666666666666,
+          "6_weather_aptitude": 77.06666666666666,
+          "7_popularity_factor": 12.101587301587301,
+          "8_weight_impact": 67.75555555555556,
+          "9_horse_weight_impact": 79.56666666666666,
+          "10_corner_specialist_degree": 42.5,
+          "11_margin_analysis": 82.8,
+          "12_time_index": 54.02111111111111
+        },
+        "dance_in_the_dark_total_score": 69.05980711666662,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 45,
+          "wins": 21,
+          "win_rate": 0.4666666666666667,
+          "finish_distribution": {
+            "1": 21,
+            "5": 5,
+            "3": 4,
+            "2": 1,
+            "7": 2,
+            "9": 1,
+            "11": 1,
+            "15": 2,
+            "6": 2,
+            "13": 2,
+            "4": 3,
+            "0": 1
+          },
+          "career_span": {
+            "debut": "19910414",
+            "last_race": "20010711",
+            "span": "19910414 ～ 20010711"
+          }
+        },
+        "bamei": "オースミダイナー",
+        "total_races": 45,
+        "analysis_timestamp": "2025-08-02T14:47:41.531073"
+      },
+      "シンボリミサキ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 79.20103425985779,
+          "2_bloodline_evaluation": 84.0,
+          "3_jockey_compatibility": 74.88571428571429,
+          "4_trainer_evaluation": 80.33939393939394,
+          "5_track_aptitude": 64.35555555555555,
+          "6_weather_aptitude": 56.326530612244895,
+          "7_popularity_factor": 15.926666666666666,
+          "8_weight_impact": 71.33,
+          "9_horse_weight_impact": 87.12,
+          "10_corner_specialist_degree": 45.625,
+          "11_margin_analysis": 87.64,
+          "12_time_index": 55.8085
+        },
+        "dance_in_the_dark_total_score": 67.75081581259525,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 50,
+          "wins": 21,
+          "win_rate": 0.42,
+          "finish_distribution": {
+            "2": 4,
+            "1": 21,
+            "3": 8,
+            "5": 3,
+            "10": 1,
+            "7": 4,
+            "8": 3,
+            "9": 1,
+            "0": 2,
+            "4": 2,
+            "6": 1
+          },
+          "career_span": {
+            "debut": "19920731",
+            "last_race": "19980720",
+            "span": "19920731 ～ 19980720"
+          }
+        },
+        "bamei": "シンボリミサキ",
+        "total_races": 50,
+        "analysis_timestamp": "2025-08-02T14:47:41.537625"
+      },
+      "タイムマシーン": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 52.46060924369748,
+          "2_bloodline_evaluation": 56.00000000000001,
+          "3_jockey_compatibility": 57.519727891156464,
+          "4_trainer_evaluation": 53.780869565217394,
+          "5_track_aptitude": 38.776556776556774,
+          "6_weather_aptitude": 28.785388127853878,
+          "7_popularity_factor": 2.777442002442003,
+          "8_weight_impact": 66.72,
+          "9_horse_weight_impact": 83.32333333333334,
+          "10_corner_specialist_degree": 6.25,
+          "11_margin_analysis": 79.36,
+          "12_time_index": 50.13066666666666
+        },
+        "dance_in_the_dark_total_score": 48.5161826931167,
+        "performance_grade": "D (要改善)",
+        "detailed_stats": {
+          "total_races": 75,
+          "wins": 21,
+          "win_rate": 0.28,
+          "finish_distribution": {
+            "1": 21,
+            "2": 10,
+            "3": 7,
+            "5": 10,
+            "6": 4,
+            "4": 3,
+            "12": 1,
+            "15": 1,
+            "14": 1,
+            "13": 1,
+            "9": 4,
+            "7": 3,
+            "8": 8,
+            "10": 1
+          },
+          "career_span": {
+            "debut": "19931117",
+            "last_race": "19990802",
+            "span": "19931117 ～ 19990802"
+          }
+        },
+        "bamei": "タイムマシーン",
+        "total_races": 75,
+        "analysis_timestamp": "2025-08-02T14:47:41.540712"
+      },
+      "チェイスチェイス": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 72.88392857142857,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 60.36363636363637,
+          "4_trainer_evaluation": 68.63030303030303,
+          "5_track_aptitude": 80.90322580645162,
+          "6_weather_aptitude": 80.90322580645162,
+          "7_popularity_factor": 11.86290322580645,
+          "8_weight_impact": 70.40322580645162,
+          "9_horse_weight_impact": 75.75,
+          "10_corner_specialist_degree": 36.25,
+          "11_margin_analysis": 85.6774193548387,
+          "12_time_index": 54.104032258064514
+        },
+        "dance_in_the_dark_total_score": 67.53176290074451,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 31,
+          "wins": 20,
+          "win_rate": 0.6451612903225806,
+          "finish_distribution": {
+            "10": 3,
+            "9": 1,
+            "1": 20,
+            "4": 3,
+            "7": 1,
+            "15": 1,
+            "6": 2
+          },
+          "career_span": {
+            "debut": "19970810",
+            "last_race": "20010901",
+            "span": "19970810 ～ 20010901"
+          }
+        },
+        "bamei": "チェイスチェイス",
+        "total_races": 31,
+        "analysis_timestamp": "2025-08-02T14:47:41.524350"
+      },
+      "イヴニングスキー": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 88.02579365079364,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 86.13333333333333,
+          "4_trainer_evaluation": 90.52631578947368,
+          "5_track_aptitude": 90.52631578947368,
+          "6_weather_aptitude": 90.52631578947368,
+          "7_popularity_factor": 3.723684210526316,
+          "8_weight_impact": 74.97368421052632,
+          "9_horse_weight_impact": 93.00657894736842,
+          "10_corner_specialist_degree": 35,
+          "11_margin_analysis": 92.89473684210526,
+          "12_time_index": 55.373026315789474
+        },
+        "dance_in_the_dark_total_score": 76.18476045485616,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 38,
+          "wins": 20,
+          "win_rate": 0.5263157894736842,
+          "finish_distribution": {
+            "1": 20,
+            "0": 1,
+            "2": 8,
+            "5": 3,
+            "7": 1,
+            "3": 2,
+            "9": 1,
+            "4": 1,
+            "6": 1
+          },
+          "career_span": {
+            "debut": "19970622",
+            "last_race": "20011210",
+            "span": "19970622 ～ 20011210"
+          }
+        },
+        "bamei": "イヴニングスキー",
+        "total_races": 38,
+        "analysis_timestamp": "2025-08-02T14:47:49.578644"
+      },
+      "ワンセイコー": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 74.89285714285714,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 80.85128205128206,
+          "4_trainer_evaluation": 78.2051282051282,
+          "5_track_aptitude": 28.25225225225225,
+          "6_weather_aptitude": 41.05263157894737,
+          "7_popularity_factor": 34.7611480399942,
+          "8_weight_impact": 69.07692307692308,
+          "9_horse_weight_impact": 82.53205128205128,
+          "10_corner_specialist_degree": 37.69230769230769,
+          "11_margin_analysis": 82.15384615384616,
+          "12_time_index": 53.01538461538462
+        },
+        "dance_in_the_dark_total_score": 64.01954338456498,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 39,
+          "wins": 20,
+          "win_rate": 0.5128205128205128,
+          "finish_distribution": {
+            "8": 1,
+            "4": 3,
+            "5": 5,
+            "1": 20,
+            "16": 1,
+            "9": 2,
+            "7": 1,
+            "3": 1,
+            "11": 1,
+            "13": 1,
+            "10": 1,
+            "6": 2
+          },
+          "career_span": {
+            "debut": "19960128",
+            "last_race": "20010513",
+            "span": "19960128 ～ 20010513"
+          }
+        },
+        "bamei": "ワンセイコー",
+        "total_races": 39,
+        "analysis_timestamp": "2025-08-02T14:47:49.598485"
+      },
+      "レオブラック": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 61.44444444444444,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 66.63492063492063,
+          "4_trainer_evaluation": 78.28571428571428,
+          "5_track_aptitude": 48.55483870967742,
+          "6_weather_aptitude": 59.07070707070707,
+          "7_popularity_factor": 16.532967032967033,
+          "8_weight_impact": 68.45,
+          "9_horse_weight_impact": 81.81875,
+          "10_corner_specialist_degree": 48.333333333333336,
+          "11_margin_analysis": 83.2,
+          "12_time_index": 52.65875
+        },
+        "dance_in_the_dark_total_score": 64.34364745107081,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 40,
+          "wins": 20,
+          "win_rate": 0.5,
+          "finish_distribution": {
+            "13": 2,
+            "5": 3,
+            "7": 3,
+            "10": 1,
+            "9": 3,
+            "1": 20,
+            "2": 4,
+            "6": 1,
+            "3": 1,
+            "8": 2
+          },
+          "career_span": {
+            "debut": "19980628",
+            "last_race": "20020126",
+            "span": "19980628 ～ 20020126"
+          }
+        },
+        "bamei": "レオブラック",
+        "total_races": 40,
+        "analysis_timestamp": "2025-08-02T14:47:49.606440"
+      },
+      "マルブツホープ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 71.88368055555556,
+          "2_bloodline_evaluation": 85.1063829787234,
+          "3_jockey_compatibility": 83.33333333333333,
+          "4_trainer_evaluation": 82.80851063829788,
+          "5_track_aptitude": 57.51111111111111,
+          "6_weather_aptitude": 44.26086956521739,
+          "7_popularity_factor": 1.4729950900163666,
+          "8_weight_impact": 72.11702127659575,
+          "9_horse_weight_impact": 86.98936170212765,
+          "10_corner_specialist_degree": 50,
+          "11_margin_analysis": 87.1063829787234,
+          "12_time_index": 54.01542553191489
+        },
+        "dance_in_the_dark_total_score": 65.73777051597988,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 47,
+          "wins": 20,
+          "win_rate": 0.425531914893617,
+          "finish_distribution": {
+            "7": 2,
+            "9": 1,
+            "5": 4,
+            "1": 20,
+            "8": 1,
+            "2": 7,
+            "3": 7,
+            "4": 2,
+            "13": 1,
+            "10": 1,
+            "11": 1
+          },
+          "career_span": {
+            "debut": "19950303",
+            "last_race": "19991203",
+            "span": "19950303 ～ 19991203"
+          }
+        },
+        "bamei": "マルブツホープ",
+        "total_races": 47,
+        "analysis_timestamp": "2025-08-02T14:47:49.605396"
+      },
+      "マルブツセカイオー": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 59.95454545454545,
+          "2_bloodline_evaluation": 76.92307692307693,
+          "3_jockey_compatibility": 62.76462585034014,
+          "4_trainer_evaluation": 69.7593984962406,
+          "5_track_aptitude": 58.43809523809524,
+          "6_weather_aptitude": 57.95348837209302,
+          "7_popularity_factor": 29.57722485847486,
+          "8_weight_impact": 69.0,
+          "9_horse_weight_impact": 86.95192307692308,
+          "10_corner_specialist_degree": 39.411764705882355,
+          "11_margin_analysis": 83.26923076923077,
+          "12_time_index": 46.34182692307692
+        },
+        "dance_in_the_dark_total_score": 61.77407743902936,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 52,
+          "wins": 20,
+          "win_rate": 0.38461538461538464,
+          "finish_distribution": {
+            "10": 4,
+            "12": 1,
+            "7": 4,
+            "2": 7,
+            "6": 3,
+            "1": 20,
+            "4": 6,
+            "11": 2,
+            "3": 3,
+            "5": 2
+          },
+          "career_span": {
+            "debut": "19920718",
+            "last_race": "19961229",
+            "span": "19920718 ～ 19961229"
+          }
+        },
+        "bamei": "マルブツセカイオー",
+        "total_races": 52,
+        "analysis_timestamp": "2025-08-02T14:47:49.615120"
+      },
+      "マイチャネル": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 68.16176470588235,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 74.71884057971015,
+          "4_trainer_evaluation": 70.68817204301075,
+          "5_track_aptitude": 52.990476190476194,
+          "6_weather_aptitude": 53.0,
+          "7_popularity_factor": 24.30813930813931,
+          "8_weight_impact": 72.5,
+          "9_horse_weight_impact": 84.39189189189189,
+          "10_corner_specialist_degree": 35.83333333333333,
+          "11_margin_analysis": 88.16216216216216,
+          "12_time_index": 58.84189189189189
+        },
+        "dance_in_the_dark_total_score": 66.01840173729839,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 37,
+          "wins": 19,
+          "win_rate": 0.5135135135135135,
+          "finish_distribution": {
+            "3": 3,
+            "1": 19,
+            "6": 2,
+            "7": 3,
+            "2": 5,
+            "4": 2,
+            "9": 1,
+            "11": 2
+          },
+          "career_span": {
+            "debut": "19960818",
+            "last_race": "20000902",
+            "span": "19960818 ～ 20000902"
+          }
+        },
+        "bamei": "マイチャネル",
+        "total_races": 37,
+        "analysis_timestamp": "2025-08-02T14:47:49.562787"
+      },
+      "ロータリーアイドル": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 88.33333333333333,
+          "2_bloodline_evaluation": 90.47619047619048,
+          "3_jockey_compatibility": 86.24489795918367,
+          "4_trainer_evaluation": 87.04761904761905,
+          "5_track_aptitude": 82.97619047619048,
+          "6_weather_aptitude": 84.81333333333333,
+          "7_popularity_factor": 54.9187925170068,
+          "8_weight_impact": 68.39285714285714,
+          "9_horse_weight_impact": 87.55952380952381,
+          "10_corner_specialist_degree": 56.666666666666664,
+          "11_margin_analysis": 90.28571428571429,
+          "12_time_index": 53.089285714285715
+        },
+        "dance_in_the_dark_total_score": 77.82202113903413,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 42,
+          "wins": 19,
+          "win_rate": 0.4523809523809524,
+          "finish_distribution": {
+            "5": 5,
+            "1": 19,
+            "4": 4,
+            "2": 10,
+            "7": 1,
+            "6": 1,
+            "3": 1,
+            "14": 1
+          },
+          "career_span": {
+            "debut": "19860107",
+            "last_race": "19891202",
+            "span": "19860107 ～ 19891202"
+          }
+        },
+        "bamei": "ロータリーアイドル",
+        "total_races": 42,
+        "analysis_timestamp": "2025-08-02T14:47:49.612664"
+      },
+      "リワードタイタン": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 60.677696078431374,
+          "2_bloodline_evaluation": 80.85106382978722,
+          "3_jockey_compatibility": 69.04242424242425,
+          "4_trainer_evaluation": 83.80092592592592,
+          "5_track_aptitude": 53.5869918699187,
+          "6_weather_aptitude": 58.26086956521739,
+          "7_popularity_factor": 40.673037069313665,
+          "8_weight_impact": 69.40425531914893,
+          "9_horse_weight_impact": 87.79787234042553,
+          "10_corner_specialist_degree": 30.3125,
+          "11_margin_analysis": 84.68085106382979,
+          "12_time_index": 53.24148936170213
+        },
+        "dance_in_the_dark_total_score": 64.34421570744799,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 47,
+          "wins": 19,
+          "win_rate": 0.40425531914893614,
+          "finish_distribution": {
+            "2": 12,
+            "1": 19,
+            "4": 2,
+            "8": 2,
+            "6": 3,
+            "10": 1,
+            "9": 1,
+            "13": 1,
+            "7": 1,
+            "3": 2,
+            "14": 1,
+            "11": 1,
+            "12": 1
+          },
+          "career_span": {
+            "debut": "19951228",
+            "last_race": "20000729",
+            "span": "19951228 ～ 20000729"
+          }
+        },
+        "bamei": "リワードタイタン",
+        "total_races": 47,
+        "analysis_timestamp": "2025-08-02T14:47:49.611065"
+      },
+      "カルストンラナーク": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 63.29727095516569,
+          "2_bloodline_evaluation": 63.33333333333333,
+          "3_jockey_compatibility": 61.8,
+          "4_trainer_evaluation": 66.11358024691357,
+          "5_track_aptitude": 47.14545454545454,
+          "6_weather_aptitude": 58.69090909090909,
+          "7_popularity_factor": 13.814663461538462,
+          "8_weight_impact": 67.71666666666667,
+          "9_horse_weight_impact": 85.175,
+          "10_corner_specialist_degree": 32.5,
+          "11_margin_analysis": 80.2,
+          "12_time_index": 48.13166666666667
+        },
+        "dance_in_the_dark_total_score": 57.58954719097752,
+        "performance_grade": "C (平均)",
+        "detailed_stats": {
+          "total_races": 60,
+          "wins": 19,
+          "win_rate": 0.31666666666666665,
+          "finish_distribution": {
+            "7": 6,
+            "1": 19,
+            "5": 4,
+            "4": 8,
+            "2": 7,
+            "3": 3,
+            "8": 3,
+            "13": 1,
+            "10": 3,
+            "11": 2,
+            "12": 1,
+            "9": 1,
+            "6": 2
+          },
+          "career_span": {
+            "debut": "19941102",
+            "last_race": "19991103",
+            "span": "19941102 ～ 19991103"
+          }
+        },
+        "bamei": "カルストンラナーク",
+        "total_races": 60,
+        "analysis_timestamp": "2025-08-02T14:47:57.205770"
+      },
+      "ヤナヤ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 71.05026455026454,
+          "2_bloodline_evaluation": 55.072463768115945,
+          "3_jockey_compatibility": 67.1617094017094,
+          "4_trainer_evaluation": 68.96980180180181,
+          "5_track_aptitude": 64.96706192358366,
+          "6_weather_aptitude": 50.407960199004975,
+          "7_popularity_factor": 2.3146056841709015,
+          "8_weight_impact": 69.27536231884058,
+          "9_horse_weight_impact": 81.83695652173913,
+          "10_corner_specialist_degree": 60,
+          "11_margin_analysis": 83.47826086956522,
+          "12_time_index": 54.13985507246377
+        },
+        "dance_in_the_dark_total_score": 61.592186776774014,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 69,
+          "wins": 19,
+          "win_rate": 0.2753623188405797,
+          "finish_distribution": {
+            "3": 11,
+            "1": 19,
+            "2": 9,
+            "6": 5,
+            "10": 2,
+            "4": 4,
+            "5": 7,
+            "7": 6,
+            "8": 1,
+            "11": 1,
+            "9": 3,
+            "0": 1
+          },
+          "career_span": {
+            "debut": "19920413",
+            "last_race": "19980419",
+            "span": "19920413 ～ 19980419"
+          }
+        },
+        "bamei": "ヤナヤ",
+        "total_races": 69,
+        "analysis_timestamp": "2025-08-02T14:47:57.209078"
+      },
+      "エビスライトオー": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 67.5305944055944,
+          "2_bloodline_evaluation": 46.913580246913575,
+          "3_jockey_compatibility": 72.7437641723356,
+          "4_trainer_evaluation": 77.79047619047618,
+          "5_track_aptitude": 60.95726495726496,
+          "6_weather_aptitude": 65.43589743589743,
+          "7_popularity_factor": 19.116892024299432,
+          "8_weight_impact": 68.45679012345678,
+          "9_horse_weight_impact": 78.45679012345678,
+          "10_corner_specialist_degree": 59.333333333333336,
+          "11_margin_analysis": 83.4074074074074,
+          "12_time_index": 42.83240740740741
+        },
+        "dance_in_the_dark_total_score": 62.08856349306741,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 81,
+          "wins": 19,
+          "win_rate": 0.2345679012345679,
+          "finish_distribution": {
+            "4": 10,
+            "10": 1,
+            "2": 17,
+            "5": 8,
+            "3": 6,
+            "1": 19,
+            "7": 4,
+            "9": 4,
+            "8": 4,
+            "6": 8
+          },
+          "career_span": {
+            "debut": "19921212",
+            "last_race": "19991010",
+            "span": "19921212 ～ 19991010"
+          }
+        },
+        "bamei": "エビスライトオー",
+        "total_races": 81,
+        "analysis_timestamp": "2025-08-02T14:47:57.215054"
+      },
+      "アキヒロホマレ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 70.28571428571428,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 72.42222222222222,
+          "4_trainer_evaluation": 76.82758620689656,
+          "5_track_aptitude": 81.12393162393163,
+          "6_weather_aptitude": 58.66666666666667,
+          "7_popularity_factor": 43.68873942149804,
+          "8_weight_impact": 65.94827586206897,
+          "9_horse_weight_impact": 83.01724137931035,
+          "10_corner_specialist_degree": 39.10714285714286,
+          "11_margin_analysis": 82.62068965517241,
+          "12_time_index": 54.38275862068966
+        },
+        "dance_in_the_dark_total_score": 69.55342438822063,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 29,
+          "wins": 18,
+          "win_rate": 0.6206896551724138,
+          "finish_distribution": {
+            "1": 18,
+            "16": 1,
+            "0": 1,
+            "14": 2,
+            "3": 2,
+            "13": 2,
+            "7": 1,
+            "6": 2
+          },
+          "career_span": {
+            "debut": "19870621",
+            "last_race": "19901027",
+            "span": "19870621 ～ 19901027"
+          }
+        },
+        "bamei": "アキヒロホマレ",
+        "total_races": 29,
+        "analysis_timestamp": "2025-08-02T14:47:57.200034"
+      },
+      "サプライズパワー": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 82.48842592592592,
+          "2_bloodline_evaluation": 87.8048780487805,
+          "3_jockey_compatibility": 77.33333333333333,
+          "4_trainer_evaluation": 88.17142857142858,
+          "5_track_aptitude": 82.47179487179488,
+          "6_weather_aptitude": 82.6341463414634,
+          "7_popularity_factor": 0.4166666666666666,
+          "8_weight_impact": 70.04878048780488,
+          "9_horse_weight_impact": 81.5609756097561,
+          "10_corner_specialist_degree": 35,
+          "11_margin_analysis": 86.97560975609755,
+          "12_time_index": 52.05731707317073
+        },
+        "dance_in_the_dark_total_score": 70.07718284425603,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 41,
+          "wins": 18,
+          "win_rate": 0.43902439024390244,
+          "finish_distribution": {
+            "1": 18,
+            "2": 10,
+            "3": 3,
+            "12": 2,
+            "13": 2,
+            "4": 3,
+            "8": 1,
+            "6": 1,
+            "7": 1
+          },
+          "career_span": {
+            "debut": "19960718",
+            "last_race": "20020211",
+            "span": "19960718 ～ 20020211"
+          }
+        },
+        "bamei": "サプライズパワー",
+        "total_races": 41,
+        "analysis_timestamp": "2025-08-02T14:47:57.198776"
+      },
+      "ヨシノキング": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 64.37025534851622,
+          "2_bloodline_evaluation": 49.31506849315068,
+          "3_jockey_compatibility": 51.925925925925924,
+          "4_trainer_evaluation": 59.8321040014752,
+          "5_track_aptitude": 34.13636363636364,
+          "6_weather_aptitude": 39.904761904761905,
+          "7_popularity_factor": 6.158430610485405,
+          "8_weight_impact": 64.76027397260275,
+          "9_horse_weight_impact": 78.63013698630137,
+          "10_corner_specialist_degree": 40,
+          "11_margin_analysis": 77.8082191780822,
+          "12_time_index": 44.862671232876714
+        },
+        "dance_in_the_dark_total_score": 51.425830134750946,
+        "performance_grade": "C (平均)",
+        "detailed_stats": {
+          "total_races": 73,
+          "wins": 18,
+          "win_rate": 0.2465753424657534,
+          "finish_distribution": {
+            "13": 2,
+            "10": 3,
+            "1": 18,
+            "2": 13,
+            "7": 3,
+            "14": 2,
+            "11": 5,
+            "12": 1,
+            "3": 10,
+            "6": 4,
+            "15": 1,
+            "5": 4,
+            "4": 5,
+            "9": 2
+          },
+          "career_span": {
+            "debut": "19860525",
+            "last_race": "19990620",
+            "span": "19860525 ～ 19990620"
+          }
+        },
+        "bamei": "ヨシノキング",
+        "total_races": 73,
+        "analysis_timestamp": "2025-08-02T14:47:57.217112"
+      },
+      "ベラミロード": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 81.57142857142857,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 84.64,
+          "4_trainer_evaluation": 84.64,
+          "5_track_aptitude": 76.84848484848484,
+          "6_weather_aptitude": 74.02898550724638,
+          "7_popularity_factor": 6.43,
+          "8_weight_impact": 73.14,
+          "9_horse_weight_impact": 78.75,
+          "10_corner_specialist_degree": 29.0,
+          "11_margin_analysis": 88.48,
+          "12_time_index": 51.998
+        },
+        "dance_in_the_dark_total_score": 70.33229211368342,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 25,
+          "wins": 17,
+          "win_rate": 0.68,
+          "finish_distribution": {
+            "1": 17,
+            "6": 1,
+            "2": 2,
+            "4": 2,
+            "15": 1,
+            "9": 1,
+            "14": 1
+          },
+          "career_span": {
+            "debut": "19980715",
+            "last_race": "20020123",
+            "span": "19980715 ～ 20020123"
+          }
+        },
+        "bamei": "ベラミロード",
+        "total_races": 25,
+        "analysis_timestamp": "2025-08-02T14:47:57.195857"
+      },
+      "トミシノポルンガ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 82.1875,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 76.57142857142857,
+          "4_trainer_evaluation": 87.5,
+          "5_track_aptitude": 80.24691358024691,
+          "6_weather_aptitude": 73.18518518518519,
+          "7_popularity_factor": 18.763020833333332,
+          "8_weight_impact": 73.40625,
+          "9_horse_weight_impact": 86.25,
+          "10_corner_specialist_degree": 68.75,
+          "11_margin_analysis": 90.625,
+          "12_time_index": 51.24765625
+        },
+        "dance_in_the_dark_total_score": 74.94590325149038,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 32,
+          "wins": 17,
+          "win_rate": 0.53125,
+          "finish_distribution": {
+            "2": 4,
+            "3": 2,
+            "1": 17,
+            "4": 3,
+            "6": 2,
+            "0": 1,
+            "10": 2,
+            "7": 1
+          },
+          "career_span": {
+            "debut": "19910725",
+            "last_race": "19951010",
+            "span": "19910725 ～ 19951010"
+          }
+        },
+        "bamei": "トミシノポルンガ",
+        "total_races": 32,
+        "analysis_timestamp": "2025-08-02T14:47:57.193694"
+      },
+      "メジロワース": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 82.5530303030303,
+          "2_bloodline_evaluation": 79.06976744186046,
+          "3_jockey_compatibility": 77.06666666666666,
+          "4_trainer_evaluation": 85.30232558139535,
+          "5_track_aptitude": 85.90764790764791,
+          "6_weather_aptitude": 92.94391534391535,
+          "7_popularity_factor": 45.2281284606866,
+          "8_weight_impact": 68.68604651162791,
+          "9_horse_weight_impact": 90.79069767441861,
+          "10_corner_specialist_degree": 56.74418604651163,
+          "11_margin_analysis": 88.97674418604652,
+          "12_time_index": 49.27906976744186
+        },
+        "dance_in_the_dark_total_score": 75.28457028482015,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 43,
+          "wins": 17,
+          "win_rate": 0.3953488372093023,
+          "finish_distribution": {
+            "1": 17,
+            "7": 4,
+            "2": 15,
+            "8": 1,
+            "9": 1,
+            "12": 1,
+            "4": 1,
+            "5": 1,
+            "3": 1,
+            "6": 1
+          },
+          "career_span": {
+            "debut": "19871115",
+            "last_race": "19941015",
+            "span": "19871115 ～ 19941015"
+          }
+        },
+        "bamei": "メジロワース",
+        "total_races": 43,
+        "analysis_timestamp": "2025-08-02T14:48:08.188163"
+      },
+      "モリユウプリンス": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 84.47916666666667,
+          "2_bloodline_evaluation": 69.38775510204081,
+          "3_jockey_compatibility": 91.23076923076923,
+          "4_trainer_evaluation": 85.63265306122449,
+          "5_track_aptitude": 58.70476190476191,
+          "6_weather_aptitude": 43.833333333333336,
+          "7_popularity_factor": 0.2925170068027211,
+          "8_weight_impact": 72.12244897959184,
+          "9_horse_weight_impact": 83.98979591836735,
+          "10_corner_specialist_degree": 30,
+          "11_margin_analysis": 89.22448979591837,
+          "12_time_index": 50.44948979591837
+        },
+        "dance_in_the_dark_total_score": 64.43079107040147,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 49,
+          "wins": 17,
+          "win_rate": 0.3469387755102041,
+          "finish_distribution": {
+            "4": 7,
+            "1": 17,
+            "3": 6,
+            "2": 13,
+            "15": 1,
+            "7": 1,
+            "6": 3,
+            "8": 1
+          },
+          "career_span": {
+            "debut": "19910624",
+            "last_race": "19961231",
+            "span": "19910624 ～ 19961231"
+          }
+        },
+        "bamei": "モリユウプリンス",
+        "total_races": 49,
+        "analysis_timestamp": "2025-08-02T14:48:08.231241"
+      },
+      "アマゾンオペラ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 58.93939393939394,
+          "2_bloodline_evaluation": 66.66666666666666,
+          "3_jockey_compatibility": 46.44628099173554,
+          "4_trainer_evaluation": 55.27407407407407,
+          "5_track_aptitude": 61.99660441426146,
+          "6_weather_aptitude": 58.16,
+          "7_popularity_factor": 1.4289215686274508,
+          "8_weight_impact": 64.45098039215686,
+          "9_horse_weight_impact": 79.65686274509804,
+          "10_corner_specialist_degree": 47.5,
+          "11_margin_analysis": 78.82352941176471,
+          "12_time_index": 44.98627450980392
+        },
+        "dance_in_the_dark_total_score": 55.982243599233946,
+        "performance_grade": "C (平均)",
+        "detailed_stats": {
+          "total_races": 51,
+          "wins": 17,
+          "win_rate": 0.3333333333333333,
+          "finish_distribution": {
+            "1": 17,
+            "2": 4,
+            "8": 2,
+            "5": 5,
+            "4": 4,
+            "7": 2,
+            "6": 6,
+            "3": 2,
+            "9": 3,
+            "10": 2,
+            "12": 2,
+            "11": 2
+          },
+          "career_span": {
+            "debut": "19940506",
+            "last_race": "20001123",
+            "span": "19940506 ～ 20001123"
+          }
+        },
+        "bamei": "アマゾンオペラ",
+        "total_races": 51,
+        "analysis_timestamp": "2025-08-02T14:48:08.211353"
+      },
+      "レッドアゲイン": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 68.68245614035088,
+          "2_bloodline_evaluation": 59.64912280701754,
+          "3_jockey_compatibility": 80.06122448979592,
+          "4_trainer_evaluation": 52.26143790849673,
+          "5_track_aptitude": 37.214285714285715,
+          "6_weather_aptitude": 37.214285714285715,
+          "7_popularity_factor": 1.0526315789473684,
+          "8_weight_impact": 68.62280701754386,
+          "9_horse_weight_impact": 77.95614035087719,
+          "10_corner_specialist_degree": 30,
+          "11_margin_analysis": 79.6842105263158,
+          "12_time_index": 49.77894736842105
+        },
+        "dance_in_the_dark_total_score": 54.309018889562495,
+        "performance_grade": "C (平均)",
+        "detailed_stats": {
+          "total_races": 57,
+          "wins": 17,
+          "win_rate": 0.2982456140350877,
+          "finish_distribution": {
+            "1": 17,
+            "3": 4,
+            "2": 12,
+            "11": 4,
+            "10": 2,
+            "6": 3,
+            "5": 2,
+            "8": 4,
+            "9": 4,
+            "15": 1,
+            "4": 2,
+            "7": 2
+          },
+          "career_span": {
+            "debut": "19940218",
+            "last_race": "19980708",
+            "span": "19940218 ～ 19980708"
+          }
+        },
+        "bamei": "レッドアゲイン",
+        "total_races": 57,
+        "analysis_timestamp": "2025-08-02T14:48:08.246179"
+      },
+      "セイエイツートップ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 46.62460317460317,
+          "2_bloodline_evaluation": 55.73770491803278,
+          "3_jockey_compatibility": 56.96825396825397,
+          "4_trainer_evaluation": 53.34391534391534,
+          "5_track_aptitude": 47.42372881355932,
+          "6_weather_aptitude": 69.31147540983606,
+          "7_popularity_factor": 5.250487217700332,
+          "8_weight_impact": 64.94262295081967,
+          "9_horse_weight_impact": 82.74180327868852,
+          "10_corner_specialist_degree": 43.75,
+          "11_margin_analysis": 76.98360655737704,
+          "12_time_index": 45.8405737704918
+        },
+        "dance_in_the_dark_total_score": 54.082846850070304,
+        "performance_grade": "C (平均)",
+        "detailed_stats": {
+          "total_races": 61,
+          "wins": 17,
+          "win_rate": 0.2786885245901639,
+          "finish_distribution": {
+            "5": 3,
+            "1": 17,
+            "6": 3,
+            "2": 6,
+            "9": 4,
+            "4": 6,
+            "3": 8,
+            "8": 3,
+            "7": 2,
+            "11": 2,
+            "13": 3,
+            "12": 2,
+            "10": 1,
+            "16": 1
+          },
+          "career_span": {
+            "debut": "19960709",
+            "last_race": "20010924",
+            "span": "19960709 ～ 20010924"
+          }
+        },
+        "bamei": "セイエイツートップ",
+        "total_races": 61,
+        "analysis_timestamp": "2025-08-02T14:48:08.221070"
+      },
+      "ハクサンツバメ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 62.86057692307692,
+          "2_bloodline_evaluation": 54.83870967741935,
+          "3_jockey_compatibility": 74.8040404040404,
+          "4_trainer_evaluation": 76.12903225806451,
+          "5_track_aptitude": 68.53900083542189,
+          "6_weather_aptitude": 73.78823529411764,
+          "7_popularity_factor": 68.39004096262161,
+          "8_weight_impact": 64.66129032258064,
+          "9_horse_weight_impact": 86.75806451612904,
+          "10_corner_specialist_degree": 39.91935483870968,
+          "11_margin_analysis": 82.09677419354838,
+          "12_time_index": 53.375
+        },
+        "dance_in_the_dark_total_score": 66.53554631599707,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 62,
+          "wins": 17,
+          "win_rate": 0.27419354838709675,
+          "finish_distribution": {
+            "5": 3,
+            "1": 17,
+            "6": 6,
+            "8": 4,
+            "9": 5,
+            "4": 7,
+            "2": 10,
+            "10": 1,
+            "3": 6,
+            "12": 1,
+            "7": 2
+          },
+          "career_span": {
+            "debut": "19880717",
+            "last_race": "19930821",
+            "span": "19880717 ～ 19930821"
+          }
+        },
+        "bamei": "ハクサンツバメ",
+        "total_races": 62,
+        "analysis_timestamp": "2025-08-02T14:48:08.244072"
+      },
+      "バンチャンプ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 73.93722943722943,
+          "2_bloodline_evaluation": 51.515151515151516,
+          "3_jockey_compatibility": 79.41349206349206,
+          "4_trainer_evaluation": 74.12380952380953,
+          "5_track_aptitude": 71.38239538239539,
+          "6_weather_aptitude": 66.15384615384616,
+          "7_popularity_factor": 0.9090909090909091,
+          "8_weight_impact": 69.47727272727273,
+          "9_horse_weight_impact": 87.38636363636364,
+          "10_corner_specialist_degree": 40,
+          "11_margin_analysis": 84.9090909090909,
+          "12_time_index": 50.74545454545454
+        },
+        "dance_in_the_dark_total_score": 63.177536742412784,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 66,
+          "wins": 17,
+          "win_rate": 0.25757575757575757,
+          "finish_distribution": {
+            "4": 6,
+            "2": 14,
+            "7": 4,
+            "0": 1,
+            "10": 1,
+            "5": 7,
+            "3": 8,
+            "1": 17,
+            "15": 1,
+            "8": 3,
+            "6": 3,
+            "9": 1
+          },
+          "career_span": {
+            "debut": "19950804",
+            "last_race": "20011027",
+            "span": "19950804 ～ 20011027"
+          }
+        },
+        "bamei": "バンチャンプ",
+        "total_races": 66,
+        "analysis_timestamp": "2025-08-02T14:48:08.253317"
+      },
+      "テイオーライデン": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 63.650939542483655,
+          "2_bloodline_evaluation": 43.037974683544306,
+          "3_jockey_compatibility": 68.3070263070263,
+          "4_trainer_evaluation": 62.387301587301586,
+          "5_track_aptitude": 64.03044140030441,
+          "6_weather_aptitude": 77.36842105263158,
+          "7_popularity_factor": 0.949367088607595,
+          "8_weight_impact": 68.0,
+          "9_horse_weight_impact": 86.06962025316456,
+          "10_corner_specialist_degree": 0,
+          "11_margin_analysis": 81.92405063291139,
+          "12_time_index": 48.1623417721519
+        },
+        "dance_in_the_dark_total_score": 55.63708658521594,
+        "performance_grade": "C (平均)",
+        "detailed_stats": {
+          "total_races": 79,
+          "wins": 17,
+          "win_rate": 0.21518987341772153,
+          "finish_distribution": {
+            "2": 18,
+            "1": 17,
+            "3": 10,
+            "6": 10,
+            "10": 4,
+            "5": 4,
+            "7": 5,
+            "8": 3,
+            "4": 4,
+            "12": 1,
+            "9": 3
+          },
+          "career_span": {
+            "debut": "19931217",
+            "last_race": "19990524",
+            "span": "19931217 ～ 19990524"
+          }
+        },
+        "bamei": "テイオーライデン",
+        "total_races": 79,
+        "analysis_timestamp": "2025-08-02T14:48:08.249263"
+      },
+      "アッパークロス": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 53.91167434715822,
+          "2_bloodline_evaluation": 42.5,
+          "3_jockey_compatibility": 67.37939393939394,
+          "4_trainer_evaluation": 66.55353535353535,
+          "5_track_aptitude": 57.308555399719495,
+          "6_weather_aptitude": 51.29004329004329,
+          "7_popularity_factor": 17.944444444444443,
+          "8_weight_impact": 64.6,
+          "9_horse_weight_impact": 82.69375,
+          "10_corner_specialist_degree": 44.166666666666664,
+          "11_margin_analysis": 76.75,
+          "12_time_index": 49.1053125
+        },
+        "dance_in_the_dark_total_score": 56.25999881260097,
+        "performance_grade": "C (平均)",
+        "detailed_stats": {
+          "total_races": 80,
+          "wins": 17,
+          "win_rate": 0.2125,
+          "finish_distribution": {
+            "3": 6,
+            "1": 17,
+            "5": 9,
+            "8": 6,
+            "4": 7,
+            "2": 9,
+            "12": 3,
+            "9": 3,
+            "6": 9,
+            "10": 2,
+            "15": 1,
+            "7": 6,
+            "11": 2
+          },
+          "career_span": {
+            "debut": "19920407",
+            "last_race": "19990102",
+            "span": "19920407 ～ 19990102"
+          }
+        },
+        "bamei": "アッパークロス",
+        "total_races": 80,
+        "analysis_timestamp": "2025-08-02T14:48:15.614273"
+      },
+      "メイヂヒカリ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 91.5925925925926,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 97.4,
+          "4_trainer_evaluation": 95.04761904761905,
+          "5_track_aptitude": 95.8974358974359,
+          "6_weather_aptitude": 94.32307692307693,
+          "7_popularity_factor": 37.23412698412699,
+          "8_weight_impact": 75.69047619047619,
+          "9_horse_weight_impact": 50.0,
+          "10_corner_specialist_degree": 50.0,
+          "11_margin_analysis": 96.28571428571429,
+          "12_time_index": 66.32142857142857
+        },
+        "dance_in_the_dark_total_score": 80.67317430044703,
+        "performance_grade": "S (超一流)",
+        "detailed_stats": {
+          "total_races": 21,
+          "wins": 16,
+          "win_rate": 0.7619047619047619,
+          "finish_distribution": {
+            "1": 16,
+            "5": 1,
+            "2": 2,
+            "6": 1,
+            "3": 1
+          },
+          "career_span": {
+            "debut": "19541023",
+            "last_race": "19561223",
+            "span": "19541023 ～ 19561223"
+          }
+        },
+        "bamei": "メイヂヒカリ",
+        "total_races": 21,
+        "analysis_timestamp": "2025-08-02T14:48:15.582638"
+      },
+      "トーホウエンペラー": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 94.0909090909091,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 94.87719298245614,
+          "4_trainer_evaluation": 95.33333333333333,
+          "5_track_aptitude": 96.06349206349206,
+          "6_weather_aptitude": 97.56521739130434,
+          "7_popularity_factor": 6.604166666666666,
+          "8_weight_impact": 77.45833333333333,
+          "9_horse_weight_impact": 90.19791666666667,
+          "10_corner_specialist_degree": 60,
+          "11_margin_analysis": 96.5,
+          "12_time_index": 60.744791666666664
+        },
+        "dance_in_the_dark_total_score": 82.04926205070763,
+        "performance_grade": "S (超一流)",
+        "detailed_stats": {
+          "total_races": 24,
+          "wins": 16,
+          "win_rate": 0.6666666666666666,
+          "finish_distribution": {
+            "1": 16,
+            "4": 1,
+            "2": 5,
+            "3": 1,
+            "5": 1
+          },
+          "career_span": {
+            "debut": "19991231",
+            "last_race": "20020217",
+            "span": "19991231 ～ 20020217"
+          }
+        },
+        "bamei": "トーホウエンペラー",
+        "total_races": 24,
+        "analysis_timestamp": "2025-08-02T14:48:15.587959"
+      },
+      "タケシバオー": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 96.33333333333333,
+          "2_bloodline_evaluation": 100,
+          "3_jockey_compatibility": 96.15555555555555,
+          "4_trainer_evaluation": 96.44444444444444,
+          "5_track_aptitude": 95.77142857142857,
+          "6_weather_aptitude": 97.07428571428571,
+          "7_popularity_factor": 43.641975308641975,
+          "8_weight_impact": 77.03703703703704,
+          "9_horse_weight_impact": 94.86111111111111,
+          "10_corner_specialist_degree": 50.0,
+          "11_margin_analysis": 97.33333333333333,
+          "12_time_index": 62.46666666666667
+        },
+        "dance_in_the_dark_total_score": 84.55189237249843,
+        "performance_grade": "S (超一流)",
+        "detailed_stats": {
+          "total_races": 27,
+          "wins": 16,
+          "win_rate": 0.5925925925925926,
+          "finish_distribution": {
+            "2": 10,
+            "1": 16,
+            "3": 1
+          },
+          "career_span": {
+            "debut": "19670618",
+            "last_race": "19690928",
+            "span": "19670618 ～ 19690928"
+          }
+        },
+        "bamei": "タケシバオー",
+        "total_races": 27,
+        "analysis_timestamp": "2025-08-02T14:48:15.583818"
+      },
+      "スズノサンサン": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 45.551515151515154,
+          "2_bloodline_evaluation": 96.96969696969697,
+          "3_jockey_compatibility": 68.28021978021978,
+          "4_trainer_evaluation": 69.57971014492753,
+          "5_track_aptitude": 41.20987654320988,
+          "6_weather_aptitude": 45.689655172413794,
+          "7_popularity_factor": 20.57162534435262,
+          "8_weight_impact": 68.87878787878788,
+          "9_horse_weight_impact": 78.45454545454545,
+          "10_corner_specialist_degree": 30,
+          "11_margin_analysis": 81.81818181818181,
+          "12_time_index": 54.61666666666667
+        },
+        "dance_in_the_dark_total_score": 58.875356558377106,
+        "performance_grade": "C (平均)",
+        "detailed_stats": {
+          "total_races": 33,
+          "wins": 16,
+          "win_rate": 0.48484848484848486,
+          "finish_distribution": {
+            "2": 6,
+            "1": 16,
+            "5": 1,
+            "7": 1,
+            "4": 1,
+            "11": 2,
+            "9": 1,
+            "12": 1,
+            "15": 2,
+            "6": 1,
+            "10": 1
+          },
+          "career_span": {
+            "debut": "19940317",
+            "last_race": "19970308",
+            "span": "19940317 ～ 19970308"
+          }
+        },
+        "bamei": "スズノサンサン",
+        "total_races": 33,
+        "analysis_timestamp": "2025-08-02T14:48:15.597328"
+      },
+      "ライフアサヒ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 77.80328798185941,
+          "2_bloodline_evaluation": 86.48648648648648,
+          "3_jockey_compatibility": 91.61904761904762,
+          "4_trainer_evaluation": 83.56756756756756,
+          "5_track_aptitude": 71.37254901960785,
+          "6_weather_aptitude": 61.14285714285714,
+          "7_popularity_factor": 1.6216216216216217,
+          "8_weight_impact": 71.83783783783784,
+          "9_horse_weight_impact": 82.96621621621621,
+          "10_corner_specialist_degree": 25,
+          "11_margin_analysis": 87.67567567567568,
+          "12_time_index": 52.454054054054055
+        },
+        "dance_in_the_dark_total_score": 67.26747964318629,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 37,
+          "wins": 16,
+          "win_rate": 0.43243243243243246,
+          "finish_distribution": {
+            "1": 16,
+            "2": 7,
+            "3": 3,
+            "6": 2,
+            "4": 3,
+            "15": 2,
+            "7": 1,
+            "5": 1,
+            "0": 1,
+            "8": 1
+          },
+          "career_span": {
+            "debut": "19940107",
+            "last_race": "19980324",
+            "span": "19940107 ～ 19980324"
+          }
+        },
+        "bamei": "ライフアサヒ",
+        "total_races": 37,
+        "analysis_timestamp": "2025-08-02T14:48:15.610624"
+      },
+      "フジノハイメリット": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 63.657407407407405,
+          "2_bloodline_evaluation": 86.48648648648648,
+          "3_jockey_compatibility": 79.9655172413793,
+          "4_trainer_evaluation": 80.31372549019608,
+          "5_track_aptitude": 59.529411764705884,
+          "6_weather_aptitude": 70.0,
+          "7_popularity_factor": 1.3063063063063063,
+          "8_weight_impact": 70.16216216216216,
+          "9_horse_weight_impact": 86.98648648648648,
+          "10_corner_specialist_degree": 35,
+          "11_margin_analysis": 84.5945945945946,
+          "12_time_index": 57.24864864864865
+        },
+        "dance_in_the_dark_total_score": 65.35687870325525,
+        "performance_grade": "B (良馬)",
+        "detailed_stats": {
+          "total_races": 37,
+          "wins": 16,
+          "win_rate": 0.43243243243243246,
+          "finish_distribution": {
+            "1": 16,
+            "2": 3,
+            "6": 3,
+            "3": 3,
+            "11": 1,
+            "12": 1,
+            "4": 2,
+            "7": 1,
+            "10": 2,
+            "9": 1,
+            "8": 2,
+            "0": 2
+          },
+          "career_span": {
+            "debut": "19950511",
+            "last_race": "19990128",
+            "span": "19950511 ～ 19990128"
+          }
+        },
+        "bamei": "フジノハイメリット",
+        "total_races": 37,
+        "analysis_timestamp": "2025-08-02T14:48:15.611707"
+      },
+      "ホクトベガ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 74.79461279461279,
+          "2_bloodline_evaluation": 78.04878048780488,
+          "3_jockey_compatibility": 66.31313131313132,
+          "4_trainer_evaluation": 78.14634146341463,
+          "5_track_aptitude": 79.50285714285714,
+          "6_weather_aptitude": 67.7888198757764,
+          "7_popularity_factor": 74.93282344349417,
+          "8_weight_impact": 69.28048780487805,
+          "9_horse_weight_impact": 86.45121951219512,
+          "10_corner_specialist_degree": 58.4375,
+          "11_margin_analysis": 83.60975609756098,
+          "12_time_index": 46.52743902439024
+        },
+        "dance_in_the_dark_total_score": 71.58930407748227,
+        "performance_grade": "A (一流)",
+        "detailed_stats": {
+          "total_races": 41,
+          "wins": 16,
+          "win_rate": 0.3902439024390244,
+          "finish_distribution": {
+            "1": 16,
+            "2": 5,
+            "5": 5,
+            "6": 2,
+            "3": 4,
+            "10": 1,
+            "4": 2,
+            "9": 2,
+            "8": 1,
+            "11": 1,
+            "7": 1,
+            "16": 1
+          },
+          "career_span": {
+            "debut": "19930105",
+            "last_race": "19970205",
+            "span": "19930105 ～ 19970205"
+          }
+        },
+        "bamei": "ホクトベガ",
+        "total_races": 41,
+        "analysis_timestamp": "2025-08-02T14:48:15.609071"
+      },
+      "エムジーシューマ": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 67.675,
+          "2_bloodline_evaluation": 72.72727272727273,
+          "3_jockey_compatibility": 63.21111111111111,
+          "4_trainer_evaluation": 57.945439045183285,
+          "5_track_aptitude": 22.78048780487805,
+          "6_weather_aptitude": 29.71428571428571,
+          "7_popularity_factor": 7.5487012987013,
+          "8_weight_impact": 66.80681818181819,
+          "9_horse_weight_impact": 80.92045454545455,
+          "10_corner_specialist_degree": 11.25,
+          "11_margin_analysis": 80.36363636363636,
+          "12_time_index": 47.2875
+        },
+        "dance_in_the_dark_total_score": 51.36069462177508,
+        "performance_grade": "C (平均)",
+        "detailed_stats": {
+          "total_races": 44,
+          "wins": 16,
+          "win_rate": 0.36363636363636365,
+          "finish_distribution": {
+            "1": 16,
+            "7": 3,
+            "9": 2,
+            "10": 1,
+            "6": 3,
+            "2": 6,
+            "3": 4,
+            "11": 1,
+            "4": 1,
+            "5": 2,
+            "14": 2,
+            "12": 1,
+            "8": 2
+          },
+          "career_span": {
+            "debut": "19940323",
+            "last_race": "20001118",
+            "span": "19940323 ～ 20001118"
+          }
+        },
+        "bamei": "エムジーシューマ",
+        "total_races": 44,
+        "analysis_timestamp": "2025-08-02T14:48:22.950985"
+      },
+      "トミケンライデン": {
+        "d_logic_scores": {
+          "1_distance_aptitude": 51.372727272727275,
+          "2_bloodline_evaluation": 71.11111111111111,
+          "3_jockey_compatibility": 51.37316017316017,
+          "4_trainer_evaluation": 51.649249249249245,
+          "5_track_aptitude": 24.804878048780488,
+          "6_weather_aptitude": 28.09302325581395,
+          "7_popularity_factor": 12.875661375661377,
+          "8_weight_impact": 64.85555555555555,
+          "9_horse_weight_impact": 79.38333333333334,
+          "10_corner_specialist_degree": 36.0,
+          "11_margin_analysis": 76.66666666666667,
+          "12_time_index": 46.23222222222222
+        },
+        "dance_in_the_dark_total_score": 49.87191627462738,
+        "performance_grade": "D (要改善)",
+        "detailed_stats": {
+          "total_races": 45,
+          "wins": 16,
+          "win_rate": 0.35555555555555557,
+          "finish_distribution": {
+            "1": 16,
+            "4": 3,
+            "12": 1,
+            "5": 3,
+            "7": 2,
+            "2": 4,
+            "6": 4,
+            "3": 3,
+            "9": 3,
+            "13": 1,
+            "16": 1,
+            "15": 1,
+            "14": 2,
+            "11": 1
+          },
+          "career_span": {
+            "debut": "19961025",
+            "last_race": "20011031",
+            "span": "19961025 ～ 20011031"
+          }
+        },
+        "bamei": "トミケンライデン",
+        "total_races": 45,
+        "analysis_timestamp": "2025-08-02T14:48:22.951984"
+      }
+    },
+    "winning_patterns": {
+      "high_performers": [
+        {
+          "horse": "タケシバオー",
+          "score": 84.55189237249843,
+          "grade": "S (超一流)",
+          "wins": 16,
+          "win_rate": 0.5925925925925926
+        },
+        {
+          "horse": "トーホウエンペラー",
+          "score": 82.04926205070763,
+          "grade": "S (超一流)",
+          "wins": 16,
+          "win_rate": 0.6666666666666666
+        },
+        {
+          "horse": "メイヂヒカリ",
+          "score": 80.67317430044703,
+          "grade": "S (超一流)",
+          "wins": 16,
+          "win_rate": 0.7619047619047619
+        }
+      ],
+      "distance_specialists": [
+        {
+          "horse": "タケシバオー",
+          "distance_score": 96.33333333333333,
+          "total_score": 84.55189237249843
+        },
+        {
+          "horse": "トーホウエンペラー",
+          "distance_score": 94.0909090909091,
+          "total_score": 82.04926205070763
+        },
+        {
+          "horse": "メイヂヒカリ",
+          "distance_score": 91.5925925925926,
+          "total_score": 80.67317430044703
+        },
+        {
+          "horse": "アブクマポーロ",
+          "distance_score": 90.04761904761905,
+          "total_score": 77.38246232194439
+        }
+      ],
+      "versatile_champions": [
+        {
+          "horse": "タケシバオー",
+          "high_score_count": 9,
+          "total_score": 84.55189237249843
+        },
+        {
+          "horse": "トーホウエンペラー",
+          "high_score_count": 9,
+          "total_score": 82.04926205070763
+        },
+        {
+          "horse": "メイヂヒカリ",
+          "high_score_count": 8,
+          "total_score": 80.67317430044703
+        },
+        {
+          "horse": "ロータリーアイドル",
+          "high_score_count": 8,
+          "total_score": 77.82202113903413
+        },
+        {
+          "horse": "アブクマポーロ",
+          "high_score_count": 8,
+          "total_score": 77.38246232194439
+        },
+        {
+          "horse": "イヴニングスキー",
+          "high_score_count": 8,
+          "total_score": 76.18476045485616
+        },
+        {
+          "horse": "オグリエンゼル",
+          "high_score_count": 7,
+          "total_score": 75.8087296828187
+        },
+        {
+          "horse": "メジロワース",
+          "high_score_count": 8,
+          "total_score": 75.28457028482015
+        },
+        {
+          "horse": "トミシノポルンガ",
+          "high_score_count": 7,
+          "total_score": 74.94590325149038
+        },
+        {
+          "horse": "エフワンライデン",
+          "high_score_count": 9,
+          "total_score": 73.62687052774282
+        },
+        {
+          "horse": "ブライアンズロマン",
+          "high_score_count": 7,
+          "total_score": 73.62027847165876
+        },
+        {
+          "horse": "キンコーバトラ",
+          "high_score_count": 8,
+          "total_score": 73.52660317238445
+        },
+        {
+          "horse": "メイセイオペラ",
+          "high_score_count": 6,
+          "total_score": 73.45936546778688
+        },
+        {
+          "horse": "ホクトベガ",
+          "high_score_count": 5,
+          "total_score": 71.58930407748227
+        },
+        {
+          "horse": "ロバリーハート",
+          "high_score_count": 6,
+          "total_score": 71.48246858089259
+        },
+        {
+          "horse": "ベラミロード",
+          "high_score_count": 7,
+          "total_score": 70.33229211368342
+        },
+        {
+          "horse": "サプライズパワー",
+          "high_score_count": 8,
+          "total_score": 70.07718284425603
+        },
+        {
+          "horse": "アキヒロホマレ",
+          "high_score_count": 5,
+          "total_score": 69.55342438822063
+        },
+        {
+          "horse": "オースミダイナー",
+          "high_score_count": 7,
+          "total_score": 69.05980711666662
+        },
+        {
+          "horse": "シンボリミサキ",
+          "high_score_count": 5,
+          "total_score": 67.75081581259525
+        },
+        {
+          "horse": "チェイスチェイス",
+          "high_score_count": 5,
+          "total_score": 67.53176290074451
+        },
+        {
+          "horse": "ライフアサヒ",
+          "high_score_count": 6,
+          "total_score": 67.26747964318629
+        },
+        {
+          "horse": "アタゴホープ",
+          "high_score_count": 6,
+          "total_score": 66.40321363625362
+        },
+        {
+          "horse": "リンデンニシキ",
+          "high_score_count": 5,
+          "total_score": 66.09097738268862
+        },
+        {
+          "horse": "マルブツホープ",
+          "high_score_count": 5,
+          "total_score": 65.73777051597988
+        },
+        {
+          "horse": "フジノハイメリット",
+          "high_score_count": 5,
+          "total_score": 65.35687870325525
+        },
+        {
+          "horse": "モリユウプリンス",
+          "high_score_count": 5,
+          "total_score": 64.43079107040147
+        },
+        {
+          "horse": "ワンセイコー",
+          "high_score_count": 5,
+          "total_score": 64.01954338456498
+        }
+      ],
+      "bloodline_excellence": [
+        {
+          "horse": "ブライアンズロマン",
+          "bloodline_score": 100,
+          "total_score": 73.62027847165876
+        },
+        {
+          "horse": "キンコーバトラ",
+          "bloodline_score": 100,
+          "total_score": 73.52660317238445
+        },
+        {
+          "horse": "オグリエンゼル",
+          "bloodline_score": 100,
+          "total_score": 75.8087296828187
+        },
+        {
+          "horse": "アブクマポーロ",
+          "bloodline_score": 100,
+          "total_score": 77.38246232194439
+        },
+        {
+          "horse": "エフワンライデン",
+          "bloodline_score": 100,
+          "total_score": 73.62687052774282
+        },
+        {
+          "horse": "アタゴホープ",
+          "bloodline_score": 100,
+          "total_score": 66.40321363625362
+        },
+        {
+          "horse": "ロバリーハート",
+          "bloodline_score": 100,
+          "total_score": 71.48246858089259
+        },
+        {
+          "horse": "メイセイオペラ",
+          "bloodline_score": 100,
+          "total_score": 73.45936546778688
+        },
+        {
+          "horse": "リンデンニシキ",
+          "bloodline_score": 100,
+          "total_score": 66.09097738268862
+        },
+        {
+          "horse": "チェイスチェイス",
+          "bloodline_score": 100,
+          "total_score": 67.53176290074451
+        },
+        {
+          "horse": "イヴニングスキー",
+          "bloodline_score": 100,
+          "total_score": 76.18476045485616
+        },
+        {
+          "horse": "ワンセイコー",
+          "bloodline_score": 100,
+          "total_score": 64.01954338456498
+        },
+        {
+          "horse": "レオブラック",
+          "bloodline_score": 100,
+          "total_score": 64.34364745107081
+        },
+        {
+          "horse": "マイチャネル",
+          "bloodline_score": 100,
+          "total_score": 66.01840173729839
+        },
+        {
+          "horse": "アキヒロホマレ",
+          "bloodline_score": 100,
+          "total_score": 69.55342438822063
+        },
+        {
+          "horse": "ベラミロード",
+          "bloodline_score": 100,
+          "total_score": 70.33229211368342
+        },
+        {
+          "horse": "トミシノポルンガ",
+          "bloodline_score": 100,
+          "total_score": 74.94590325149038
+        },
+        {
+          "horse": "メイヂヒカリ",
+          "bloodline_score": 100,
+          "total_score": 80.67317430044703
+        },
+        {
+          "horse": "トーホウエンペラー",
+          "bloodline_score": 100,
+          "total_score": 82.04926205070763
+        },
+        {
+          "horse": "タケシバオー",
+          "bloodline_score": 100,
+          "total_score": 84.55189237249843
+        },
+        {
+          "horse": "キングオブザロード",
+          "bloodline_score": 98.36065573770492,
+          "total_score": 67.1815226466236
+        },
+        {
+          "horse": "スズノサンサン",
+          "bloodline_score": 96.96969696969697,
+          "total_score": 58.875356558377106
+        }
+      ],
+      "jockey_combinations": {},
+      "score_distributions": {}
+    },
+    "prediction_accuracy": {
+      "average_score": 65.803011875662,
+      "average_win_rate": 0.46068701256040456,
+      "score_std": 9.029470743365057,
+      "high_score_threshold": 80.0,
+      "prediction_model": "Dance in the Dark baseline 100"
+    },
+    "total_horses_analyzed": 50,
+    "database_stats": {
+      "total_records": 959620,
+      "total_horses": 109426,
+      "data_span_years": 71,
+      "analysis_timestamp": "2025-08-02T14:47:08.557032"
+    }
+  },
+  "enhanced_references": {
+    "legendary_distance_specialists": {
+      "キンコーバトラ": {
+        "score": 86.21428571428571,
+        "win_rate": 0.6046511627906976
+      },
+      "オグリエンゼル": {
+        "score": 85.6108597285068,
+        "win_rate": 0.6857142857142857
+      },
+      "アブクマポーロ": {
+        "score": 90.04761904761905,
+        "win_rate": 0.71875
+      },
+      "エフワンライデン": {
+        "score": 87.6521164021164,
+        "win_rate": 0.7586206896551724
+      },
+      "メイセイオペラ": {
+        "score": 89.15277777777777,
+        "win_rate": 0.6363636363636364
+      },
+      "イヴニングスキー": {
+        "score": 88.02579365079364,
+        "win_rate": 0.5263157894736842
+      },
+      "ロータリーアイドル": {
+        "score": 88.33333333333333,
+        "win_rate": 0.4523809523809524
+      },
+      "メイヂヒカリ": {
+        "score": 91.5925925925926,
+        "win_rate": 0.7619047619047619
+      },
+      "トーホウエンペラー": {
+        "score": 94.0909090909091,
+        "win_rate": 0.6666666666666666
+      },
+      "タケシバオー": {
+        "score": 96.33333333333333,
+        "win_rate": 0.5925925925925926
+      }
+    },
+    "legendary_bloodline_horses": {
+      "ブライアンズロマン": {
+        "score": 100,
+        "total_wins": 42
+      },
+      "キングオブザロード": {
+        "score": 98.36065573770492,
+        "total_wins": 30
+      },
+      "キンコーバトラ": {
+        "score": 100,
+        "total_wins": 26
+      },
+      "オグリエンゼル": {
+        "score": 100,
+        "total_wins": 24
+      },
+      "アブクマポーロ": {
+        "score": 100,
+        "total_wins": 23
+      },
+      "エフワンライデン": {
+        "score": 100,
+        "total_wins": 22
+      },
+      "アタゴホープ": {
+        "score": 100,
+        "total_wins": 22
+      },
+      "ロバリーハート": {
+        "score": 100,
+        "total_wins": 21
+      },
+      "メイセイオペラ": {
+        "score": 100,
+        "total_wins": 21
+      },
+      "リンデンニシキ": {
+        "score": 100,
+        "total_wins": 21
+      },
+      "チェイスチェイス": {
+        "score": 100,
+        "total_wins": 20
+      },
+      "イヴニングスキー": {
+        "score": 100,
+        "total_wins": 20
+      },
+      "ワンセイコー": {
+        "score": 100,
+        "total_wins": 20
+      },
+      "レオブラック": {
+        "score": 100,
+        "total_wins": 20
+      },
+      "マイチャネル": {
+        "score": 100,
+        "total_wins": 19
+      },
+      "アキヒロホマレ": {
+        "score": 100,
+        "total_wins": 18
+      },
+      "ベラミロード": {
+        "score": 100,
+        "total_wins": 17
+      },
+      "トミシノポルンガ": {
+        "score": 100,
+        "total_wins": 17
+      },
+      "メイヂヒカリ": {
+        "score": 100,
+        "total_wins": 16
+      },
+      "トーホウエンペラー": {
+        "score": 100,
+        "total_wins": 16
+      },
+      "タケシバオー": {
+        "score": 100,
+        "total_wins": 16
+      },
+      "スズノサンサン": {
+        "score": 96.96969696969697,
+        "total_wins": 16
+      }
+    },
+    "high_performers": [
+      {
+        "horse": "タケシバオー",
+        "score": 84.55189237249843,
+        "grade": "S (超一流)",
+        "wins": 16,
+        "win_rate": 0.5925925925925926
+      },
+      {
+        "horse": "トーホウエンペラー",
+        "score": 82.04926205070763,
+        "grade": "S (超一流)",
+        "wins": 16,
+        "win_rate": 0.6666666666666666
+      },
+      {
+        "horse": "メイヂヒカリ",
+        "score": 80.67317430044703,
+        "grade": "S (超一流)",
+        "wins": 16,
+        "win_rate": 0.7619047619047619
+      }
+    ],
+    "versatile_champions": [
+      {
+        "horse": "タケシバオー",
+        "high_score_count": 9,
+        "total_score": 84.55189237249843
+      },
+      {
+        "horse": "トーホウエンペラー",
+        "high_score_count": 9,
+        "total_score": 82.04926205070763
+      },
+      {
+        "horse": "メイヂヒカリ",
+        "high_score_count": 8,
+        "total_score": 80.67317430044703
+      },
+      {
+        "horse": "ロータリーアイドル",
+        "high_score_count": 8,
+        "total_score": 77.82202113903413
+      },
+      {
+        "horse": "アブクマポーロ",
+        "high_score_count": 8,
+        "total_score": 77.38246232194439
+      },
+      {
+        "horse": "イヴニングスキー",
+        "high_score_count": 8,
+        "total_score": 76.18476045485616
+      },
+      {
+        "horse": "オグリエンゼル",
+        "high_score_count": 7,
+        "total_score": 75.8087296828187
+      },
+      {
+        "horse": "メジロワース",
+        "high_score_count": 8,
+        "total_score": 75.28457028482015
+      },
+      {
+        "horse": "トミシノポルンガ",
+        "high_score_count": 7,
+        "total_score": 74.94590325149038
+      },
+      {
+        "horse": "エフワンライデン",
+        "high_score_count": 9,
+        "total_score": 73.62687052774282
+      },
+      {
+        "horse": "ブライアンズロマン",
+        "high_score_count": 7,
+        "total_score": 73.62027847165876
+      },
+      {
+        "horse": "キンコーバトラ",
+        "high_score_count": 8,
+        "total_score": 73.52660317238445
+      },
+      {
+        "horse": "メイセイオペラ",
+        "high_score_count": 6,
+        "total_score": 73.45936546778688
+      },
+      {
+        "horse": "ホクトベガ",
+        "high_score_count": 5,
+        "total_score": 71.58930407748227
+      },
+      {
+        "horse": "ロバリーハート",
+        "high_score_count": 6,
+        "total_score": 71.48246858089259
+      },
+      {
+        "horse": "ベラミロード",
+        "high_score_count": 7,
+        "total_score": 70.33229211368342
+      },
+      {
+        "horse": "サプライズパワー",
+        "high_score_count": 8,
+        "total_score": 70.07718284425603
+      },
+      {
+        "horse": "アキヒロホマレ",
+        "high_score_count": 5,
+        "total_score": 69.55342438822063
+      },
+      {
+        "horse": "オースミダイナー",
+        "high_score_count": 7,
+        "total_score": 69.05980711666662
+      },
+      {
+        "horse": "シンボリミサキ",
+        "high_score_count": 5,
+        "total_score": 67.75081581259525
+      },
+      {
+        "horse": "チェイスチェイス",
+        "high_score_count": 5,
+        "total_score": 67.53176290074451
+      },
+      {
+        "horse": "ライフアサヒ",
+        "high_score_count": 6,
+        "total_score": 67.26747964318629
+      },
+      {
+        "horse": "アタゴホープ",
+        "high_score_count": 6,
+        "total_score": 66.40321363625362
+      },
+      {
+        "horse": "リンデンニシキ",
+        "high_score_count": 5,
+        "total_score": 66.09097738268862
+      },
+      {
+        "horse": "マルブツホープ",
+        "high_score_count": 5,
+        "total_score": 65.73777051597988
+      },
+      {
+        "horse": "フジノハイメリット",
+        "high_score_count": 5,
+        "total_score": 65.35687870325525
+      },
+      {
+        "horse": "モリユウプリンス",
+        "high_score_count": 5,
+        "total_score": 64.43079107040147
+      },
+      {
+        "horse": "ワンセイコー",
+        "high_score_count": 5,
+        "total_score": 64.01954338456498
+      }
+    ]
+  },
+  "llm_context": {
+    "database_summary": "959,620レコード・109,426頭・71年間の日本競馬完全データベース",
+    "analysis_method": "ダンスインザダーク基準100点・12項目D-Logic分析",
+    "top_legendary_horses": [
+      {
+        "name": "タケシバオー",
+        "score": 84.55189237249843,
+        "grade": "S (超一流)",
+        "wins": 16,
+        "win_rate": 0.5925925925925926,
+        "career_span": "19670618 ～ 19690928",
+        "specialties": [
+          "距離適性抜群",
+          "血統優秀",
+          "騎手相性良好"
+        ]
+      },
+      {
+        "name": "トーホウエンペラー",
+        "score": 82.04926205070763,
+        "grade": "S (超一流)",
+        "wins": 16,
+        "win_rate": 0.6666666666666666,
+        "career_span": "19991231 ～ 20020217",
+        "specialties": [
+          "距離適性抜群",
+          "血統優秀",
+          "騎手相性良好"
+        ]
+      },
+      {
+        "name": "メイヂヒカリ",
+        "score": 80.67317430044703,
+        "grade": "S (超一流)",
+        "wins": 16,
+        "win_rate": 0.7619047619047619,
+        "career_span": "19541023 ～ 19561223",
+        "specialties": [
+          "距離適性抜群",
+          "血統優秀",
+          "騎手相性良好"
+        ]
+      }
+    ],
+    "winning_patterns_summary": {
+      "high_performers_count": 3,
+      "distance_specialists_count": 4,
+      "versatile_champions_count": 28,
+      "bloodline_excellence_count": 22
+    },
+    "prediction_accuracy": {
+      "average_score": 65.803011875662,
+      "average_win_rate": 0.46068701256040456,
+      "score_std": 9.029470743365057,
+      "high_score_threshold": 80.0,
+      "prediction_model": "Dance in the Dark baseline 100"
+    },
+    "last_updated": "2025-08-02T15:01:19.058503"
+  }
+}

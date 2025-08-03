@@ -1,0 +1,88 @@
+{
+  "baseline_horse": "エフワンライデン",
+  "baseline_score": 100.0,
+  "calculation_method": "efuwan_baseline_capped_at_100",
+  "horses": [
+    {
+      "name": "ダノンデサイル",
+      "efuwan_score": 100.0,
+      "grade": "SS (伝説級)"
+    },
+    {
+      "name": "ドウデュース",
+      "efuwan_score": 100.0,
+      "grade": "SS (伝説級)"
+    },
+    {
+      "name": "シャフリヤール",
+      "efuwan_score": 97.98078322518707,
+      "grade": "SS (伝説級)"
+    },
+    {
+      "name": "スタニングローズ",
+      "efuwan_score": 97.0903209368262,
+      "grade": "SS (伝説級)"
+    },
+    {
+      "name": "ベラジオオペラ",
+      "efuwan_score": 96.0800390905462,
+      "grade": "SS (伝説級)"
+    },
+    {
+      "name": "アーバンシック",
+      "efuwan_score": 88.66406764990596,
+      "grade": "S (超一流)"
+    },
+    {
+      "name": "ハヤヤッコ",
+      "efuwan_score": 87.86418379840035,
+      "grade": "S (超一流)"
+    },
+    {
+      "name": "レガレイラ",
+      "efuwan_score": 84.8747803563203,
+      "grade": "S (超一流)"
+    },
+    {
+      "name": "ジャスティンパレス",
+      "efuwan_score": 84.4907784149447,
+      "grade": "S (超一流)"
+    },
+    {
+      "name": "プログノーシス",
+      "efuwan_score": 74.00343647696111,
+      "grade": "A (一流)"
+    },
+    {
+      "name": "ディープボンド",
+      "efuwan_score": 61.60378704919592,
+      "grade": "B (良馬)"
+    },
+    {
+      "name": "シュトルーヴェ",
+      "efuwan_score": 56.18143580683553,
+      "grade": "C (平均)"
+    },
+    {
+      "name": "ローシャムパーク",
+      "efuwan_score": 53.933494225865175,
+      "grade": "C (平均)"
+    },
+    {
+      "name": "ブローザホーン",
+      "efuwan_score": 46.9676340767333,
+      "grade": "D (要改善)"
+    },
+    {
+      "name": "ダノンベルーガ",
+      "efuwan_score": 38.97226327559814,
+      "grade": "D (要改善)"
+    },
+    {
+      "name": "スターズオンアース",
+      "efuwan_score": 35.10003510003511,
+      "grade": "D (要改善)"
+    }
+  ],
+  "test_date": "2025-08-02"
+}

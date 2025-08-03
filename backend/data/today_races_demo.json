@@ -3,7 +3,7 @@
   "lastUpdate": "2024-01-20T09:00:00Z",
   "racecourses": [
     {
-      "name": "東京競馬場",
+      "name": "東京競馬場", 
       "courseId": "tokyo",
       "weather": "晴",
       "trackCondition": "良",

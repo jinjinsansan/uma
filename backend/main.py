@@ -11,6 +11,9 @@ import json
 from api.d_logic import router as d_logic_router
 from api.today_races import router as today_races_router
 from api.chat import router as chat_router
+from api.past_races import router as past_races_router
+from api.fast_dlogic_api import router as fast_dlogic_router
+from api.database_stats import router as database_stats_router
 from models.d_logic_models import ChatDLogicRequest, ChatDLogicResponse
 from services.knowledge_base import KnowledgeBase
 
@@ -21,6 +24,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "http://localhost:3003",
         "https://uma-oracle-ai.netlify.app",
         "https://*.netlify.app",
         "https://*.onrender.com",
@@ -40,7 +46,10 @@ kb = KnowledgeBase()
 # ルーターを含める
 app.include_router(d_logic_router, prefix="/api/d-logic", tags=["D-Logic"])
 app.include_router(today_races_router, prefix="/api", tags=["Today-Races"])
+app.include_router(past_races_router, prefix="/api", tags=["Past-Races"])
 app.include_router(chat_router, tags=["Chat"])
+app.include_router(fast_dlogic_router, prefix="/api/v2/dlogic", tags=["D-Logic V2 (Fast)"])
+app.include_router(database_stats_router, tags=["Database Statistics"])
 
 # 本日レース情報（Phase C用固定データ）
 TODAY_RACES = {

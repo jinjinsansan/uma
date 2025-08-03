@@ -1,0 +1,6 @@
+{
+  "database_info": {
+    "connection_type": "MySQL",
+    "database_name": "mykeibadb",
+    "host": "172.25.160.1:3306",
+    "db_size_mb": 

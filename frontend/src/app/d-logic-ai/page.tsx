@@ -11,7 +11,7 @@ import { useLineAddFriendDetection } from '@/hooks/useLineAddFriendDetection';
 export default function DLogicAIPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { shouldShowPopup, hidePopup, onTicketClaimed } = useLineAddFriendDetection({
-    delaySeconds: 45, // D-Logic AI使用中45秒後に表示
+    delaySeconds: 5, // テスト用：5秒後に表示
   });
 
   return (
@@ -33,8 +33,8 @@ export default function DLogicAIPage() {
             <Link href="/past-races" className="outline-button px-4 py-2 text-sm">
               過去レース体験
             </Link>
-            <Link href="/register" className="outline-button px-4 py-2 text-sm">
-              会員登録
+            <Link href="/auth/signin" className="outline-button px-4 py-2 text-sm">
+              ログイン
             </Link>
           </nav>
 
@@ -66,11 +66,11 @@ export default function DLogicAIPage() {
                 過去レース体験
               </Link>
               <Link 
-                href="/register" 
+                href="/auth/signin" 
                 className="outline-button px-4 py-3 text-center text-sm"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                会員登録
+                ログイン
               </Link>
             </nav>
           </div>

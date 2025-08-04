@@ -15,14 +15,18 @@ export default function AuthGuard({ children, requireAuth = true }: AuthGuardPro
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
+    console.log('AuthGuard:', { status, session: !!session, requireAuth });
+    
     if (status === 'loading') return; // セッション読み込み中
 
     if (requireAuth) {
       if (!session) {
+        console.log('AuthGuard: Redirecting to signin - no session');
         // 未認証の場合はログインページにリダイレクト
         router.push('/auth/signin');
         return;
       }
+      console.log('AuthGuard: User authenticated:', session.user?.email);
     }
 
     setIsAuthorized(true);

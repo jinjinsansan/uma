@@ -27,26 +27,13 @@ export function useLineAddFriendDetection(options: UseLineAddFriendDetectionOpti
         const lastShownKey = `line_popup_last_shown_${session.user.email}`;
         const lastShown = localStorage.getItem(lastShownKey);
         
-        // テスト用：24時間制限を無視
-        if (process.env.NODE_ENV === 'development' || !lastShown) {
-          console.log('Showing LINE popup after', delaySeconds, 'seconds');
-          
-          // 指定秒数後にポップアップ表示
-          setTimeout(() => {
-            setShouldShowPopup(true);
-          }, delaySeconds * 1000);
-        } else {
-          const lastShownTime = new Date(lastShown);
-          const now = new Date();
-          const hoursSinceLastShow = (now.getTime() - lastShownTime.getTime()) / (1000 * 60 * 60);
-          
-          if (hoursSinceLastShow >= reshowHours) {
-            console.log('Reshowing LINE popup after', hoursSinceLastShow, 'hours');
-            setTimeout(() => {
-              setShouldShowPopup(true);
-            }, delaySeconds * 1000);
-          }
-        }
+        // テスト用：常に表示（24時間制限を無視）
+        console.log('Showing LINE popup after', delaySeconds, 'seconds');
+        
+        // 指定秒数後にポップアップ表示
+        setTimeout(() => {
+          setShouldShowPopup(true);
+        }, delaySeconds * 1000);
       } catch (error) {
         console.error('LINE友達追加ポップアップ判定エラー:', error);
         // エラーが発生してもポップアップは表示する（テスト用）

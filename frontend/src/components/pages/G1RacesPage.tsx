@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Calendar, Trophy, Target, Star, BarChart3, Clock, MapPin, Menu, X } from 'lucide-react'
+import LineAddFriendPopup from '@/components/line/LineAddFriendPopup'
+import { useLineAddFriendDetection } from '@/hooks/useLineAddFriendDetection'
 
 interface Horse {
   number: number;
@@ -47,6 +49,9 @@ const G1RacesPage: React.FC = () => {
   const [pastRaces, setPastRaces] = useState<PastRace[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { shouldShowPopup, hidePopup, onTicketClaimed } = useLineAddFriendDetection({
+    delaySeconds: 30, // 過去レース体験中30秒後に表示
+  });
 
   useEffect(() => {
     fetchPastRaces();
@@ -337,6 +342,13 @@ const G1RacesPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* LINE友達追加ポップアップ */}
+      <LineAddFriendPopup
+        isOpen={shouldShowPopup}
+        onClose={hidePopup}
+        onTicketClaimed={onTicketClaimed}
+      />
     </div>
   );
 };

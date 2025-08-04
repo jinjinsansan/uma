@@ -4,12 +4,19 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import DLogicChatInterface from '../../components/chat/DLogicChatInterface';
+import AuthGuard from '@/components/auth/AuthGuard';
+import LineAddFriendPopup from '@/components/line/LineAddFriendPopup';
+import { useLineAddFriendDetection } from '@/hooks/useLineAddFriendDetection';
 
 export default function DLogicAIPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { shouldShowPopup, hidePopup, onTicketClaimed } = useLineAddFriendDetection({
+    delaySeconds: 45, // D-Logic AI使用中45秒後に表示
+  });
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
+    <AuthGuard requireAuth={true}>
+      <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
       {/* Header */}
       <header className="bg-gray-900/50 border-b border-[#ffd700]/30">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -70,10 +77,18 @@ export default function DLogicAIPage() {
         )}
       </header>
 
-      {/* Main Content - Full Height Chat */}
-      <main className="h-[calc(100vh-80px)]">
-        <DLogicChatInterface />
-      </main>
-    </div>
+        {/* Main Content - Full Height Chat */}
+        <main className="h-[calc(100vh-80px)]">
+          <DLogicChatInterface />
+        </main>
+      </div>
+      
+      {/* LINE友達追加ポップアップ */}
+      <LineAddFriendPopup
+        isOpen={shouldShowPopup}
+        onClose={hidePopup}
+        onTicketClaimed={onTicketClaimed}
+      />
+    </AuthGuard>
   );
 }

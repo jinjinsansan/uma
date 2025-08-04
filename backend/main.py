@@ -14,6 +14,8 @@ from api.chat import router as chat_router
 from api.past_races import router as past_races_router
 from api.fast_dlogic_api import router as fast_dlogic_router
 from api.database_stats import router as database_stats_router
+from api.user_management import router as user_management_router
+from api.line_integration import router as line_integration_router
 from models.d_logic_models import ChatDLogicRequest, ChatDLogicResponse
 from services.knowledge_base import KnowledgeBase
 
@@ -27,9 +29,13 @@ app.add_middleware(
         "http://localhost:3001",
         "http://localhost:3002",
         "http://localhost:3003",
+        "http://localhost:3004",
         "https://uma-oracle-ai.netlify.app",
         "https://*.netlify.app",
         "https://*.onrender.com",
+        "https://dlogicai.in",
+        "https://www.dlogicai.in",
+        "https://*.vercel.app",
         "*"
     ],
     allow_credentials=True,
@@ -50,6 +56,8 @@ app.include_router(past_races_router, prefix="/api", tags=["Past-Races"])
 app.include_router(chat_router, tags=["Chat"])
 app.include_router(fast_dlogic_router, prefix="/api/v2/dlogic", tags=["D-Logic V2 (Fast)"])
 app.include_router(database_stats_router, tags=["Database Statistics"])
+app.include_router(user_management_router, prefix="/api/users", tags=["User Management"])
+app.include_router(line_integration_router, prefix="/api/line", tags=["LINE Integration"])
 
 # 本日レース情報（Phase C用固定データ）
 TODAY_RACES = {

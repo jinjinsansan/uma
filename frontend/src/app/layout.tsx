@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { Noto_Sans_JP } from 'next/font/google'
+import AuthProvider from '@/components/providers/AuthProvider'
 
 const notoSansJP = Noto_Sans_JP({
   subsets: ['latin'],
@@ -10,7 +11,7 @@ const notoSansJP = Noto_Sans_JP({
 
 export const metadata: Metadata = {
   title: 'D-Logic AI - 革命的競馬予想システム',
-  description: '959,620レコードの膨大なデータとAI技術を融合した次世代D-Logic分析エンジン。ダンスインザダーク基準100点による科学的で客観的な12項目評価システム。',
+  description: 'D-Logic競馬予想AIシステム。独自の12項目分析による科学的な競走馬評価を提供します。',
 }
 
 export default function RootLayout({
@@ -20,7 +21,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
-      <body className={notoSansJP.className}>{children}</body>
+      <body className={notoSansJP.className}>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   )
 }

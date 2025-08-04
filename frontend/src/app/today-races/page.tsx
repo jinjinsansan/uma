@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
+import AuthGuard from '@/components/auth/AuthGuard';
 
 // 仮のレースデータ（後でmykeibadbから取得）
 const sampleTodayRaces = [
@@ -136,7 +137,8 @@ export default function TodayRacesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
+    <AuthGuard requireAuth={true}>
+      <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
       {/* Header */}
       <header className="bg-bg-secondary border-b border-border-primary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -334,6 +336,7 @@ export default function TodayRacesPage() {
           </div>
         </section>
       </main>
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

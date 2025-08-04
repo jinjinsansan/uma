@@ -6,6 +6,7 @@ import { Crown, Send, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useChatStore } from '../../store/chatStore';
 import DLogoChatAnimation from '../animation/DLogoChatAnimation';
+import AuthButton from '../ui/AuthButton';
 
 export default function DLogicChatInterface() {
   const { messages, isLoading, addMessage } = useChatStore();
@@ -205,7 +206,12 @@ export default function DLogicChatInterface() {
   };
 
   return (
-    <div className="h-full bg-gradient-to-b from-black via-gray-900 to-black text-white flex flex-col">
+    <div className="h-full bg-gradient-to-b from-black via-gray-900 to-black text-white flex flex-col relative">
+      {/* 認証ボタン - 右上に配置 */}
+      <div className="absolute top-4 right-4 z-20">
+        <AuthButton />
+      </div>
+      
       {/* Dロゴアニメーション */}
       <DLogoChatAnimation 
         score={dLogoScore}

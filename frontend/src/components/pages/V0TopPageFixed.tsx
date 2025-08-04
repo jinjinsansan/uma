@@ -5,6 +5,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "../ui/button"
 import { Crown, Star, Bot, UserPlus, MessageCircle, Rocket } from "lucide-react"
+import AuthButton from "../ui/AuthButton"
 
 interface DatabaseStats {
   total_records: number;
@@ -61,6 +62,11 @@ export default function V0TopPageFixed() {
     <div
       className={`min-h-screen bg-[#0a0a0a] text-white transition-opacity duration-500 ${showMain ? "opacity-100" : "opacity-0"}`}
     >
+      {/* 認証ボタン - 右上に配置 */}
+      <div className="absolute top-4 right-4 z-10">
+        <AuthButton />
+      </div>
+      
       <div className="container mx-auto px-4 py-8 flex flex-col items-center justify-center min-h-screen">
         {/* メインロゴ - 修正版 */}
         <div className="text-center mb-20">

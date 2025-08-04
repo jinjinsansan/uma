@@ -33,3 +33,42 @@
 ⏳  1400/10000 処理完了 (速度: 0.0頭/秒, 残り時間: 59.5時間)
 ⏳  1500/10000 処理完了 (速度: 0.0頭/秒, 残り時間: 59.0時間)
 💾 中間保存: 1500頭完了
+⏳  1600/10000 処理完了 (速度: 0.0頭/秒, 残り時間: 58.8時間)
+⏳  1700/10000 処理完了 (速度: 0.0頭/秒, 残り時間: 58.4時間)
+❌ ペンテリコン エラー: 2013 (HY000): Lost connection to MySQL server during query
+❌ コパノハワード エラー: MySQL Connection not available.
+❌ ジュラ エラー: MySQL Connection not available.
+❌ セクシーマージュ エラー: MySQL Connection not available.
+❌ リカントロポ エラー: MySQL Connection not available.
+❌ ミルトライディーン エラー: MySQL Connection not available.
+❌ ウインバリオス エラー: MySQL Connection not available.
+❌ デザートスター エラー: MySQL Connection not available.
+❌ リジル エラー: MySQL Connection not available.
+❌ ツマヤ エラー: MySQL Connection not available.
+
+✅ D-Logic生データナレッジ一括作成完了!
+📊 処理成功: 1760頭
+❌ エラー: 8220頭
+⏱️ 処理時間: 14.8時間
+📁 保存先: /mnt/c/Users/USER/OneDrive/デスクトップ/Cusor/chatbot/uma/backend/services/../data/dlogic_raw_knowledge.json
+
+🧪 性能テスト実行...
+✅ ナレッジファイル読み込み: 1780頭
+🚀 D-Logic生データマネージャー初期化完了
+⚡ 高速D-Logic計算エンジン初期化完了
+  🐎 ヴァランセカズマ          56.6点 (0.001秒) - knowledge_base
+  🐎 モズクルードラゴン         51.1点 (0.000秒) - knowledge_base
+  🐎 アバンダンス            48.8点 (0.000秒) - knowledge_base
+  🐎 ビリーヴインミー          50.2点 (0.000秒) - knowledge_base
+  🐎 デスティネ             55.0点 (0.000秒) - knowledge_base
+  📊 平均計算時間: 0.001秒/頭
+  🎯 性能目標達成: EXCELLENT（目標0.1秒 vs 実測0.001秒）
+
+🎉 フルバッチ処理成功!
+📊 処理統計:
+  - 成功: 1760頭
+  - エラー: 8220頭
+  - 処理時間: 14.8時間
+  - 平均計算速度: 0.001秒/頭
+
+✅ D-Logicナレッジファイルシステム完成!

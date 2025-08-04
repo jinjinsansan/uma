@@ -1,7 +1,12 @@
 import G1RacesPage from '@/components/pages/G1RacesPage'
+import AuthGuard from '@/components/auth/AuthGuard'
 
 export default function PastRaces() {
-  return <G1RacesPage />
+  return (
+    <AuthGuard requireAuth={true}>
+      <G1RacesPage />
+    </AuthGuard>
+  )
 }
 
 export const metadata = {

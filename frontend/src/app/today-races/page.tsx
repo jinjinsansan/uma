@@ -51,10 +51,13 @@ export default function TodayRacesPage() {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [databaseStats, setDatabaseStats] = useState({ total_records: 1050000, total_horses: 115000, total_races: 85000 });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState<string>('');
 
   const handleAnalyzeRace = (raceId: number) => {
     // D-Logic AI ページに遷移
-    window.location.href = `/d-logic-ai?race=${raceId}&type=today`;
+    if (typeof window !== 'undefined') {
+      window.location.href = `/d-logic-ai?race=${raceId}&type=today`;
+    }
   };
 
   // バックエンドAPIからリアルタイムデータを取得
@@ -116,6 +119,8 @@ export default function TodayRacesPage() {
   useEffect(() => {
     fetchTodayRaces();
     fetchDatabaseStats();
+    // クライアントサイドでのみ現在時刻を設定
+    setCurrentTime(new Date().toLocaleTimeString('ja-JP'));
   }, []);
 
   if (maintenanceMode) {
@@ -218,7 +223,7 @@ export default function TodayRacesPage() {
                 <span className="text-secondary">データ更新中</span>
               </div>
               <div className="text-secondary">
-                最終更新: {new Date().toLocaleTimeString('ja-JP')}
+                最終更新: {currentTime || '取得中...'}
               </div>
             </div>
           </div>

@@ -18,6 +18,7 @@ export default function DLogicChatInterface() {
   const [loadingTime, setLoadingTime] = useState(0);
   const [loadingStage, setLoadingStage] = useState('');
   const [hasHorseName, setHasHorseName] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   // メッセージが追加されたときに自動スクロール
   const scrollToBottom = () => {
@@ -25,8 +26,14 @@ export default function DLogicChatInterface() {
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isMounted) {
+      scrollToBottom();
+    }
+  }, [messages, isMounted]);
 
   // 馬名が含まれているかチェック
   const checkForHorseName = (text: string): boolean => {
@@ -277,10 +284,10 @@ export default function DLogicChatInterface() {
               <div className={`text-xs mt-2 ${
                 message.type === 'user' ? 'text-black/70' : 'text-gray-400'
               }`}>
-                {message.timestamp.toLocaleTimeString('ja-JP', { 
+                {isMounted ? message.timestamp.toLocaleTimeString('ja-JP', { 
                   hour: '2-digit', 
                   minute: '2-digit' 
-                })}
+                }) : '--:--'}
               </div>
             </div>
           </div>

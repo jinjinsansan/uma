@@ -17,10 +17,13 @@ interface DatabaseStats {
 export default function V0TopPageFixed() {
   const [showLogo, setShowLogo] = useState(true)
   const [showMain, setShowMain] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const [databaseStats, setDatabaseStats] = useState<DatabaseStats | null>(null);
   const [statsText, setStatsText] = useState('959,620レコード、109,426頭、82,738レースの巨大データベース');
 
   useEffect(() => {
+    setIsMounted(true)
+    
     // 3秒後にメインページを表示
     const timer = setTimeout(() => {
       setShowLogo(false)
@@ -53,6 +56,10 @@ export default function V0TopPageFixed() {
     const interval = setInterval(fetchDatabaseStats, 300000);
     return () => clearInterval(interval);
   }, [])
+
+  if (!isMounted) {
+    return <LogoAnimation />
+  }
 
   if (showLogo) {
     return <LogoAnimation />
@@ -170,9 +177,13 @@ function NavigationButtonFixed({ icon, title, description, href, disabled = fals
     if (disabled) return
     
     if (external) {
-      window.open(href, '_blank', 'noopener noreferrer')
+      if (typeof window !== 'undefined') {
+        window.open(href, '_blank', 'noopener noreferrer')
+      }
     } else {
-      window.location.href = href
+      if (typeof window !== 'undefined') {
+        window.location.href = href
+      }
     }
   }
 

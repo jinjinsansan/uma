@@ -24,7 +24,8 @@ export default function LineAddFriendPopup({ isOpen, onClose, onTicketClaimed }:
 
   // ランダムな検証コードを生成（実際の運用時はサーバーサイドで管理）
   const generateVerificationCode = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
+    // hydrationエラーを避けるため固定コードを使用（開発時のみ）
+    return 'DL' + Date.now().toString().slice(-4);
   };
 
   useEffect(() => {

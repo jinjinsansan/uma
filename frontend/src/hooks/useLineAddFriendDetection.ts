@@ -25,7 +25,7 @@ export function useLineAddFriendDetection(options: UseLineAddFriendDetectionOpti
         
         // ローカルストレージで表示履歴をチェック
         const lastShownKey = `line_popup_last_shown_${session.user.email}`;
-        const lastShown = localStorage.getItem(lastShownKey);
+        const lastShown = typeof window !== 'undefined' ? localStorage.getItem(lastShownKey) : null;
         
         // テスト用：常に表示（24時間制限を無視）
         console.log('Showing LINE popup after', delaySeconds, 'seconds');
@@ -50,7 +50,7 @@ export function useLineAddFriendDetection(options: UseLineAddFriendDetectionOpti
     setShouldShowPopup(false);
     
     // 表示履歴をローカルストレージに保存
-    if (session?.user?.email) {
+    if (session?.user?.email && typeof window !== 'undefined') {
       const lastShownKey = `line_popup_last_shown_${session.user.email}`;
       localStorage.setItem(lastShownKey, new Date().toISOString());
     }
@@ -60,7 +60,7 @@ export function useLineAddFriendDetection(options: UseLineAddFriendDetectionOpti
     setShouldShowPopup(false);
     
     // チケット獲得済みフラグを設定（今後表示しない）
-    if (session?.user?.email) {
+    if (session?.user?.email && typeof window !== 'undefined') {
       const claimedKey = `line_ticket_claimed_${session.user.email}`;
       localStorage.setItem(claimedKey, 'true');
     }

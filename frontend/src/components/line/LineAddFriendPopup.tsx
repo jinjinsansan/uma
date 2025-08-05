@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { X, Gift, Clock, Users } from 'lucide-react';
-import { UserService } from '@/services/userService';
+// import { UserService } from '@/services/userService';
 
 interface LineAddFriendPopupProps {
   isOpen: boolean;
@@ -52,7 +52,8 @@ export default function LineAddFriendPopup({ isOpen, onClose, onTicketClaimed }:
       const userId = 1; // 実際はセッションからユーザーIDを取得
       const lineUserId = `demo_${Date.now()}`; // 実際はLINEから取得
       
-      await UserService.addLineTicket(userId, lineUserId);
+      // await UserService.addLineTicket(userId, lineUserId);
+      console.log('LINE ticket would be added for user:', userId, lineUserId);
       
       setStep('success');
       onTicketClaimed();

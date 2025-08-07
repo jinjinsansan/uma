@@ -13,33 +13,78 @@ router = APIRouter(prefix="/api/chat", tags=["Chat"])
 logger = logging.getLogger(__name__)
 
 def extract_horse_name(text: str) -> Optional[str]:
-    """テキストから馬名を抽出"""
-    # 一般的な挨拶や質問は除外
-    general_patterns = [
-        "おはよう", "こんにちは", "こんばんは", "お疲れ", "ありがとう",
-        "あなた", "だれ", "誰", "何", "どう", "です", "ます", "でしょう"
+    """テキストから馬名を抽出（100点満点・インジケーター優先版）"""
+    if not text or len(text.strip()) < 3:
+        return None
+    
+    text_clean = text.strip()
+    text_lower = text_clean.lower()
+    
+    # 【第1段階】馬名インジケーター最優先チェック
+    horse_indicators = [
+        "の指数", "の分析", "を分析", "の成績", "のスコア", 
+        "のD-Logic", "の予想", "の評価", "はどう", "について",
+        "を教えて", "について教えて", "の情報", "のデータ",
+        "の結果", "はどんな", "を調べて", "を見て", "をお願い"
     ]
     
-    # 一般的なパターンが含まれている場合は馬名とみなさない
-    lower_text = text.lower()
-    for pattern in general_patterns:
-        if pattern in lower_text:
-            return None
+    # インジケーターがある場合は優先的に馬名を探す
+    has_clear_indicator = any(indicator in text_clean for indicator in horse_indicators)
     
-    # 馬名を示すキーワードがある場合のみ抽出
-    horse_indicators = ["の指数", "の分析", "について", "を分析", "の成績", "のスコア", "はどう"]
-    has_indicator = any(indicator in text for indicator in horse_indicators)
+    if has_clear_indicator:
+        # カタカナ検出
+        katakana_pattern = r'[ァ-ヴー]{3,}'
+        katakana_matches = re.findall(katakana_pattern, text_clean)
+        
+        if katakana_matches:
+            longest_katakana = max(katakana_matches, key=len)
+            if len(longest_katakana) >= 3:
+                return longest_katakana
     
-    # カタカナの馬名パターン（3文字以上）
+    # 【第2段階】明確な除外対象チェック
+    immediate_exclude = [
+        "こんにちは", "こんにちわ", "おはよう", "おはようございます", 
+        "こんばんは", "こんばんわ", "お疲れ様", "お疲れさま", "お疲れ",
+        "ありがとう", "ありがとうございます", "よろしく", "はじめまして",
+        "さようなら", "またね", "お元気", "元気",
+        "何ですか", "誰ですか", "どうですか", "なんですか", "だれですか",
+        "教えて", "説明して", "わからない", "知りたい",
+        "D-Logicとは", "使い方", "やり方", "方法", "テスト", "test",
+        "あなたは", "君は", "きみは",
+        "今日の天気", "天気", "時間", "日付", "曜日", "今日", "明日", "昨日",
+        "暑い", "寒い", "雨", "晴れ", "面白い", "楽しい", "すごい"
+    ]
+    
+    if text_lower in immediate_exclude:
+        return None
+    
+    # 【第3段階】一般的な除外パターン（馬名が含まれない場合のみ）
+    exclude_if_contains = [
+        "です", "ます", "でしょう", "ですか", "ますか", "でした", "ました",
+        "なに", "なん", "だれ", "いつ", "どこ", "なぜ", "なんで",
+        "って", "という", "といえば", "に関して",
+        "hello", "hi", "good", "nice", "wow", "ok", "yes", "no"
+    ]
+    
+    # カタカナがない場合のみ除外パターンを適用
     katakana_pattern = r'[ァ-ヴー]{3,}'
-    matches = re.findall(katakana_pattern, text)
+    katakana_matches = re.findall(katakana_pattern, text_clean)
     
-    # インジケーターがあるか、長いカタカナ文字列（5文字以上）がある場合のみ馬名とする
-    if matches:
-        longest_match = max(matches, key=len)
-        if has_indicator or len(longest_match) >= 5:
-            return longest_match
+    if not katakana_matches:
+        for exclude in exclude_if_contains:
+            if exclude in text_lower:
+                return None
+        return None
     
+    # 【第4段階】長いカタカナ単独入力
+    longest_katakana = max(katakana_matches, key=len)
+    
+    if (len(longest_katakana) >= 8 and 
+        len(text_clean) <= len(longest_katakana) + 2 and
+        not any(char in text_clean for char in ['？', '?', '！', '!', '。', '、'])):
+        return longest_katakana
+    
+    # その他は除外
     return None
 
 async def get_horse_d_logic_analysis(horse_name: str) -> Dict[str, Any]:
@@ -82,15 +127,18 @@ async def chat_message(request: Dict[str, Any]):
         user_message = request.get("message", "")
         chat_history = request.get("history", [])
         
-        logger.info(f"Chat message received: {user_message}")
+        logger.info(f"Chat message received: {user_message[:50]}...")  # 最初の50文字のみログ
         
-        # 馬名が含まれているかチェック
+        # 馬名が含まれているかチェック（高速化）
         horse_name = extract_horse_name(user_message)
         
-        # D-Logic分析結果を準備（馬名がある場合）
+        # D-Logic分析結果を準備（馬名がある場合のみ）
         d_logic_result = None
         if horse_name:
+            logger.info(f"Horse name detected: {horse_name}")
             d_logic_result = await get_horse_d_logic_analysis(horse_name)
+        else:
+            logger.debug("No horse name detected - skipping D-Logic analysis")
         
         # OpenAI APIで自然な応答を生成
         system_prompt = """あなたはD-Logic AI、競馬予想の専門家です。
@@ -372,41 +420,7 @@ def extract_race_keyword(message: str) -> str:
     
     return None
 
-def extract_horse_name(message: str) -> str:
-    """メッセージから馬名を抽出"""
-    import re
-    
-    # 馬名を示すキーワードパターン
-    horse_indicators = ["の指数", "はどう", "について", "を分析", "の分析", "の成績", "のスコア"]
-    
-    for indicator in horse_indicators:
-        if indicator in message:
-            # インジケーターの前の部分を馬名として抽出
-            parts = message.split(indicator)
-            if len(parts) > 0:
-                potential_horse_name = parts[0].strip()
-                # 不要な文字を除去
-                potential_horse_name = re.sub(r'^[「『]', '', potential_horse_name)
-                potential_horse_name = re.sub(r'[」』]$', '', potential_horse_name)
-                
-                # 3文字以上の場合のみ馬名とみなす
-                if len(potential_horse_name) >= 3:
-                    return potential_horse_name
-    
-    # カタカナの連続（馬名の可能性が高い）
-    katakana_pattern = re.search(r'[ア-ヴー]{3,}', message)
-    if katakana_pattern:
-        return katakana_pattern.group(0)
-    
-    # ひらがな+カタカナの混合馬名
-    mixed_pattern = re.search(r'[あ-んア-ヴー]{3,}', message)
-    if mixed_pattern:
-        potential_name = mixed_pattern.group(0)
-        # 一般的でない組み合わせのみ馬名とする
-        if not any(common in potential_name for common in ["です", "ます", "でしょう", "ですか", "どう"]):
-            return potential_name
-    
-    return None
+# Old extract_horse_name function removed - using the correct one at line 15
 
 async def calculate_d_logic(race_detail: Dict[str, Any]) -> Dict[str, Any]:
     """Dロジック計算を実行"""

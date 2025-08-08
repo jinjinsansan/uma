@@ -46,10 +46,36 @@ class DLogicRawDataManager:
         return self._download_from_github()
     
     def _download_from_github(self) -> Dict[str, Any]:
-        """ナレッジファイルがない場合は空のデータを返す"""
-        print("⚠️ ナレッジファイルが見つかりません。MySQLから動的に取得します。")
+        """GitHub Releasesからナレッジファイルをダウンロード"""
+        github_url = "https://github.com/jinjinsansan/dlogic-knowledge-data/releases/download/V1.0/dlogic_raw_knowledge.json"
         
-        # 空のナレッジ構造を返す
+        try:
+            print("📥 GitHub Releasesからナレッジファイルをダウンロード中...")
+            response = requests.get(github_url, timeout=60)
+            
+            if response.status_code == 200:
+                data = response.json()
+                horse_count = len(data.get('horses', {}))
+                print(f"✅ ダウンロード完了: {horse_count}頭のデータを取得")
+                
+                # ローカルに保存（キャッシュとして）
+                try:
+                    os.makedirs(os.path.dirname(self.knowledge_file), exist_ok=True)
+                    with open(self.knowledge_file, 'w', encoding='utf-8') as f:
+                        json.dump(data, f, ensure_ascii=False, indent=2)
+                    print("💾 ローカルキャッシュに保存完了")
+                except Exception as e:
+                    print(f"⚠️ ローカル保存失敗（メモリ上で動作継続）: {e}")
+                
+                return data
+            else:
+                print(f"❌ ダウンロード失敗: HTTPステータス {response.status_code}")
+                
+        except Exception as e:
+            print(f"❌ ダウンロードエラー: {e}")
+        
+        # フォールバック：空のナレッジ構造を返す
+        print("⚠️ ナレッジファイルが取得できません。MySQLから動的に取得します。")
         return {
             "meta": {
                 "version": "1.0",

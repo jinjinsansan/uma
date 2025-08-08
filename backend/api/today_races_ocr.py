@@ -23,6 +23,15 @@ class RaceData(BaseModel):
     race_name: str
     horses: List[str]
 
+class RaceUpdateData(BaseModel):
+    """レース更新データのモデル"""
+    race_name: Optional[str] = None
+    horses: Optional[List[str]] = None
+
+class VisibilityData(BaseModel):
+    """表示設定データのモデル"""
+    is_visible: bool
+
 class RaceResponse(BaseModel):
     """レース情報レスポンス"""
     race_id: str
@@ -56,6 +65,7 @@ async def save_race_data(race_data: RaceData):
             "race_number": race_data.race_number,
             "race_name": race_data.race_name,
             "horses": race_data.horses,
+            "is_visible": True,  # デフォルトで表示
             "created_at": datetime.now().isoformat()
         }
         
@@ -75,7 +85,7 @@ async def save_race_data(race_data: RaceData):
         )
 
 @router.get("/")
-async def get_today_races(date: Optional[str] = None):
+async def get_today_races(date: Optional[str] = None, include_hidden: bool = False):
     """指定日（デフォルトは今日）のレース一覧を取得"""
     try:
         # 日付の指定がない場合は今日
@@ -88,9 +98,15 @@ async def get_today_races(date: Optional[str] = None):
         # 指定日のレース情報を取得
         races = race_storage.get(date, {})
         
+        # 表示設定に基づいてフィルタリング（include_hidden=Trueの場合は全て含む）
+        if not include_hidden:
+            filtered_races = {k: v for k, v in races.items() if v.get("is_visible", True)}
+        else:
+            filtered_races = races
+        
         # レース番号順にソート
         sorted_races = sorted(
-            races.values(),
+            filtered_races.values(),
             key=lambda x: (x["venue"], x["race_number"])
         )
         
@@ -171,6 +187,79 @@ async def delete_race(race_id: str):
         raise HTTPException(
             status_code=500,
             detail="レース情報の削除に失敗しました"
+        )
+
+@router.put("/{race_id}")
+async def update_race(race_id: str, update_data: RaceUpdateData):
+    """レース情報を更新"""
+    try:
+        # race_idから日付を抽出
+        date_part = race_id.split("_")[0]
+        
+        # レース情報を検索
+        if date_part in race_storage and race_id in race_storage[date_part]:
+            race_data = race_storage[date_part][race_id]
+            
+            # 更新するフィールドのみ適用
+            if update_data.race_name is not None:
+                race_data["race_name"] = update_data.race_name
+            if update_data.horses is not None:
+                race_data["horses"] = update_data.horses
+            
+            logger.info(f"レース情報を更新: {race_id}")
+            
+            return {
+                "status": "success",
+                "message": "レース情報を更新しました",
+                "race": race_data
+            }
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail="指定されたレースが見つかりません"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update race error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="レース情報の更新に失敗しました"
+        )
+
+@router.put("/{race_id}/visibility")
+async def toggle_race_visibility(race_id: str, visibility_data: VisibilityData):
+    """レースの表示/非表示を切り替え"""
+    try:
+        # race_idから日付を抽出
+        date_part = race_id.split("_")[0]
+        
+        # レース情報を検索
+        if date_part in race_storage and race_id in race_storage[date_part]:
+            race_data = race_storage[date_part][race_id]
+            race_data["is_visible"] = visibility_data.is_visible
+            
+            logger.info(f"レース表示設定を更新: {race_id} -> {visibility_data.is_visible}")
+            
+            return {
+                "status": "success",
+                "message": f"レースを{'表示' if visibility_data.is_visible else '非表示'}に設定しました",
+                "is_visible": visibility_data.is_visible
+            }
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail="指定されたレースが見つかりません"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Toggle visibility error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="表示設定の更新に失敗しました"
         )
 
 def cleanup_old_races():

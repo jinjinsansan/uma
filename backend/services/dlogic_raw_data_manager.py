@@ -220,7 +220,7 @@ class DLogicRawDataManager:
             races = raw_data.get("races", raw_data.get("race_history", []))
             if races:
                 total = len(races)
-                wins = sum(1 for race in races if race.get("KAKUTEI_CHAKUJUN", race.get("finish", 99)) == 1)
+                wins = sum(1 for race in races if str(race.get("KAKUTEI_CHAKUJUN", race.get("finish", "99"))).strip() == "01" or race.get("KAKUTEI_CHAKUJUN", race.get("finish", 99)) == 1)
         
         win_rate = wins / total if total > 0 else 0
         return min(100, win_rate * 200)
@@ -236,7 +236,7 @@ class DLogicRawDataManager:
             if races:
                 jockey_perf = {}
                 for race in races:
-                    jockey = race.get("KISYURYAKUSYO", race.get("jockey", ""))
+                    jockey = race.get("KISHUMEI_RYAKUSHO", race.get("KISYURYAKUSYO", race.get("jockey", "")))
                     finish = race.get("KAKUTEI_CHAKUJUN", race.get("finish"))
                     if jockey and finish:
                         if jockey not in jockey_perf:
@@ -269,7 +269,7 @@ class DLogicRawDataManager:
             if races:
                 trainer_perf = {}
                 for race in races:
-                    trainer = race.get("CHOUKYOUSIRYAKUSYO", race.get("trainer", ""))
+                    trainer = race.get("CHOKYOSHIMEI_RYAKUSHO", race.get("CHOUKYOUSIRYAKUSYO", race.get("trainer", "")))
                     finish = race.get("KAKUTEI_CHAKUJUN", race.get("finish"))
                     if trainer and finish:
                         if trainer not in trainer_perf:
@@ -298,7 +298,7 @@ class DLogicRawDataManager:
         
         for race in races:
             # トラックタイプの判定（芝/ダート）
-            track_code = race.get("TRACKCD", race.get("track", ""))
+            track_code = race.get("TRACK_CODE", race.get("TRACKCD", race.get("track", "")))
             finish = race.get("KAKUTEI_CHAKUJUN", race.get("finish"))
             
             if track_code and finish:
@@ -342,7 +342,7 @@ class DLogicRawDataManager:
         performance_scores = []
         for race in races:
             # 人気順位を取得
-            popularity = race.get("NINKIJUN", race.get("popularity", 0))
+            popularity = race.get("TANSHO_NINKIJUN", race.get("NINKIJUN", race.get("popularity", 0)))
             finish = race.get("KAKUTEI_CHAKUJUN", race.get("finish", 0))
             
             if popularity and finish:
@@ -372,7 +372,7 @@ class DLogicRawDataManager:
         weight_scores = []
         
         for race in races:
-            weight = race.get("FUTAN", race.get("weight", 0))
+            weight = race.get("FUTAN_JURYO", race.get("FUTAN", race.get("weight", 0)))
             finish = race.get("KAKUTEI_CHAKUJUN", race.get("finish", 0))
             
             if weight and finish:
@@ -397,8 +397,8 @@ class DLogicRawDataManager:
         weight_scores = []
         
         for race in races:
-            horse_weight = race.get("BATAI", race.get("horse_weight", 0))
-            weight_change = race.get("ZOUGEN", race.get("weight_change", 0))
+            horse_weight = race.get("BATAIJU", race.get("BATAI", race.get("horse_weight", 0)))
+            weight_change = race.get("ZOGEN_SA", race.get("ZOUGEN", race.get("weight_change", 0)))
             finish = race.get("KAKUTEI_CHAKUJUN", race.get("finish", 0))
             
             if horse_weight and finish:
@@ -430,10 +430,10 @@ class DLogicRawDataManager:
         
         for race in races:
             # コーナー通過順位
-            corner1 = race.get("CORNER1JUN", race.get("corner1", 0))
-            corner2 = race.get("CORNER2JUN", race.get("corner2", 0))
-            corner3 = race.get("CORNER3JUN", race.get("corner3", 0))
-            corner4 = race.get("CORNER4JUN", race.get("corner4", 0))
+            corner1 = race.get("CORNER1_JUNI", race.get("CORNER1JUN", race.get("corner1", 0)))
+            corner2 = race.get("CORNER2_JUNI", race.get("CORNER2JUN", race.get("corner2", 0)))
+            corner3 = race.get("CORNER3_JUNI", race.get("CORNER3JUN", race.get("corner3", 0)))
+            corner4 = race.get("CORNER4_JUNI", race.get("CORNER4JUN", race.get("corner4", 0)))
             finish = race.get("KAKUTEI_CHAKUJUN", race.get("finish", 0))
             
             if finish:
@@ -513,31 +513,34 @@ class DLogicRawDataManager:
         
         for race in races:
             # タイムデータ（秒単位）
-            time = race.get("TIME", race.get("time", 0))
+            time = race.get("SOHA_TIME", race.get("TIME", race.get("time", 0)))
             finish = race.get("KAKUTEI_CHAKUJUN", race.get("finish", 0))
             distance = race.get("KYORI", race.get("distance", 0))
             
             if time and finish and distance:
                 try:
-                    time_int = int(time)
+                    # SOHA_TIMEは1/10秒単位なので秒に変換
+                    time_float = float(time) / 10.0 if time else 0
                     finish_int = int(finish)
                     distance_int = int(distance)
                     
-                    # 距離別の基準タイムを設定（仮の値）
-                    if distance_int <= 1200:
-                        base_time = 70  # 1200m基準
-                    elif distance_int <= 1600:
-                        base_time = 95  # 1600m基準
-                    elif distance_int <= 2000:
-                        base_time = 120  # 2000m基準
-                    else:
-                        base_time = 150  # 2400m以上基準
-                    
-                    # タイム指数計算
-                    time_score = max(0, 100 - (time_int - base_time) * 2)
-                    finish_score = max(0, 100 - (finish_int - 1) * 8)
-                    combined = (time_score + finish_score) / 2
-                    time_scores.append(combined)
+                    if time_float > 0 and distance_int > 0:
+                        # 距離別の基準タイムを設定（秒単位）
+                        if distance_int <= 1200:
+                            base_time = 70.0  # 1200m基準
+                        elif distance_int <= 1600:
+                            base_time = 95.0  # 1600m基準
+                        elif distance_int <= 2000:
+                            base_time = 120.0  # 2000m基準
+                        else:
+                            base_time = 150.0  # 2400m以上基準
+                        
+                        # タイム指数計算
+                        time_diff = time_float - base_time
+                        time_score = max(0, 100 - time_diff * 2)
+                        finish_score = max(0, 100 - (finish_int - 1) * 8)
+                        combined = (time_score + finish_score) / 2
+                        time_scores.append(combined)
                 except:
                     pass
         

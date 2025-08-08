@@ -257,7 +257,7 @@ async def chat_with_d_logic(request: ChatDLogicRequest):
                 response = openai_client.chat.completions.create(
                     model="gpt-4",
                     messages=[
-                        {"role": "system", "content": "あなたはDロジック競馬予想AIのアシスタントです。ダンスインザダーク基準100点のDロジック指数について説明できます。親切で分かりやすい説明を心がけてください。"},
+                        {"role": "system", "content": "あなたはDロジック競馬予想AIのアシスタントです。独自基準100点のDロジック指数について説明できます。親切で分かりやすい説明を心がけてください。"},
                         {"role": "user", "content": request.message}
                     ],
                     max_tokens=300

@@ -96,7 +96,7 @@ Dロジック分析結果: {d_logic_result if d_logic_result else '未計算'}
 {knowledge_context}
 
 説明のポイント：
-- 総合指数の意味（ダンスインザダーク基準100点）
+- 総合指数の意味（独自基準100点）
 - 上位馬の特徴と類似する伝説馬との比較
 - 12項目D-Logic分析結果の詳細解説
 - Phase D分析による科学的根拠
@@ -133,8 +133,7 @@ Dロジック分析結果: {d_logic_result if d_logic_result else '未計算'}
             user_message = f"""
 Phase D完全分析結果：
 - 分析規模: {d_logic_result.get('sql_data_utilization', '959,620レコード・109,426頭・71年間')}
-- 計算方法: {d_logic_result.get('calculation_method', 'ダンスインザダーク基準100点・12項目D-Logic')}
-- 基準馬: {d_logic_result.get('base_horse', 'ダンスインザダーク')}
+- 計算方法: {d_logic_result.get('calculation_method', '独自基準100点・12項目D-Logic')}
 - 基準スコア: {d_logic_result.get('base_score', 100)}点
 
 上位馬の詳細指数{horses_info}

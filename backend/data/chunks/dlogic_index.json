@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "version": "3.1",
+    "split_method": "alphabetical",
+    "total_chunks": 2,
+    "created": "2025-08-08T16:09:50.022539",
+    "split_date": "2025-08-08T16:33:18.772676"
+  },
+  "chunks": [
+    {
+      "chunk_id": 1,
+      "filename": "dlogic_raw_knowledge_chunk_01.json",
+      "horses_count": 18939,
+      "first_horse": "AUGUSTE RODIN",
+      "last_horse": "テイエムストーン"
+    },
+    {
+      "chunk_id": 2,
+      "filename": "dlogic_raw_knowledge_chunk_02.json",
+      "horses_count": 18939,
+      "first_horse": "テイエムスパーダ",
+      "last_horse": "ヴーレヴー"
+    }
+  ]
+}

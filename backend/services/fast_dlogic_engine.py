@@ -115,36 +115,13 @@ class FastDLogicEngine:
     
     def _calculate_from_mysql(self, horse_name: str) -> Dict[str, Any]:
         """MySQLから直接計算（フォールバック用）"""
-        try:
-            conn = mysql.connector.connect(**self.mysql_config)
-            
-            # 生データ抽出
-            from batch_create_raw_knowledge import extract_horse_raw_data
-            raw_data = extract_horse_raw_data(conn, horse_name)
-            
-            if raw_data["race_history"]:
-                # ナレッジに追加（将来のために）
-                self.raw_manager.add_horse_raw_data(horse_name, raw_data)
-                self.raw_manager._save_knowledge()
-                
-                # D-Logic計算
-                return self.raw_manager.calculate_dlogic_realtime(horse_name)
-            else:
-                return {
-                    "error": f"{horse_name}のデータが見つかりません",
-                    "total_score": 50.0,
-                    "grade": "C (平均)"
-                }
-                
-        except Exception as e:
-            return {
-                "error": f"MySQL計算エラー: {e}",
-                "total_score": 50.0,
-                "grade": "C (平均)"
-            }
-        finally:
-            if 'conn' in locals():
-                conn.close()
+        # Renderではローカル MySQL にアクセスできないため、ナレッジにない馬は対応不可
+        return {
+            "error": f"{horse_name}のデータは現在のナレッジベースに含まれていません。データ更新をお待ちください。",
+            "total_score": 50.0,
+            "grade": "未評価",
+            "note": "この馬のデータは次回の更新時に追加される予定です。"
+        }
     
     def batch_analyze_with_progress(self, horse_names: List[str], 
                                    progress_callback=None) -> Dict[str, Any]:

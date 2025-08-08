@@ -70,3 +70,7 @@ jspm_packages/
 
 # dotenv environment variables file
 .env
+
+# D-Logic Knowledge File (Large file stored locally)
+backend/data/dlogic_raw_knowledge.json
+backend/data/immediate_batch_*.json

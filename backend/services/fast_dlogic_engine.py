@@ -8,13 +8,14 @@ import os
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 import mysql.connector
-from .dlogic_raw_data_manager import DLogicRawDataManager
+from .dlogic_raw_data_manager import dlogic_manager
 
 class FastDLogicEngine:
     """高速D-Logic計算エンジン"""
     
     def __init__(self):
-        self.raw_manager = DLogicRawDataManager()
+        # グローバルインスタンスを使用（ナレッジの重複読み込みを回避）
+        self.raw_manager = dlogic_manager
         self.mysql_config = {
             'host': '172.25.160.1',
             'port': 3306,
@@ -23,7 +24,7 @@ class FastDLogicEngine:
             'database': 'mykeibadb',
             'charset': 'utf8mb4'
         }
-        print("⚡ 高速D-Logic計算エンジン初期化完了")
+        print(f"⚡ 高速D-Logic計算エンジン初期化完了 (ナレッジ: {len(self.raw_manager.knowledge_data.get('horses', {}))}頭)")
     
     def analyze_single_horse(self, horse_name: str) -> Dict[str, Any]:
         """単体馬分析（目標: 0.1秒以内）"""

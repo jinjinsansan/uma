@@ -12,6 +12,10 @@ router = APIRouter(prefix="/api/chat", tags=["Chat"])
 
 logger = logging.getLogger(__name__)
 
+# グローバルインスタンスを初期化（一度だけナレッジを読み込む）
+fast_engine_instance = FastDLogicEngine()
+logger.info(f"高速D-Logicエンジンを初期化しました")
+
 def extract_horse_name(text: str) -> Optional[str]:
     """テキストから馬名を抽出（100点満点・インジケーター優先版）"""
     if not text or len(text.strip()) < 3:
@@ -90,12 +94,17 @@ def extract_horse_name(text: str) -> Optional[str]:
 async def get_horse_d_logic_analysis(horse_name: str) -> Dict[str, Any]:
     """馬のD-Logic分析結果を取得"""
     try:
-        # FastDLogicEngineを使用
-        fast_engine = FastDLogicEngine()
-        result = fast_engine.analyze_single_horse(horse_name)
+        # グローバルインスタンスを使用
+        result = fast_engine_instance.analyze_single_horse(horse_name)
+        logger.info(f"馬名 '{horse_name}' の分析結果: スコア={result.get('total_score', 0):.2f}, ソース={result.get('data_source', '不明')}")
         
         # FastDLogicEngineが正常な結果を返したかチェック（errorフィールドがなく、total_scoreがある場合）
         if result and "error" not in result and "total_score" in result:
+            # 詳細スコアの確認
+            detailed_scores = result.get("d_logic_scores", {})
+            non_default_scores = [k for k, v in detailed_scores.items() if v != 50.0]
+            logger.info(f"馬名 '{horse_name}' - デフォルト以外のスコア項目: {non_default_scores}")
+            
             return {
                 "status": "success",
                 "calculation_method": "Phase D統合・独自基準100点・12項目D-Logic",
@@ -103,14 +112,16 @@ async def get_horse_d_logic_analysis(horse_name: str) -> Dict[str, Any]:
                     "name": horse_name,
                     "total_score": result.get("total_score", 0),
                     "grade": result.get("grade", "未評価"),
-                    "detailed_scores": result.get("d_logic_scores", {}),
+                    "detailed_scores": detailed_scores,
                     "analysis_source": result.get("data_source", "高速分析エンジン")
                 }]
             }
         else:
+            error_msg = result.get("error", "分析結果が取得できませんでした")
+            logger.warning(f"馬名 '{horse_name}' の分析失敗: {error_msg}")
             return {
                 "status": "error", 
-                "message": "分析結果が取得できませんでした"
+                "message": error_msg
             }
         
     except Exception as e:
@@ -137,6 +148,7 @@ async def chat_message(request: Dict[str, Any]):
         if horse_name:
             logger.info(f"Horse name detected: {horse_name}")
             d_logic_result = await get_horse_d_logic_analysis(horse_name)
+            logger.info(f"D-Logic分析結果: status={d_logic_result.get('status', 'unknown')}")
         else:
             logger.debug("No horse name detected - skipping D-Logic analysis")
         

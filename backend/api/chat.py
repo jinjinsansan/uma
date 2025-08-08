@@ -18,7 +18,10 @@ logger.info(f"高速D-Logicエンジンを初期化しました")
 
 def extract_horse_name(text: str) -> Optional[str]:
     """テキストから馬名を抽出（100点満点・インジケーター優先版）"""
+    logger.debug(f"extract_horse_name called with: '{text}'")
+    
     if not text or len(text.strip()) < 3:
+        logger.debug(f"Text too short or empty: '{text}'")
         return None
     
     text_clean = text.strip()
@@ -29,11 +32,13 @@ def extract_horse_name(text: str) -> Optional[str]:
         "の指数", "の分析", "を分析", "の成績", "のスコア", 
         "のD-Logic", "の予想", "の評価", "はどう", "について",
         "を教えて", "について教えて", "の情報", "のデータ",
-        "の結果", "はどんな", "を調べて", "を見て", "をお願い"
+        "の結果", "はどんな", "を調べて", "を見て", "をお願い",
+        "は？", "は?", "って", "は", "を", "とは"  # より幅広いパターンを追加
     ]
     
     # インジケーターがある場合は優先的に馬名を探す
     has_clear_indicator = any(indicator in text_clean for indicator in horse_indicators)
+    logger.debug(f"Has clear indicator: {has_clear_indicator}")
     
     if has_clear_indicator:
         # カタカナ検出
@@ -83,10 +88,17 @@ def extract_horse_name(text: str) -> Optional[str]:
     # 【第4段階】長いカタカナ単独入力
     longest_katakana = max(katakana_matches, key=len)
     
-    if (len(longest_katakana) >= 8 and 
-        len(text_clean) <= len(longest_katakana) + 2 and
-        not any(char in text_clean for char in ['？', '?', '！', '!', '。', '、'])):
-        return longest_katakana
+    # カタカナが6文字以上で、全体の大部分を占める場合
+    if len(longest_katakana) >= 6:
+        # カタカナの割合を計算
+        katakana_ratio = len(longest_katakana) / len(text_clean.replace('は', '').replace('？', '').replace('?', '').strip())
+        if katakana_ratio >= 0.7:  # 70%以上がカタカナ
+            return longest_katakana
+    
+    # 【第5段階】「カタカナは？」パターン
+    if text_clean.endswith('は？') or text_clean.endswith('は?'):
+        if len(longest_katakana) >= 5:
+            return longest_katakana
     
     # その他は除外
     return None
@@ -142,6 +154,7 @@ async def chat_message(request: Dict[str, Any]):
         
         # 馬名が含まれているかチェック（高速化）
         horse_name = extract_horse_name(user_message)
+        logger.info(f"Extract horse name result: '{horse_name}' from '{user_message}'")
         
         # D-Logic分析結果を準備（馬名がある場合のみ）
         d_logic_result = None

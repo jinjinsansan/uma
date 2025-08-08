@@ -103,6 +103,45 @@ def extract_horse_name(text: str) -> Optional[str]:
     # その他は除外
     return None
 
+def extract_multiple_horse_names(text: str) -> List[str]:
+    """テキストから複数の馬名を抽出"""
+    logger.debug(f"extract_multiple_horse_names called with: '{text}'")
+    
+    # レース名と馬名リストを分離
+    race_info = ""
+    horse_text = text
+    
+    # レース情報のパターン
+    race_patterns = [
+        r'\d{4}年.*記念',  # "2024年有馬記念"
+        r'\d{4}年\d+月.*R',  # "2025年8月新潓5R"
+        r'\d{4}年\d+月.*レース',  # "2025年8月新潓5レース"
+        r'.*G[1-3]',  # "G1", "G2", "G3"
+    ]
+    
+    for pattern in race_patterns:
+        match = re.search(pattern, text)
+        if match:
+            race_info = match.group()
+            # レース情報の後のテキストを馬名リストとして扱う
+            horse_text = text[match.end():].strip()
+            break
+    
+    # カタカナの馬名をすべて抽出（最低4文字以上）
+    katakana_pattern = r'[ァ-ヴー]{4,}'
+    horse_names = re.findall(katakana_pattern, horse_text)
+    
+    # 重複を除去してリストを保持
+    unique_names = []
+    for name in horse_names:
+        if name not in unique_names:
+            unique_names.append(name)
+    
+    logger.info(f"Extracted {len(unique_names)} horse names: {unique_names}")
+    logger.info(f"Race info: '{race_info}'" if race_info else "No race info detected")
+    
+    return unique_names, race_info
+
 async def get_horse_d_logic_analysis(horse_name: str) -> Dict[str, Any]:
     """馬のD-Logic分析結果を取得"""
     try:
@@ -143,6 +182,57 @@ async def get_horse_d_logic_analysis(horse_name: str) -> Dict[str, Any]:
             "message": f"分析エラーが発生しました: {str(e)}"
         }
 
+async def get_multiple_horses_analysis(horse_names: List[str], race_info: str = "") -> Dict[str, Any]:
+    """複数馬のD-Logic分析結果を取得"""
+    try:
+        # 入力検証
+        if not horse_names:
+            return {
+                "status": "error",
+                "message": "分析する馬名が指定されていません"
+            }
+        
+        if len(horse_names) > 20:
+            return {
+                "status": "error",
+                "message": "一度に分析できるのは20頭までです"
+            }
+        
+        # FastDLogicEngineを使用して一括分析
+        logger.info(f"Analyzing {len(horse_names)} horses: {horse_names[:5]}..." if len(horse_names) > 5 else f"Analyzing {len(horse_names)} horses: {horse_names}")
+        result = fast_engine_instance.analyze_race_horses(horse_names)
+        
+        # 分析結果の検証
+        if not result.get('horses'):
+            return {
+                "status": "error",
+                "message": "分析結果が取得できませんでした"
+            }
+        
+        # レース情報を追加
+        if race_info:
+            result['race_info'] = race_info
+            
+        return {
+            "status": "success",
+            "calculation_method": "Phase D統合・独自基準100点・12項目D-Logic",
+            "race_info": race_info,
+            "analysis_result": result,
+            "analyzed_count": len(result.get('horses', [])),
+            "requested_count": len(horse_names)
+        }
+        
+    except Exception as e:
+        logger.error(f"Multiple horses analysis error: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return {
+            "status": "error",
+            "message": f"複数馬分析エラー: {str(e)}",
+            "requested_horses": horse_names,
+            "race_info": race_info
+        }
+
 @router.post("/message")
 async def chat_message(request: Dict[str, Any]):
     """チャットメッセージを処理し、OpenAI応答を生成"""
@@ -152,21 +242,73 @@ async def chat_message(request: Dict[str, Any]):
         
         logger.info(f"Chat message received: {user_message[:50]}...")  # 最初の50文字のみログ
         
-        # 馬名が含まれているかチェック（高速化）
-        horse_name = extract_horse_name(user_message)
-        logger.info(f"Extract horse name result: '{horse_name}' from '{user_message}'")
+        # まず複数馬名をチェック
+        horse_names, race_info = extract_multiple_horse_names(user_message)
         
-        # D-Logic分析結果を準備（馬名がある場合のみ）
+        # D-Logic分析結果を準備
         d_logic_result = None
-        if horse_name:
-            logger.info(f"Horse name detected: {horse_name}")
-            d_logic_result = await get_horse_d_logic_analysis(horse_name)
-            logger.info(f"D-Logic分析結果: status={d_logic_result.get('status', 'unknown')}")
+        analysis_type = None
+        
+        if len(horse_names) > 1:
+            # 複数馬の分析
+            logger.info(f"Multiple horses detected: {horse_names}")
+            d_logic_result = await get_multiple_horses_analysis(horse_names, race_info)
+            analysis_type = "multiple"
+        elif len(horse_names) == 1:
+            # 単頭分析
+            logger.info(f"Single horse detected: {horse_names[0]}")
+            d_logic_result = await get_horse_d_logic_analysis(horse_names[0])
+            analysis_type = "single"
         else:
-            logger.debug("No horse name detected - skipping D-Logic analysis")
+            # 古いロジックでも試す（後方互換性）
+            horse_name = extract_horse_name(user_message)
+            if horse_name:
+                logger.info(f"Horse name detected by old logic: {horse_name}")
+                d_logic_result = await get_horse_d_logic_analysis(horse_name)
+                analysis_type = "single"
+            else:
+                logger.debug("No horse name detected - skipping D-Logic analysis")
         
         # OpenAI APIで自然な応答を生成
-        system_prompt = """あなたはD-Logic AI、競馬予想の専門家です。
+        # 分析タイプに応じてプロンプトを変更
+        if analysis_type == "multiple":
+            # 複数馬分析用プロンプト
+            system_prompt = """あなたはD-Logic AI、競馬予想の専門家です。
+D-Logicは12項目の科学的指標で競走馬を評価する独自開発のシステムです。
+
+**複数馬分析の場合の出力形式**:
+
+1. **2頭の場合**:
+【D-Logic比較分析】
+馬名1    XX.X点
+馬名2    XX.X点
+
+→ （点差と優位性の簡潔な説明）
+
+2. **3頭以上の場合**:
+【D-Logic指数ランキング】
+1位: 馬名    XX.X点
+2位: 馬名    XX.X点
+3位: 馬名    XX.X点
+...
+
+📊 上位分析
+（TOP3の特徴や差を簡潔に）
+
+3. **G1レース名が含まれる場合**:
+【[レース名] D-Logic分析】
+🥇 1位: 馬名    XX.X点 ⭐⭐⭐
+🥈 2位: 馬名    XX.X点 ⭐⭐
+🥉 3位: 馬名    XX.X点 ⭐
+...
+
+💡 予想ポイント
+（レース展望を簡潔に）
+
+**重要**: 12項目の詳細スコアは表示しない。総合スコアと順位のみ。"""
+        else:
+            # 単頭分析用プロンプト（従来通り）
+            system_prompt = """あなたはD-Logic AI、競馬予想の専門家です。
 D-Logicは12項目の科学的指標で競走馬を評価する独自開発のシステムです。
 基準となる100点は独自の統計的手法で設定されています。
 
@@ -226,39 +368,58 @@ D-Logic 12項目説明：
         
         # 現在のメッセージを追加（D-Logic結果がある場合は含める）
         current_message = user_message
+        
         if d_logic_result and d_logic_result.get("status") == "success":
-            horses = d_logic_result.get("horses", [])
-            if horses:
-                horse_data = horses[0]
-                detailed_scores = horse_data.get('detailed_scores', {})
+            if analysis_type == "multiple":
+                # 複数馬分析の結果
+                analysis_result = d_logic_result.get("analysis_result", {})
+                horses = analysis_result.get("horses", [])
+                race_info = d_logic_result.get("race_info", "")
                 
-                current_message += f"\n\n【D-Logic分析結果データ】\n"
-                current_message += f"馬名: {horse_data.get('name', horse_name)}\n"
-                current_message += f"総合評価: {horse_data.get('total_score', 0):.2f}点\n"
-                current_message += f"ランク: {horse_data.get('grade', '未評価')}\n"
-                current_message += f"分析ソース: {horse_data.get('analysis_source', '不明')}\n\n"
+                current_message += f"\n\n【D-Logic複数馬分析結果】\n"
+                if race_info:
+                    current_message += f"レース: {race_info}\n\n"
                 
-                current_message += "12項目詳細スコア:\n"
-                score_mapping = {
-                    "1_distance_aptitude": "1. 距離適性",
-                    "2_bloodline_evaluation": "2. 血統評価", 
-                    "3_jockey_compatibility": "3. 騎手相性",
-                    "4_trainer_evaluation": "4. 調教師評価",
-                    "5_track_aptitude": "5. トラック適性",
-                    "6_weather_aptitude": "6. 天候適性",
-                    "7_popularity_factor": "7. 人気度要因",
-                    "8_weight_impact": "8. 重量影響",
-                    "9_horse_weight_impact": "9. 馬体重影響",
-                    "10_corner_specialist_degree": "10. コーナー専門度",
-                    "11_margin_analysis": "11. 着差分析",
-                    "12_time_index": "12. タイム指数"
-                }
+                current_message += "馬名とD-Logic指数:\n"
+                for horse in horses:
+                    current_message += f"{horse['name']}: {horse.get('total_score', 0):.2f}点\n"
                 
-                for key, label in score_mapping.items():
-                    score = detailed_scores.get(key, 0)
-                    current_message += f"{label}: {score:.2f}点\n"
-                
-                current_message += f"\n上記のデータを使って、必ず指定された形式で12項目すべてのスコアを明記した応答を生成してください。"
+                current_message += f"\n分析馬数: {len(horses)}頭\n"
+                current_message += f"\n上記のデータを使って、指定された形式で出力してください。"
+            else:
+                # 単頭分析の結果（従来通り）
+                horses = d_logic_result.get("horses", [])
+                if horses:
+                    horse_data = horses[0]
+                    detailed_scores = horse_data.get('detailed_scores', {})
+                    
+                    current_message += f"\n\n【D-Logic分析結果データ】\n"
+                    current_message += f"馬名: {horse_data.get('name', horse_names[0] if horse_names else 'unknown')}\n"
+                    current_message += f"総合評価: {horse_data.get('total_score', 0):.2f}点\n"
+                    current_message += f"ランク: {horse_data.get('grade', '未評価')}\n"
+                    current_message += f"分析ソース: {horse_data.get('analysis_source', '不明')}\n\n"
+                    
+                    current_message += "12項目詳細スコア:\n"
+                    score_mapping = {
+                        "1_distance_aptitude": "1. 距離適性",
+                        "2_bloodline_evaluation": "2. 血統評価", 
+                        "3_jockey_compatibility": "3. 騎手相性",
+                        "4_trainer_evaluation": "4. 調教師評価",
+                        "5_track_aptitude": "5. トラック適性",
+                        "6_weather_aptitude": "6. 天候適性",
+                        "7_popularity_factor": "7. 人気度要因",
+                        "8_weight_impact": "8. 重量影響",
+                        "9_horse_weight_impact": "9. 馬体重影響",
+                        "10_corner_specialist_degree": "10. コーナー専門度",
+                        "11_margin_analysis": "11. 着差分析",
+                        "12_time_index": "12. タイム指数"
+                    }
+                    
+                    for key, label in score_mapping.items():
+                        score = detailed_scores.get(key, 0)
+                        current_message += f"{label}: {score:.2f}点\n"
+                    
+                    current_message += f"\n上記のデータを使って、必ず指定された形式で12項目すべてのスコアを明記した応答を生成してください。"
         
         messages.append({"role": "user", "content": current_message})
         
@@ -275,7 +436,13 @@ D-Logic 12項目説明：
         
         # D-Logic結果がある場合は追加
         if d_logic_result:
-            response_data["horse_name"] = horse_name
+            if analysis_type == "multiple":
+                response_data["horse_names"] = horse_names
+                response_data["race_info"] = race_info
+                response_data["analysis_type"] = "multiple_horses"
+            else:
+                response_data["horse_name"] = horse_names[0] if horse_names else None
+                response_data["analysis_type"] = "single_horse"
             response_data["d_logic_result"] = d_logic_result
         
         return response_data

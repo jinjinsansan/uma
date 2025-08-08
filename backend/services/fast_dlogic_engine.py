@@ -121,7 +121,8 @@ class FastDLogicEngine:
             "error": f"{horse_name}のデータは現在のナレッジベースに含まれていません。データ更新をお待ちください。",
             "total_score": 50.0,
             "grade": "未評価",
-            "note": "この馬のデータは次回の更新時に追加される予定です。"
+            "note": "この馬のデータは次回の更新時に追加される予定です。",
+            "horse_name": horse_name  # 馬名を必ず含める
         }
     
     def batch_analyze_with_progress(self, horse_names: List[str], 

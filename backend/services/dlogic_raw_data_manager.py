@@ -18,7 +18,8 @@ class DLogicRawDataManager:
             os.path.dirname(__file__), '..', 'data', 'dlogic_raw_knowledge.json'
         )
         self.knowledge_data = self._load_knowledge()
-        print("🚀 D-Logic生データマネージャー初期化完了")
+        horse_count = len(self.knowledge_data.get('horses', {}))
+        print(f"🚀 D-Logic生データマネージャー初期化完了 ({horse_count}頭)")
         
     def _load_knowledge(self) -> Dict[str, Any]:
         """ナレッジファイル読み込み"""
@@ -33,7 +34,16 @@ class DLogicRawDataManager:
                         return self._download_from_github()
                     
                     data = json.loads(content)
-                    print(f"✅ ナレッジファイル読み込み: {len(data.get('horses', {}))}頭")
+                    horse_count = len(data.get('horses', {}))
+                    print(f"✅ ナレッジファイル読み込み: {horse_count}頭")
+                    
+                    # データ構造の確認
+                    if horse_count > 0:
+                        sample_horse = list(data['horses'].keys())[0]
+                        sample_data = data['horses'][sample_horse]
+                        print(f"📊 データ構造確認 - サンプル馬: {sample_horse}")
+                        print(f"   キー: {list(sample_data.keys())}")
+                    
                     return data
             except json.JSONDecodeError as e:
                 print(f"⚠️ JSONデコードエラー: {e}")
@@ -107,7 +117,32 @@ class DLogicRawDataManager:
         
     def get_horse_raw_data(self, horse_name: str) -> Optional[Dict[str, Any]]:
         """馬の生データ取得"""
-        return self.knowledge_data["horses"].get(horse_name)
+        horses = self.knowledge_data.get("horses", {})
+        
+        # デバッグ用: 最初の5頭の馬名を表示
+        if len(horses) > 0:
+            sample_names = list(horses.keys())[:5]
+            print(f"🔍 ナレッジ内の馬名サンプル: {sample_names}")
+            print(f"🔍 検索対象馬名: '{horse_name}'")
+        
+        # 直接検索
+        if horse_name in horses:
+            return horses[horse_name]
+        
+        # 大文字小文字を無視した検索
+        for key in horses.keys():
+            if key.lower() == horse_name.lower():
+                print(f"⚠️ 大文字小文字の違いを検出: '{key}' != '{horse_name}'")
+                return horses[key]
+        
+        # 部分一致検索
+        for key in horses.keys():
+            if horse_name in key or key in horse_name:
+                print(f"⚠️ 部分一致を検出: '{key}' <-> '{horse_name}'")
+                return horses[key]
+        
+        print(f"❌ 馬名 '{horse_name}' が見つかりません")
+        return None
     
     def calculate_dlogic_realtime(self, horse_name: str) -> Dict[str, Any]:
         """生データからリアルタイムD-Logic計算"""

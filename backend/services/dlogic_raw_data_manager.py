@@ -329,9 +329,68 @@ class DLogicRawDataManager:
         return sum(scores) / len(scores) if scores else 50.0
     
     def _calc_weather_aptitude(self, raw_data: Dict) -> float:
-        """天候適性計算（簡略版）"""
-        # 実装は省略（デフォルト値返却）
-        return 50.0
+        """天候適性計算"""
+        races = raw_data.get("races", raw_data.get("race_history", []))
+        if not races:
+            return 50.0
+        
+        # 天候別成績を集計
+        weather_perf = {}
+        
+        for race in races:
+            tenko = race.get("TENKO_CODE", race.get("weather", 0))
+            finish = race.get("KAKUTEI_CHAKUJUN", race.get("finish", 0))
+            track_code = race.get("TRACK_CODE", "")
+            
+            # 馬場状態を取得（芝またはダート）
+            if str(track_code).startswith("1"):  # 芝
+                baba_jotai = race.get("SHIBA_BABAJOTAI_CODE", 0)
+            elif str(track_code).startswith("2"):  # ダート
+                baba_jotai = race.get("DIRT_BABAJOTAI_CODE", 0)
+            else:
+                baba_jotai = 0
+            
+            if tenko and finish:
+                try:
+                    tenko_int = int(tenko)
+                    finish_int = int(finish)
+                    baba_int = int(baba_jotai) if baba_jotai else 0
+                    
+                    # 天候コード: 1=晴, 2=曇, 3=雨, 4=小雨, 5=雪, 6=小雪
+                    # 馬場状態: 1=良, 2=稍重, 3=重, 4=不良
+                    
+                    # 天候と馬場状態の組み合わせでキーを作成
+                    if tenko_int <= 2:  # 晴/曇
+                        weather_key = "晴天"
+                    elif tenko_int <= 4:  # 雨/小雨
+                        weather_key = "雨天"
+                    else:  # 雪/小雪
+                        weather_key = "雪"
+                    
+                    if baba_int == 1:
+                        condition_key = f"{weather_key}・良"
+                    elif baba_int >= 2:
+                        condition_key = f"{weather_key}・重馬場"
+                    else:
+                        condition_key = weather_key
+                    
+                    if condition_key not in weather_perf:
+                        weather_perf[condition_key] = []
+                    weather_perf[condition_key].append(finish_int)
+                except:
+                    pass
+        
+        if not weather_perf:
+            return 50.0
+        
+        # 各天候条件での平均着順からスコアを計算
+        scores = []
+        for condition, finishes in weather_perf.items():
+            avg_finish = sum(finishes) / len(finishes)
+            score = max(0, 100 - (avg_finish - 1) * 8)
+            scores.append(score)
+        
+        return sum(scores) / len(scores) if scores else 50.0
     
     def _calc_popularity_factor(self, raw_data: Dict) -> float:
         """人気度要因計算"""

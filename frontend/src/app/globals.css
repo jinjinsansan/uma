@@ -186,6 +186,27 @@ body {
   animation: gentle-pulse 2s ease-in-out infinite;
 }
 
+/* V0 グラデーション流れるアニメーション */
+@keyframes gradient-flow {
+  0% { background-position: 200% 0%; }
+  100% { background-position: -200% 0%; }
+}
+
+.animate-gradient-flow {
+  animation: gradient-flow 3s linear infinite;
+}
+
+/* V0 超巨大フォントサイズ - レスポンシブ最適化 */
+.text-12xl { font-size: 12rem; line-height: 1; }
+.text-14xl { font-size: 14rem; line-height: 1; }
+.text-16xl { font-size: 16rem; line-height: 1; }
+
+/* モバイル最適化サイズ追加 */
+@media (max-width: 640px) {
+  .text-6xl { font-size: 3.5rem; }
+  .text-8xl { font-size: 5rem; }
+}
+
 /* Custom Components */
 .glass-effect {
   background: rgba(26, 26, 26, 0.8);

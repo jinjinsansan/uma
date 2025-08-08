@@ -15,22 +15,15 @@ interface DatabaseStats {
 }
 
 export default function V0TopPageFixed() {
-  const [showLogo, setShowLogo] = useState(true)
-  const [showMain, setShowMain] = useState(false)
+  const [showLogo, setShowLogo] = useState(false)  // 3秒アニメーション無効化
+  const [showMain, setShowMain] = useState(true)   // 直接メイン画面表示
   const [isMounted, setIsMounted] = useState(false)
   const [databaseStats, setDatabaseStats] = useState<DatabaseStats | null>(null);
   const [statsText, setStatsText] = useState('959,620レコード、109,426頭、82,738レースの巨大データベース');
 
   useEffect(() => {
     setIsMounted(true)
-    
-    // 3秒後にメインページを表示
-    const timer = setTimeout(() => {
-      setShowLogo(false)
-      setTimeout(() => setShowMain(true), 500)
-    }, 3000)
-
-    return () => clearTimeout(timer)
+    // 3秒アニメーションを無効化してメイン画面を直接表示
   }, [])
 
   useEffect(() => {
@@ -57,32 +50,29 @@ export default function V0TopPageFixed() {
     return () => clearInterval(interval);
   }, [])
 
+  // 3秒アニメーション完全無効化 - 直接メイン画面表示
   if (!isMounted) {
-    return <LogoAnimation />
-  }
-
-  if (showLogo) {
-    return <LogoAnimation />
+    return null  // ローディング中
   }
 
   return (
-    <div
-      className={`min-h-screen bg-[#0a0a0a] text-white transition-opacity duration-500 ${showMain ? "opacity-100" : "opacity-0"}`}
-    >
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white relative overflow-hidden">
       {/* 認証ボタン - 右上に配置 */}
       <div className="absolute top-4 right-4 z-10">
         <AuthButton />
       </div>
       
       <div className="container mx-auto px-4 py-8 flex flex-col items-center justify-center min-h-screen">
-        {/* メインロゴ - 修正版 */}
-        <div className="text-center mb-20">
-          <h1 className="text-[#ffd700] text-6xl md:text-8xl lg:text-9xl font-bold mb-10 animate-gentle-pulse">D-Logic</h1>
-          <p className="text-gray-300 text-lg md:text-xl mb-0">独自ロジックで全ての馬をAIが指数化</p>
+        {/* V0メインロゴ - レスポンシブ最適化版 */}
+        <div className="text-center mb-12 md:mb-20">
+          <h1 className="text-6xl sm:text-8xl md:text-12xl lg:text-14xl xl:text-16xl font-bold mb-6 md:mb-10 bg-gradient-to-r from-[#ffd700] to-[#ffed4e] bg-[length:400%_400%] animate-gradient-flow bg-clip-text text-transparent px-2">
+            D-Logic
+          </h1>
+          <p className="text-gray-300 text-base md:text-lg lg:text-xl mb-0 px-4">独自ロジックで全ての馬をAIが指数化</p>
         </div>
 
-        {/* キャッチコピー - 修正版 */}
-        <div className="text-center mb-20 max-w-5xl px-4">
+        {/* キャッチコピー - レスポンシブ最適化版 */}
+        <div className="text-center mb-12 md:mb-20 max-w-5xl px-4">
           <p className="text-[#ffd700] text-lg md:text-xl lg:text-2xl font-semibold leading-relaxed">
             {statsText}と
             <br />
@@ -190,10 +180,12 @@ function NavigationButtonFixed({ icon, title, description, href, disabled = fals
   const buttonContent = (
     <div
       className={`
-        w-full h-[130px] p-4 flex flex-col items-center justify-center text-center
-        bg-gray-900/50 border border-[#ffd700]/30 hover:border-[#ffd700] 
-        hover:bg-[#ffd700]/10 transition-all duration-300 rounded-lg cursor-pointer
-        ${disabled ? "opacity-50 cursor-not-allowed" : "hover:scale-[1.02]"}
+        w-full h-[120px] sm:h-[130px] md:h-[140px] p-4 sm:p-5 md:p-6 flex flex-col items-center justify-center text-center
+        bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-[#ffd700]/40 md:border-2
+        hover:border-[#ffd700] hover:bg-gradient-to-br hover:from-[#ffd700]/10 hover:to-[#ffed4e]/10 
+        transition-all duration-300 rounded-xl cursor-pointer backdrop-blur-sm
+        hover:shadow-[0_0_30px_rgba(255,215,0,0.3)] hover:scale-[1.02]
+        ${disabled ? "opacity-50 cursor-not-allowed" : ""}
       `}
       onClick={handleClick}
     >

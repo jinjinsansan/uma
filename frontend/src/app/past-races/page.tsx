@@ -1,11 +1,8 @@
 import G1RacesPage from '@/components/pages/G1RacesPage'
-import AuthGuard from '@/components/auth/AuthGuard'
 
 export default function PastRaces() {
   return (
-    <AuthGuard requireAuth={true}>
-      <G1RacesPage />
-    </AuthGuard>
+    <G1RacesPage />
   )
 }
 

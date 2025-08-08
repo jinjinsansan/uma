@@ -5,6 +5,7 @@ D-Logic生データナレッジマネージャー
 """
 import json
 import os
+import requests
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 import mysql.connector
@@ -21,16 +22,53 @@ class DLogicRawDataManager:
         
     def _load_knowledge(self) -> Dict[str, Any]:
         """ナレッジファイル読み込み"""
+        # まずローカルファイルを試す
         if os.path.exists(self.knowledge_file):
             try:
                 with open(self.knowledge_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
+                    content = f.read()
+                    # Git LFS ポインタファイルかチェック
+                    if content.startswith('version https://git-lfs.github.com'):
+                        print("⚠️ Git LFS ポインタファイル検出。GitHub Releasesからダウンロード...")
+                        return self._download_from_github()
+                    
+                    data = json.loads(content)
                     print(f"✅ ナレッジファイル読み込み: {len(data.get('horses', {}))}頭")
                     return data
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSONデコードエラー: {e}")
+                print("GitHub Releasesからダウンロードを試行...")
+                return self._download_from_github()
             except Exception as e:
                 print(f"⚠️ ナレッジファイル読み込みエラー: {e}")
         
-        # 新規作成
+        # ファイルが存在しない場合はGitHubからダウンロード
+        return self._download_from_github()
+    
+    def _download_from_github(self) -> Dict[str, Any]:
+        """GitHub Releasesからナレッジファイルをダウンロード"""
+        # GitHub Releases URL（後で実際のURLに置き換える）
+        github_url = os.environ.get('KNOWLEDGE_FILE_URL', 
+            'https://github.com/jinjinsansan/uma/releases/download/v1.0.0/dlogic_raw_knowledge.json')
+        
+        try:
+            print(f"📥 GitHub Releasesからダウンロード中: {github_url}")
+            response = requests.get(github_url, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                # ローカルに保存
+                os.makedirs(os.path.dirname(self.knowledge_file), exist_ok=True)
+                with open(self.knowledge_file, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                print(f"✅ ダウンロード完了: {len(data.get('horses', {}))}頭")
+                return data
+            else:
+                print(f"❌ ダウンロード失敗: HTTP {response.status_code}")
+        except Exception as e:
+            print(f"❌ ダウンロードエラー: {e}")
+        
+        # フォールバック：新規作成
         return {
             "meta": {
                 "version": "1.0",

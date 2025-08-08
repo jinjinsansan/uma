@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dロゴアニメーション動作テスト</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #000000, #1a1a1a);
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        .test-container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #ffd700;
+            max-width: 400px;
+        }
+
+        .score-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .score-btn {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: black;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .score-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #ffd700;
+        }
+
+        /* Dロゴアニメーション */
+        .d-logo-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        .d-logo {
+            font-size: 20rem;
+            font-weight: bold;
+            line-height: 1;
+            user-select: none;
+            filter: drop-shadow(0 0 30px currentColor);
+            position: relative;
+        }
+
+        .score-display {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(100%);
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .score-value {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .score-rank {
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+
+        /* アニメーション */
+        @keyframes appear {
+            0% { 
+                transform: scale(0.1) rotate(-180deg);
+                opacity: 0;
+            }
+            100% { 
+                transform: scale(1) rotate(0deg);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                transform: scale(1) rotate(0deg);
+            }
+            50% { 
+                transform: scale(1.1) rotate(5deg);
+            }
+        }
+
+        @keyframes disappear {
+            0% { 
+                transform: scale(1);
+                opacity: 0.8;
+            }
+            100% { 
+                transform: scale(0.1) rotate(180deg);
+                opacity: 0;
+            }
+        }
+
+        @keyframes rainbow-flow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .rainbow-text {
+            background: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: rainbow-flow 2s ease-in-out infinite;
+        }
+
+        /* パーティクル */
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #ffd700;
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: particle-float 3s ease-in-out infinite;
+        }
+
+        @keyframes particle-float {
+            0% { 
+                transform: scale(0) rotate(0deg);
+                opacity: 0;
+            }
+            50% { 
+                transform: scale(1) rotate(180deg);
+                opacity: 0.8;
+            }
+            100% { 
+                transform: scale(0) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .phase-appearing { animation: appear 0.5s ease-out forwards; }
+        .phase-pulsing { animation: pulse 2s ease-in-out infinite; }
+        .phase-disappearing { animation: disappear 0.5s ease-in forwards; }
+
+        .hidden { display: none !important; }
+
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 5px;
+            border-left: 4px solid #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h2 style="color: #ffd700; margin-top: 0;">🐎 Dロゴアニメーション動作テスト</h2>
+        
+        <div class="score-buttons">
+            <button class="score-btn" onclick="testAnimation(45)">D級 (45)</button>
+            <button class="score-btn" onclick="testAnimation(55)">C級 (55)</button>
+            <button class="score-btn" onclick="testAnimation(65)">B級 (65)</button>
+            <button class="score-btn" onclick="testAnimation(75)">A級 (75)</button>
+            <button class="score-btn" onclick="testAnimation(85)">S級 (85)</button>
+            <button class="score-btn" onclick="testAnimation(92)">SS級 (92)</button>
+            <button class="score-btn" onclick="testAnimation(98.7)">MAX級 (98.7)</button>
+            <button class="score-btn" onclick="stopAnimation()">停止</button>
+        </div>
+
+        <div class="status">
+            <div><strong>現在の状態:</strong> <span id="currentStatus">待機中</span></div>
+            <div><strong>フェーズ:</strong> <span id="currentPhase">なし</span></div>
+            <div><strong>スコア:</strong> <span id="currentScore">0</span></div>
+        </div>
+    </div>
+
+    <!-- Dロゴアニメーション -->
+    <div id="dLogoOverlay" class="d-logo-overlay hidden">
+        <div id="dLogo" class="d-logo">
+            D
+            <div class="score-display">
+                <div id="scoreValue" class="score-value">0.0</div>
+                <div id="scoreRank" class="score-rank">D級</div>
+            </div>
+        </div>
+        
+        <!-- パーティクル（MAX級のみ） -->
+        <div id="particles" class="hidden"></div>
+    </div>
+
+    <script>
+        let currentAnimation = null;
+
+        function getDLogoColor(score) {
+            if (score >= 98) return 'rainbow';
+            else if (score >= 90) return '#ffd700';
+            else if (score >= 80) return '#c0c0c0';
+            else if (score >= 70) return '#cd7f32';
+            else if (score >= 60) return '#4a90e2';
+            else if (score >= 50) return '#50c878';
+            else return '#808080';
+        }
+
+        function getRank(score) {
+            if (score >= 98) return 'MAX級';
+            else if (score >= 90) return 'SS級';
+            else if (score >= 80) return 'S級';
+            else if (score >= 70) return 'A級';
+            else if (score >= 60) return 'B級';
+            else if (score >= 50) return 'C級';
+            else return 'D級';
+        }
+
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            particlesContainer.innerHTML = '';
+            
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 2 + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        function updateStatus(status, phase, score) {
+            document.getElementById('currentStatus').textContent = status;
+            document.getElementById('currentPhase').textContent = phase;
+            document.getElementById('currentScore').textContent = score;
+        }
+
+        function testAnimation(score) {
+            // 既存のアニメーションを停止
+            if (currentAnimation) {
+                stopAnimation();
+            }
+
+            const overlay = document.getElementById('dLogoOverlay');
+            const logo = document.getElementById('dLogo');
+            const scoreValue = document.getElementById('scoreValue');
+            const scoreRank = document.getElementById('scoreRank');
+            const particles = document.getElementById('particles');
+
+            const color = getDLogoColor(score);
+            const rank = getRank(score);
+
+            // スコア表示を更新
+            scoreValue.textContent = score.toFixed(1);
+            scoreValue.style.color = color === 'rainbow' ? '#ffd700' : color;
+            scoreRank.textContent = rank;
+
+            // ロゴの色を設定
+            if (color === 'rainbow') {
+                logo.classList.add('rainbow-text');
+                logo.style.color = '';
+                // パーティクル生成
+                createParticles();
+                particles.classList.remove('hidden');
+            } else {
+                logo.classList.remove('rainbow-text');
+                logo.style.color = color;
+                particles.classList.add('hidden');
+            }
+
+            // オーバーレイ表示
+            overlay.classList.remove('hidden');
+            updateStatus('アニメーション実行中', '出現', score.toFixed(1));
+
+            // フェーズ1: 出現 (0.5秒)
+            logo.className = 'd-logo phase-appearing';
+
+            currentAnimation = setTimeout(() => {
+                // フェーズ2: パルス (2秒)
+                logo.className = 'd-logo phase-pulsing';
+                updateStatus('アニメーション実行中', 'パルス', score.toFixed(1));
+
+                currentAnimation = setTimeout(() => {
+                    // フェーズ3: 消失 (0.5秒)
+                    logo.className = 'd-logo phase-disappearing';
+                    updateStatus('アニメーション実行中', '消失', score.toFixed(1));
+
+                    currentAnimation = setTimeout(() => {
+                        // アニメーション完了
+                        overlay.classList.add('hidden');
+                        particles.classList.add('hidden');
+                        updateStatus('完了', 'なし', '0');
+                        currentAnimation = null;
+                    }, 500);
+                }, 2000);
+            }, 500);
+        }
+
+        function stopAnimation() {
+            if (currentAnimation) {
+                clearTimeout(currentAnimation);
+                currentAnimation = null;
+            }
+            document.getElementById('dLogoOverlay').classList.add('hidden');
+            document.getElementById('particles').classList.add('hidden');
+            updateStatus('停止', 'なし', '0');
+        }
+
+        // 初期化
+        updateStatus('待機中', 'なし', '0');
+    </script>
+</body>
+</html>

@@ -47,9 +47,9 @@ class DLogicRawDataManager:
     
     def _download_from_github(self) -> Dict[str, Any]:
         """GitHub Releasesからナレッジファイルをダウンロード"""
-        # GitHub Releases URL（後で実際のURLに置き換える）
+        # GitHub Releases URL（環境変数から取得、またはデフォルト）
         github_url = os.environ.get('KNOWLEDGE_FILE_URL', 
-            'https://github.com/jinjinsansan/uma/releases/download/v1.0.0/dlogic_raw_knowledge.json')
+            'https://raw.githubusercontent.com/jinjinsansan/uma/main/backend/data/dlogic_raw_knowledge.json')
         
         try:
             print(f"📥 GitHub Releasesからダウンロード中: {github_url}")

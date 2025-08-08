@@ -16,6 +16,7 @@ from api.fast_dlogic_api import router as fast_dlogic_router
 from api.database_stats import router as database_stats_router
 from api.user_management import router as user_management_router
 from api.line_integration import router as line_integration_router
+from api.today_races_ocr import router as today_races_ocr_router
 from models.d_logic_models import ChatDLogicRequest, ChatDLogicResponse
 from services.knowledge_base import KnowledgeBase
 
@@ -58,6 +59,7 @@ app.include_router(fast_dlogic_router, prefix="/api/v2/dlogic", tags=["D-Logic V
 app.include_router(database_stats_router, tags=["Database Statistics"])
 app.include_router(user_management_router, prefix="/api/users", tags=["User Management"])
 app.include_router(line_integration_router, prefix="/api/line", tags=["LINE Integration"])
+app.include_router(today_races_ocr_router, tags=["Today Races OCR"])
 
 # 本日レース情報（Phase C用固定データ）
 TODAY_RACES = {

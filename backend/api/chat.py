@@ -411,7 +411,8 @@ D-Logic 12項目説明：
                 
                 current_message += "馬名とD-Logic指数:\n"
                 for horse in horses:
-                    current_message += f"{horse['name']}: {horse.get('total_score', 0):.2f}点\n"
+                    horse_name = horse.get('name', horse.get('horse_name', '不明'))
+                    current_message += f"{horse_name}: {horse.get('total_score', 0):.2f}点\n"
                 
                 current_message += f"\n分析馬数: {len(horses)}頭\n"
                 current_message += f"\n上記のデータを使って、指定された形式で出力してください。"

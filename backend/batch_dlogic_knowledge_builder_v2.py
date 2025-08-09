@@ -110,7 +110,7 @@ class DLogicKnowledgeBuilder:
                 FROM umagoto_race_joho u
                 LEFT JOIN race_shosai r ON u.RACE_CODE = r.RACE_CODE
                 WHERE u.BAMEI = %s
-                AND u.KAISAI_NEN >= '2020'
+                AND u.KAISAI_NEN >= '2015'
                 AND u.KAISAI_NEN <= '2025'
                 AND u.KAKUTEI_CHAKUJUN IS NOT NULL
                 ORDER BY u.KAISAI_NEN DESC, u.KAISAI_GAPPI DESC
@@ -200,7 +200,7 @@ class DLogicKnowledgeBuilder:
             cursor.execute("""
                 SELECT BAMEI, COUNT(*) as race_count
                 FROM umagoto_race_joho
-                WHERE KAISAI_NEN >= '2020'
+                WHERE KAISAI_NEN >= '2015'
                 AND KAISAI_NEN <= '2025'
                 AND BAMEI IS NOT NULL
                 AND BAMEI != ''
@@ -386,20 +386,15 @@ if __name__ == "__main__":
     print("🚀 D-Logic生データナレッジファイル構築バッチ V2")
     print("")
     print("このバッチは以下の処理を行います：")
-    print("  1. 2020-2025年の3走以上の馬データを収集")
+    print("  1. 2015-2025年の3走以上の馬データを収集")
     print("  2. 各馬の最新5走分の生データを保存")
     print("  3. JSONファイルとテキストサマリーを同時作成")
     print("  4. 12項目分析に必要なデータのみを効率的に収集")
     print("")
-    print("⚠️ 推定処理時間: 1-2時間")
-    print("⚠️ カラム名を修正済み（V2）")
+    print("⚠️ 推定処理時間: 3-5時間")
+    print("⚠️ 予想データサイズ: 350-400MB")
+    print("⚠️ 自動実行モード")
     print("")
-    print("続行しますか？ (yes/no): ", end="")
-    
-    response = input().strip().lower()
-    if response in ['yes', 'y', 'はい']:
-        print("\n🏁 処理を開始します！")
-        builder = DLogicKnowledgeBuilder()
-        builder.build_knowledge()
-    else:
-        print("❌ 処理をキャンセルしました")
+    print("🏁 処理を開始します！")
+    builder = DLogicKnowledgeBuilder()
+    builder.build_knowledge()

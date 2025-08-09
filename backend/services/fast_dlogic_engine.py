@@ -84,6 +84,12 @@ class FastDLogicEngine:
         for horse_name in horse_names:
             horse_result = self.analyze_single_horse(horse_name)
             
+            # 馬名を確実に含める（'name'フィールドとして）
+            if 'horse_name' in horse_result and 'name' not in horse_result:
+                horse_result['name'] = horse_result['horse_name']
+            elif 'name' not in horse_result:
+                horse_result['name'] = horse_name
+            
             if horse_result.get('data_source') == 'knowledge_base':
                 knowledge_hits += 1
             else:

@@ -103,7 +103,7 @@ def extract_horse_name(text: str) -> Optional[str]:
     # その他は除外
     return None
 
-def extract_multiple_horse_names(text: str) -> List[str]:
+def extract_multiple_horse_names(text: str) -> tuple[List[str], str]:
     """テキストから複数の馬名を抽出"""
     logger.debug(f"extract_multiple_horse_names called with: '{text}'")
     
@@ -113,23 +113,43 @@ def extract_multiple_horse_names(text: str) -> List[str]:
     
     # レース情報のパターン
     race_patterns = [
+        r'\d{4}-\d{2}-\d{2}\s+.*R\s+.*',  # "2025-08-09 大倉山12R 大倉山特別"
         r'\d{4}年.*記念',  # "2024年有馬記念"
         r'\d{4}年\d+月.*R',  # "2025年8月新潓5R"
         r'\d{4}年\d+月.*レース',  # "2025年8月新潓5レース"
         r'.*G[1-3]',  # "G1", "G2", "G3"
     ]
     
-    for pattern in race_patterns:
-        match = re.search(pattern, text)
-        if match:
-            race_info = match.group()
-            # レース情報の後のテキストを馬名リストとして扱う
-            horse_text = text[match.end():].strip()
-            break
+    # "出走馬:" パターンの処理
+    if "出走馬:" in text or "出走馬：" in text:
+        parts = re.split(r'出走馬[:：]', text)
+        if len(parts) > 1:
+            race_info = parts[0].strip()
+            horse_text = parts[1].strip()
+    else:
+        for pattern in race_patterns:
+            match = re.search(pattern, text)
+            if match:
+                race_info = match.group()
+                # レース情報の後のテキストを馬名リストとして扱う
+                horse_text = text[match.end():].strip()
+                break
     
-    # カタカナの馬名をすべて抽出（最低4文字以上）
-    katakana_pattern = r'[ァ-ヴー]{4,}'
-    horse_names = re.findall(katakana_pattern, horse_text)
+    # カンマ区切りの場合は分割処理
+    if "," in horse_text or "、" in horse_text:
+        # カンマまたは読点で分割
+        split_names = re.split(r'[,、]', horse_text)
+        horse_names = []
+        for name in split_names:
+            name = name.strip()
+            # カタカナの馬名を抽出（最低3文字以上）
+            katakana_match = re.search(r'[ァ-ヴー]{3,}', name)
+            if katakana_match:
+                horse_names.append(katakana_match.group())
+    else:
+        # カタカナの馬名をすべて抽出（最低4文字以上）
+        katakana_pattern = r'[ァ-ヴー]{4,}'
+        horse_names = re.findall(katakana_pattern, horse_text)
     
     # 重複を除去してリストを保持
     unique_names = []

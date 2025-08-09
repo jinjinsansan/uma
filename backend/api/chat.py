@@ -260,10 +260,19 @@ async def chat_message(request: Dict[str, Any]):
         user_message = request.get("message", "")
         chat_history = request.get("history", [])
         
-        logger.info(f"Chat message received: {user_message[:50]}...")  # 最初の50文字のみログ
+        logger.info(f"Chat message received: {user_message[:100]}...")  # 最初の100文字のみログ
+        logger.info(f"Full message length: {len(user_message)} chars")
         
         # まず複数馬名をチェック
-        horse_names, race_info = extract_multiple_horse_names(user_message)
+        try:
+            horse_names, race_info = extract_multiple_horse_names(user_message)
+            logger.info(f"Extraction result - horses: {horse_names}, race_info: '{race_info}'")
+        except Exception as e:
+            logger.error(f"Error in extract_multiple_horse_names: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            horse_names = []
+            race_info = ""
         
         # D-Logic分析結果を準備
         d_logic_result = None
@@ -444,7 +453,15 @@ D-Logic 12項目説明：
         messages.append({"role": "user", "content": current_message})
         
         # OpenAI APIで応答生成
-        ai_response = await openai_service.chat_completion(messages)
+        try:
+            logger.info(f"Calling OpenAI with {len(messages)} messages")
+            ai_response = await openai_service.chat_completion(messages[1:], system_prompt=messages[0]["content"])
+            logger.info(f"OpenAI response received: {len(ai_response)} chars")
+        except Exception as e:
+            logger.error(f"OpenAI API error: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
         
         # レスポンスを構築
         response_data = {

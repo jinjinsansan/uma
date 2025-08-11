@@ -692,30 +692,32 @@ class DLogicRawDataManager:
         # 第3層: 当日要因（25%）
         layer3_score = self._calc_layer3_daily_factors(raw_data, races, baba_condition)
         
-        # 天候適性調整係数の計算
+        # 天候適性調整係数の計算（0.8〜1.2の範囲に制限）
         weather_adjustment_factor = (
             layer1_score * 0.40 +
             layer2_score * 0.35 +
             layer3_score * 0.25
         )
+        # 調整係数を適切な範囲に制限
+        weather_adjustment_factor = max(0.8, min(1.2, weather_adjustment_factor))
         
         # 標準スコアに調整を適用
         adjusted_scores = {}
         for key, value in standard_result["d_logic_scores"].items():
             if key == "6_weather_aptitude":
-                # 天候適性は特別扱い（重み増加）
-                weight_multiplier = {2: 1.5, 3: 2.0, 4: 2.5}[baba_condition]
-                adjusted_scores[key] = value * weight_multiplier
+                # 天候適性は最大20%の加点に制限
+                bonus_factor = {2: 1.05, 3: 1.10, 4: 1.20}[baba_condition]
+                adjusted_scores[key] = min(100.0, value * bonus_factor)
             elif key == "12_time_index":
                 # タイム指数は重み減少
                 weight_reducer = {2: 0.8, 3: 0.6, 4: 0.4}[baba_condition]
                 adjusted_scores[key] = value * weight_reducer
             else:
-                # その他の項目は調整係数を適用
-                adjusted_scores[key] = value * weather_adjustment_factor
+                # その他の項目は調整係数を適用（100点上限）
+                adjusted_scores[key] = min(100.0, value * weather_adjustment_factor)
         
-        # 調整後の総合スコア計算
-        adjusted_total = self._calculate_total_score(adjusted_scores)
+        # 調整後の総合スコア計算（100点を上限とする）
+        adjusted_total = min(100.0, self._calculate_total_score(adjusted_scores))
         
         # 結果の構築
         result = {
@@ -750,9 +752,9 @@ class DLogicRawDataManager:
         if recent_weights:
             avg_weight = sum(recent_weights) / len(recent_weights)
             if avg_weight >= 470:
-                weight_score = 1.2  # 重馬場向き
+                weight_score = 1.1  # 重馬場向き（控えめに）
             elif avg_weight <= 450:
-                weight_score = 0.8  # 軽量馬は不利
+                weight_score = 0.9  # 軽量馬は不利（控えめに）
             else:
                 weight_score = 1.0
             scores.append(weight_score)
@@ -773,7 +775,7 @@ class DLogicRawDataManager:
         
         if baba_performances:
             avg_finish = sum(baba_performances) / len(baba_performances)
-            baba_score = max(0, 2.0 - (avg_finish - 1) * 0.2)  # 1着なら2.0、5着なら1.2
+            baba_score = max(0.8, 1.3 - (avg_finish - 1) * 0.1)  # 1着なら1.3、5着なら0.9
             scores.append(baba_score)
         else:
             # 該当馬場経験なしの場合は標準値
@@ -801,7 +803,7 @@ class DLogicRawDataManager:
             jockey_scores = []
             for jockey, finishes in jockey_baba_perf.items():
                 avg_finish = sum(finishes) / len(finishes)
-                score = max(0, 2.0 - (avg_finish - 1) * 0.15)
+                score = max(0.8, 1.3 - (avg_finish - 1) * 0.1)
                 jockey_scores.append(score)
             scores.append(sum(jockey_scores) / len(jockey_scores))
         
@@ -815,11 +817,11 @@ class DLogicRawDataManager:
         if early_positions:
             avg_position = sum(early_positions) / len(early_positions)
             if avg_position <= 3:  # 逃げ・先行
-                pace_score = 1.3
+                pace_score = 1.15
             elif avg_position <= 6:  # 中団
                 pace_score = 1.0
             else:  # 後方
-                pace_score = 0.8
+                pace_score = 0.9
             scores.append(pace_score)
         
         return sum(scores) / len(scores) if scores else 1.0

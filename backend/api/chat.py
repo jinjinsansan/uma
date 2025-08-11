@@ -167,21 +167,46 @@ async def get_horse_d_logic_analysis(horse_name: str) -> Dict[str, Any]:
     try:
         # グローバルインスタンスを使用
         result = fast_engine_instance.analyze_single_horse(horse_name)
-        logger.info(f"馬名 '{horse_name}' の分析結果: スコア={result.get('total_score', 0):.2f}, ソース={result.get('data_source', '不明')}")
+        
+        # データソースのチェックを先に行う
+        data_source = result.get('data_source', 'unknown')
+        logger.info(f"馬名 '{horse_name}' の分析結果: ソース={data_source}")
+        
+        # 馬が見つからない場合
+        if data_source == 'not_found' or data_source == 'mysql_fallback':
+            error_msg = result.get("error", f"{horse_name}のデータは現在のナレッジベースに含まれていません。")
+            logger.warning(f"馬名 '{horse_name}' が見つかりません: {error_msg}")
+            return {
+                "status": "not_found",
+                "message": error_msg,
+                "horse_name": horse_name
+            }
         
         # FastDLogicEngineが正常な結果を返したかチェック（errorフィールドがなく、total_scoreがある場合）
         if result and "error" not in result and "total_score" in result:
             # 詳細スコアの確認
             detailed_scores = result.get("d_logic_scores", {})
+            total_score = result.get('total_score', 0)
+            
+            # すべての項目がデフォルト値（50.0）の場合も、データなしとして扱う
+            all_default = all(v == 50.0 for v in detailed_scores.values()) if detailed_scores else True
+            if all_default and total_score == 50.0:
+                logger.warning(f"馬名 '{horse_name}' の分析結果がすべてデフォルト値")
+                return {
+                    "status": "not_found",
+                    "message": f"{horse_name}の詳細なレースデータが不足しているため、分析できません。",
+                    "horse_name": horse_name
+                }
+            
             non_default_scores = [k for k, v in detailed_scores.items() if v != 50.0]
-            logger.info(f"馬名 '{horse_name}' - デフォルト以外のスコア項目: {non_default_scores}")
+            logger.info(f"馬名 '{horse_name}' - スコア={total_score:.2f}, デフォルト以外のスコア項目: {non_default_scores}")
             
             return {
                 "status": "success",
                 "calculation_method": "Phase D統合・独自基準100点・12項目D-Logic",
                 "horses": [{
                     "name": horse_name,
-                    "total_score": result.get("total_score", 0),
+                    "total_score": total_score,
                     "grade": result.get("grade", "未評価"),
                     "detailed_scores": detailed_scores,
                     "analysis_source": result.get("data_source", "高速分析エンジン")
@@ -415,6 +440,11 @@ D-Logicは12項目の科学的指標で競走馬を評価する独自開発の�
 D-Logicは12項目の科学的指標で競走馬を評価する独自開発のシステムです。
 基準となる100点は独自の統計的手法で設定されています。
 
+**極めて重要**: 
+- D-Logic分析結果が提供されない場合、絶対に架空のスコアを作らないでください
+- 「データがありません」と明確に伝えてください
+- 存在しない馬に対して詳細スコアを創作することは禁止です
+
 **重要**: 馬名が含まれる質問の場合、D-Logic分析結果が提供されたら、必ず以下の形式で詳細な12項目スコアを明記してください：
 
 🐎 [馬名] のD-Logic分析結果
@@ -471,6 +501,17 @@ D-Logic 12項目説明：
         
         # 現在のメッセージを追加（D-Logic結果がある場合は含める）
         current_message = user_message
+        
+        # 馬が見つからない場合の処理
+        if d_logic_result and d_logic_result.get("status") == "not_found":
+            # エラーメッセージを直接返す
+            error_message = d_logic_result.get("message", "申し訳ございません。その馬のデータは見つかりませんでした。")
+            return {
+                "status": "success",
+                "message": error_message,
+                "analysis_type": analysis_type,
+                "horse_not_found": True
+            }
         
         if d_logic_result and d_logic_result.get("status") == "success":
             if analysis_type == "multiple":

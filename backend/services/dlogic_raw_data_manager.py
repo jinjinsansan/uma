@@ -135,11 +135,18 @@ class DLogicRawDataManager:
                 print(f"⚠️ 大文字小文字の違いを検出: '{key}' != '{horse_name}'")
                 return horses[key]
         
-        # 部分一致検索
-        for key in horses.keys():
-            if horse_name in key or key in horse_name:
-                print(f"⚠️ 部分一致を検出: '{key}' <-> '{horse_name}'")
-                return horses[key]
+        # 部分一致検索は完全一致に近い場合のみ
+        # （例：「ディープインパクト」と「ディープインパクト号」のような場合）
+        # 以下の条件を満たす場合のみ部分一致を許可：
+        # 1. 検索馬名が短すぎない（5文字以上）
+        # 2. 部分一致の差が小さい（2文字以内）
+        if len(horse_name) >= 5:
+            for key in horses.keys():
+                # 馬名の差が2文字以内の場合のみ
+                if abs(len(key) - len(horse_name)) <= 2:
+                    if horse_name in key or key in horse_name:
+                        print(f"⚠️ 近似一致を検出: '{key}' <-> '{horse_name}'")
+                        return horses[key]
         
         print(f"❌ 馬名 '{horse_name}' が見つかりません")
         return None

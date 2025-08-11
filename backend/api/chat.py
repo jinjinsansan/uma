@@ -206,7 +206,10 @@ async def get_horse_d_logic_analysis(horse_name: str) -> Dict[str, Any]:
                 }
             
             non_default_scores = [k for k, v in detailed_scores.items() if v != 50.0]
-            logger.info(f"馬名 '{horse_name}' - スコア={total_score:.2f}, デフォルト以外のスコア項目: {non_default_scores}")
+            if total_score is not None:
+                logger.info(f"馬名 '{horse_name}' - スコア={total_score:.2f}, デフォルト以外のスコア項目: {non_default_scores}")
+            else:
+                logger.info(f"馬名 '{horse_name}' - スコア=データなし, デフォルト以外のスコア項目: {non_default_scores}")
             
             # 成功結果を作成
             success_result = {
@@ -600,7 +603,11 @@ D-Logic 12項目説明：
                 current_message += "馬名とD-Logic指数:\n"
                 for horse in horses:
                     horse_name = horse.get('name', horse.get('horse_name', '不明'))
-                    current_message += f"{horse_name}: {horse.get('total_score', 0):.2f}点\n"
+                    total_score = horse.get('total_score')
+                    if total_score is not None:
+                        current_message += f"{horse_name}: {total_score:.2f}点\n"
+                    else:
+                        current_message += f"{horse_name}: データなし (ナレッジベースに含まれていません)\n"
                 
                 current_message += f"\n分析馬数: {len(horses)}頭\n"
                 current_message += f"\n上記のデータを使って、指定された形式で出力してください。"
@@ -613,7 +620,11 @@ D-Logic 12項目説明：
                     
                     current_message += f"\n\n【D-Logic分析結果データ】\n"
                     current_message += f"馬名: {horse_data.get('name', horse_names[0] if horse_names else 'unknown')}\n"
-                    current_message += f"総合評価: {horse_data.get('total_score', 0):.2f}点\n"
+                    total_score = horse_data.get('total_score', 0)
+                    if total_score is not None:
+                        current_message += f"総合評価: {total_score:.2f}点\n"
+                    else:
+                        current_message += f"総合評価: データなし\n"
                     current_message += f"ランク: {horse_data.get('grade', '未評価')}\n"
                     current_message += f"分析ソース: {horse_data.get('analysis_source', '不明')}\n\n"
                     
@@ -635,7 +646,10 @@ D-Logic 12項目説明：
                     
                     for key, label in score_mapping.items():
                         score = detailed_scores.get(key, 0)
-                        current_message += f"{label}: {score:.2f}点\n"
+                        if score is not None:
+                            current_message += f"{label}: {score:.2f}点\n"
+                        else:
+                            current_message += f"{label}: データなし\n"
                     
                     current_message += f"\n上記のデータを使って、必ず指定された形式で12項目すべてのスコアを明記した応答を生成してください。"
         

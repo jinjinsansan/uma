@@ -40,7 +40,11 @@ async def test_error_handling():
             if 'error' in horse:
                 print(f"  {horse.get('horse_name', 'Unknown')}: エラー - {horse.get('error')}")
             else:
-                print(f"  {horse.get('horse_name', 'Unknown')}: {horse.get('total_score', 0):.2f}点")
+                total_score = horse.get('total_score', 0)
+                if total_score is not None:
+                    print(f"  {horse.get('horse_name', 'Unknown')}: {total_score:.2f}点")
+                else:
+                    print(f"  {horse.get('horse_name', 'Unknown')}: データなし")
     
     # テストケース4: すべて存在しない馬
     print("\n【テスト4: すべて存在しない馬】")

@@ -41,7 +41,11 @@ async def test_18_horses_performance():
     # TOP5を表示
     print("\n【TOP5】")
     for i, horse in enumerate(result['horses'][:5]):
-        print(f"{i+1}位: {horse.get('horse_name', 'Unknown')} - {horse.get('total_score', 0):.2f}点")
+        total_score = horse.get('total_score', 0)
+        if total_score is not None:
+            print(f"{i+1}位: {horse.get('horse_name', 'Unknown')} - {total_score:.2f}点")
+        else:
+            print(f"{i+1}位: {horse.get('horse_name', 'Unknown')} - データなし")
     
     # API経由でのテスト
     print("\n【API経由テスト】")
@@ -61,7 +65,11 @@ async def test_18_horses_performance():
         # TOP5を表示
         print("\n【API TOP5】")
         for i, horse in enumerate(horses[:5]):
-            print(f"{i+1}位: {horse.get('horse_name', 'Unknown')} - {horse.get('total_score', 0):.2f}点")
+            total_score = horse.get('total_score', 0)
+            if total_score is not None:
+                print(f"{i+1}位: {horse.get('horse_name', 'Unknown')} - {total_score:.2f}点")
+            else:
+                print(f"{i+1}位: {horse.get('horse_name', 'Unknown')} - データなし")
     else:
         print(f"APIエラー: {api_result.get('message')}")
     

@@ -52,7 +52,11 @@ print("\n【2頭比較】")
 horses = ["ヤマニンバロネス", "サツキノジョウ"]
 result = engine.analyze_race_horses(horses)
 for horse in result['horses']:
-    print(f"{horse.get('horse_name', 'Unknown')}: {horse.get('total_score', 0):.2f}点 (rank: {horse.get('dlogic_rank', '-')})")
+    total_score = horse.get('total_score', 0)
+    if total_score is not None:
+        print(f"{horse.get('horse_name', 'Unknown')}: {total_score:.2f}点 (rank: {horse.get('dlogic_rank', '-')})")
+    else:
+        print(f"{horse.get('horse_name', 'Unknown')}: データなし (rank: {horse.get('dlogic_rank', '-')})")
 
 # 5頭分析
 print("\n【5頭分析】")
@@ -63,4 +67,8 @@ print(f"計算時間: {result['race_analysis']['total_calculation_time']:.3f}秒
 print(f"平均時間: {result['race_analysis']['avg_time_per_horse']:.3f}秒/頭")
 print("\nランキング:")
 for horse in result['horses'][:5]:  # TOP5まで表示
-    print(f"{horse.get('dlogic_rank', '-')}位: {horse.get('horse_name', 'Unknown')} - {horse.get('total_score', 0):.2f}点")
+    total_score = horse.get('total_score', 0)
+    if total_score is not None:
+        print(f"{horse.get('dlogic_rank', '-')}位: {horse.get('horse_name', 'Unknown')} - {total_score:.2f}点")
+    else:
+        print(f"{horse.get('dlogic_rank', '-')}位: {horse.get('horse_name', 'Unknown')} - データなし")

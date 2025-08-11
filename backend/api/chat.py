@@ -7,6 +7,7 @@ from services.today_race_fetcher import today_race_fetcher
 from services.integrated_d_logic_calculator import d_logic_calculator
 from services.dlogic_raw_data_manager import dlogic_manager
 from services.fast_dlogic_engine import FastDLogicEngine
+from services.cache_service import cache_service, cached
 
 router = APIRouter(prefix="/api/chat", tags=["Chat"])
 
@@ -165,6 +166,12 @@ def extract_multiple_horse_names(text: str) -> tuple[List[str], str]:
 async def get_horse_d_logic_analysis(horse_name: str) -> Dict[str, Any]:
     """馬のD-Logic分析結果を取得"""
     try:
+        # キャッシュチェック
+        cached_result = cache_service.get('dlogic_analysis', horse_name)
+        if cached_result is not None:
+            logger.info(f"キャッシュから取得: {horse_name}")
+            return cached_result
+        
         # グローバルインスタンスを使用
         result = fast_engine_instance.analyze_single_horse(horse_name)
         
@@ -201,7 +208,8 @@ async def get_horse_d_logic_analysis(horse_name: str) -> Dict[str, Any]:
             non_default_scores = [k for k, v in detailed_scores.items() if v != 50.0]
             logger.info(f"馬名 '{horse_name}' - スコア={total_score:.2f}, デフォルト以外のスコア項目: {non_default_scores}")
             
-            return {
+            # 成功結果を作成
+            success_result = {
                 "status": "success",
                 "calculation_method": "Phase D統合・独自基準100点・12項目D-Logic",
                 "horses": [{
@@ -212,6 +220,12 @@ async def get_horse_d_logic_analysis(horse_name: str) -> Dict[str, Any]:
                     "analysis_source": result.get("data_source", "高速分析エンジン")
                 }]
             }
+            
+            # キャッシュに保存（48時間）
+            cache_service.set('dlogic_analysis', horse_name, success_result)
+            logger.info(f"キャッシュに保存: {horse_name}")
+            
+            return success_result
         else:
             error_msg = result.get("error", "分析結果が取得できませんでした")
             logger.warning(f"馬名 '{horse_name}' の分析失敗: {error_msg}")
@@ -243,6 +257,13 @@ async def get_multiple_horses_analysis(horse_names: List[str], race_info: str = 
                 "message": "一度に分析できるのは20頭までです"
             }
         
+        # キャッシュキー（馬名リストをソートして一意にする）
+        cache_key = {'horses': sorted(horse_names), 'race_info': race_info}
+        cached_result = cache_service.get('race_analysis', cache_key)
+        if cached_result is not None:
+            logger.info(f"レース分析をキャッシュから取得: {len(horse_names)}頭")
+            return cached_result
+        
         # FastDLogicEngineを使用して一括分析
         logger.info(f"Analyzing {len(horse_names)} horses: {horse_names[:5]}..." if len(horse_names) > 5 else f"Analyzing {len(horse_names)} horses: {horse_names}")
         result = fast_engine_instance.analyze_race_horses(horse_names)
@@ -257,8 +278,9 @@ async def get_multiple_horses_analysis(horse_names: List[str], race_info: str = 
         # レース情報を追加
         if race_info:
             result['race_info'] = race_info
-            
-        return {
+        
+        # 成功結果を作成
+        success_result = {
             "status": "success",
             "calculation_method": "Phase D統合・独自基準100点・12項目D-Logic",
             "race_info": race_info,
@@ -266,6 +288,12 @@ async def get_multiple_horses_analysis(horse_names: List[str], race_info: str = 
             "analyzed_count": len(result.get('horses', [])),
             "requested_count": len(horse_names)
         }
+        
+        # キャッシュに保存（6時間）
+        cache_service.set('race_analysis', cache_key, success_result)
+        logger.info(f"レース分析をキャッシュに保存: {len(horse_names)}頭")
+        
+        return success_result
         
     except Exception as e:
         logger.error(f"Multiple horses analysis error: {e}")
@@ -847,3 +875,13 @@ async def calculate_d_logic(race_detail: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"D-logic calculation error: {e}")
         return {"error": f"Dロジック計算中にエラーが発生しました: {str(e)}"} 
+
+@router.get("/cache-stats")
+async def get_cache_stats():
+    """キャッシュ統計情報を取得"""
+    stats = cache_service.get_stats()
+    return {
+        "status": "success",
+        "cache_stats": stats,
+        "recommendation": "キャッシュヒット率が70%以上で良好です" if stats["hit_rate"] >= 70 else "キャッシュヒット率を改善できます"
+    }

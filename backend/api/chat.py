@@ -253,6 +253,58 @@ async def get_multiple_horses_analysis(horse_names: List[str], race_info: str = 
             "race_info": race_info
         }
 
+@router.post("/weather-analysis")
+async def weather_analysis(request: Dict[str, Any]):
+    """天候適性D-Logic分析エンドポイント
+    
+    Request body:
+    {
+        "horse_names": ["レガレイラ"],
+        "baba_condition": 3,  // 1=良, 2=稍重, 3=重, 4=不良
+        "original_result": {...}  // 標準D-Logicの結果（オプション）
+    }
+    """
+    try:
+        horse_names = request.get("horse_names", [])
+        baba_condition = request.get("baba_condition", 1)
+        
+        # 入力検証
+        if not horse_names:
+            raise HTTPException(status_code=400, detail="馬名が指定されていません")
+        
+        if baba_condition not in [1, 2, 3, 4]:
+            raise HTTPException(status_code=400, detail="馬場状態は1,2,3,4のいずれかを指定してください")
+        
+        # 単頭か複数頭かで処理を分岐
+        if len(horse_names) == 1:
+            # 単頭分析
+            result = fast_engine_instance.analyze_single_horse_weather(horse_names[0], baba_condition)
+            
+            return {
+                "status": "success",
+                "analysis_type": "single",
+                "result": result,
+                "weather_condition": {1: "良", 2: "稍重", 3: "重", 4: "不良"}[baba_condition]
+            }
+        else:
+            # 複数頭分析
+            result = fast_engine_instance.analyze_race_horses_weather(horse_names, baba_condition)
+            
+            return {
+                "status": "success",
+                "analysis_type": "multiple",
+                "result": result,
+                "weather_condition": {1: "良", 2: "稍重", 3: "重", 4: "不良"}[baba_condition]
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Weather analysis error: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"天候適性分析中にエラーが発生しました: {str(e)}")
+
 @router.post("/message")
 async def chat_message(request: Dict[str, Any]):
     """チャットメッセージを処理し、OpenAI応答を生成"""

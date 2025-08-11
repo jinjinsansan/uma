@@ -168,13 +168,34 @@ class FastDLogicEngine:
             
             results.append(horse_result)
         
-        # D-Logic順でソート
-        valid_results = [r for r in results if 'total_score' in r]
+        # 結果を分類
+        valid_results = []
+        not_found_results = []
+        
+        for r in results:
+            if 'total_score' in r:
+                valid_results.append(r)
+            else:
+                # データが見つからない馬も結果に含める
+                not_found_results.append({
+                    'name': r.get('name', r.get('horse_name', '不明')),
+                    'horse_name': r.get('horse_name', r.get('name', '不明')),
+                    'total_score': None,
+                    'grade': 'データなし',
+                    'error': r.get('error', 'ナレッジベースに含まれていません'),
+                    'data_source': 'not_found',
+                    'weather_condition': {1: "良", 2: "稍重", 3: "重", 4: "不良"}[baba_condition]
+                })
+        
+        # D-Logic順でソート（スコアがある馬のみ）
         valid_results.sort(key=lambda x: x['total_score'], reverse=True)
         
-        # 順位付け
+        # 順位付け（スコアがある馬のみ）
         for i, result in enumerate(valid_results):
             result['dlogic_rank'] = i + 1
+        
+        # すべての結果を結合（スコアがある馬 → データがない馬の順）
+        all_results = valid_results + not_found_results
         
         total_time = (datetime.now() - start_time).total_seconds()
         
@@ -182,6 +203,7 @@ class FastDLogicEngine:
             'race_analysis': {
                 'total_horses': len(horse_names),
                 'analyzed_horses': len(valid_results),
+                'not_found_horses': len(not_found_results),
                 'knowledge_hits': knowledge_hits,
                 'mysql_fallbacks': mysql_fallbacks,
                 'total_calculation_time': total_time,
@@ -189,7 +211,7 @@ class FastDLogicEngine:
                 'baba_condition': baba_condition,
                 'weather_condition': {1: "良", 2: "稍重", 3: "重", 4: "不良"}[baba_condition]
             },
-            'horses': valid_results,
+            'horses': all_results,
             'timestamp': datetime.now().isoformat()
         }
     
@@ -217,13 +239,33 @@ class FastDLogicEngine:
             
             results.append(horse_result)
         
-        # D-Logic順でソート
-        valid_results = [r for r in results if 'total_score' in r]
+        # 結果を分類
+        valid_results = []
+        not_found_results = []
+        
+        for r in results:
+            if 'total_score' in r:
+                valid_results.append(r)
+            else:
+                # データが見つからない馬も結果に含める
+                not_found_results.append({
+                    'name': r.get('name', r.get('horse_name', '不明')),
+                    'horse_name': r.get('horse_name', r.get('name', '不明')),
+                    'total_score': None,
+                    'grade': 'データなし',
+                    'error': r.get('error', 'ナレッジベースに含まれていません'),
+                    'data_source': 'not_found'
+                })
+        
+        # D-Logic順でソート（スコアがある馬のみ）
         valid_results.sort(key=lambda x: x['total_score'], reverse=True)
         
-        # 順位付け
+        # 順位付け（スコアがある馬のみ）
         for i, result in enumerate(valid_results):
             result['dlogic_rank'] = i + 1
+        
+        # すべての結果を結合（スコアがある馬 → データがない馬の順）
+        all_results = valid_results + not_found_results
         
         total_time = (datetime.now() - start_time).total_seconds()
         
@@ -231,12 +273,13 @@ class FastDLogicEngine:
             'race_analysis': {
                 'total_horses': len(horse_names),
                 'analyzed_horses': len(valid_results),
+                'not_found_horses': len(not_found_results),
                 'knowledge_hits': knowledge_hits,
                 'mysql_fallbacks': mysql_fallbacks,
                 'total_calculation_time': total_time,
                 'avg_time_per_horse': total_time / len(horse_names) if horse_names else 0
             },
-            'horses': valid_results,
+            'horses': all_results,
             'timestamp': datetime.now().isoformat()
         }
     

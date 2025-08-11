@@ -135,3 +135,58 @@ async def test_analysis(horse_name: str):
             "error": str(e),
             "traceback": traceback.format_exc()
         }
+
+@router.get("/test-weather-analysis/{horse_name}/{baba_condition}")
+async def test_weather_analysis(horse_name: str, baba_condition: int):
+    """天候適性D-Logic分析をテスト
+    
+    Args:
+        horse_name: 馬名
+        baba_condition: 馬場状態 (1=良, 2=稍重, 3=重, 4=不良)
+    """
+    try:
+        # 入力検証
+        if baba_condition not in [1, 2, 3, 4]:
+            return {
+                "status": "error",
+                "message": "baba_condition must be 1, 2, 3, or 4"
+            }
+        
+        # 標準分析
+        standard_result = fast_engine_instance.analyze_single_horse(horse_name)
+        
+        # 天候適性分析
+        weather_result = fast_engine_instance.analyze_single_horse_weather(horse_name, baba_condition)
+        
+        # 比較結果
+        comparison = {
+            "horse_name": horse_name,
+            "baba_condition": baba_condition,
+            "weather_name": {1: "良", 2: "稍重", 3: "重", 4: "不良"}[baba_condition],
+            "standard": {
+                "total_score": standard_result.get('total_score', 0),
+                "grade": standard_result.get('grade', ''),
+                "calculation_time": standard_result.get('calculation_time_seconds', 0)
+            },
+            "weather_adaptive": {
+                "total_score": weather_result.get('total_score', 0),
+                "grade": weather_result.get('grade', ''),
+                "weather_adjustment": weather_result.get('weather_adjustment', 0),
+                "calculation_time": weather_result.get('calculation_time_seconds', 0),
+                "weather_details": weather_result.get('weather_details', {})
+            },
+            "score_difference": weather_result.get('total_score', 0) - standard_result.get('total_score', 0)
+        }
+        
+        return comparison
+        
+    except Exception as e:
+        logger.error(f"Weather analysis test error: {e}")
+        import traceback
+        return {
+            "status": "error",
+            "horse_name": horse_name,
+            "baba_condition": baba_condition,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }

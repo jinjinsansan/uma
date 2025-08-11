@@ -648,6 +648,190 @@ class DLogicRawDataManager:
             return "C (平均)"
         else:
             return "D (要改善)"
+    
+    def calculate_weather_adaptive_dlogic(self, horse_name: str, baba_condition: int) -> Dict[str, Any]:
+        """天候適性D-Logic計算（階層的評価方式）
+        
+        Args:
+            horse_name: 馬名
+            baba_condition: 馬場状態 (1=良, 2=稍重, 3=重, 4=不良)
+        
+        Returns:
+            天候適性を考慮したD-Logic分析結果
+        """
+        # 基本データ取得
+        raw_data = self.get_horse_raw_data(horse_name)
+        if not raw_data:
+            return {"error": f"{horse_name}のデータが見つかりません"}
+        
+        # 標準のD-Logic計算を実行
+        standard_result = self.calculate_dlogic_realtime(horse_name)
+        
+        # 良馬場の場合は標準結果をそのまま返す
+        if baba_condition == 1:
+            standard_result["weather_condition"] = "良"
+            standard_result["weather_adjustment"] = 0.0
+            return standard_result
+        
+        # 階層的評価の実装
+        races = raw_data.get("races", raw_data.get("race_history", []))
+        
+        # 第1層: 基礎能力（40%）
+        layer1_score = self._calc_layer1_base_ability(raw_data, races, baba_condition)
+        
+        # 第2層: 適応能力（35%）
+        layer2_score = self._calc_layer2_adaptive_ability(raw_data, races, baba_condition)
+        
+        # 第3層: 当日要因（25%）
+        layer3_score = self._calc_layer3_daily_factors(raw_data, races, baba_condition)
+        
+        # 天候適性調整係数の計算
+        weather_adjustment_factor = (
+            layer1_score * 0.40 +
+            layer2_score * 0.35 +
+            layer3_score * 0.25
+        )
+        
+        # 標準スコアに調整を適用
+        adjusted_scores = {}
+        for key, value in standard_result["d_logic_scores"].items():
+            if key == "6_weather_aptitude":
+                # 天候適性は特別扱い（重み増加）
+                weight_multiplier = {2: 1.5, 3: 2.0, 4: 2.5}[baba_condition]
+                adjusted_scores[key] = value * weight_multiplier
+            elif key == "12_time_index":
+                # タイム指数は重み減少
+                weight_reducer = {2: 0.8, 3: 0.6, 4: 0.4}[baba_condition]
+                adjusted_scores[key] = value * weight_reducer
+            else:
+                # その他の項目は調整係数を適用
+                adjusted_scores[key] = value * weather_adjustment_factor
+        
+        # 調整後の総合スコア計算
+        adjusted_total = self._calculate_total_score(adjusted_scores)
+        
+        # 結果の構築
+        result = {
+            "horse_name": horse_name,
+            "d_logic_scores": adjusted_scores,
+            "total_score": adjusted_total,
+            "grade": self._grade_performance(adjusted_total),
+            "weather_condition": {2: "稍重", 3: "重", 4: "不良"}[baba_condition],
+            "weather_adjustment": adjusted_total - standard_result["total_score"],
+            "weather_details": {
+                "layer1_base_ability": layer1_score,
+                "layer2_adaptive_ability": layer2_score,
+                "layer3_daily_factors": layer3_score,
+                "adjustment_factor": weather_adjustment_factor
+            },
+            "calculation_time": datetime.now().isoformat()
+        }
+        
+        return result
+    
+    def _calc_layer1_base_ability(self, raw_data: Dict, races: List[Dict], baba_condition: int) -> float:
+        """第1層: 基礎能力の評価（40%）"""
+        scores = []
+        
+        # 1. 馬体重評価
+        recent_weights = []
+        for race in races[-3:]:  # 直近3走
+            weight = race.get("BATAIJU", 0)
+            if weight:
+                recent_weights.append(int(weight))
+        
+        if recent_weights:
+            avg_weight = sum(recent_weights) / len(recent_weights)
+            if avg_weight >= 470:
+                weight_score = 1.2  # 重馬場向き
+            elif avg_weight <= 450:
+                weight_score = 0.8  # 軽量馬は不利
+            else:
+                weight_score = 1.0
+            scores.append(weight_score)
+        
+        # 2. 該当馬場での過去実績
+        baba_performances = []
+        for race in races:
+            track_code = race.get("TRACK_CODE", "")
+            if str(track_code).startswith("1"):  # 芝
+                baba_jotai = race.get("SHIBA_BABAJOTAI_CODE", 0)
+            else:  # ダート
+                baba_jotai = race.get("DIRT_BABAJOTAI_CODE", 0)
+            
+            if int(baba_jotai) == baba_condition:
+                finish = race.get("KAKUTEI_CHAKUJUN", 0)
+                if finish:
+                    baba_performances.append(int(finish))
+        
+        if baba_performances:
+            avg_finish = sum(baba_performances) / len(baba_performances)
+            baba_score = max(0, 2.0 - (avg_finish - 1) * 0.2)  # 1着なら2.0、5着なら1.2
+            scores.append(baba_score)
+        else:
+            # 該当馬場経験なしの場合は標準値
+            scores.append(1.0)
+        
+        return sum(scores) / len(scores) if scores else 1.0
+    
+    def _calc_layer2_adaptive_ability(self, raw_data: Dict, races: List[Dict], baba_condition: int) -> float:
+        """第2層: 適応能力の評価（35%）"""
+        scores = []
+        
+        # 1. 騎手の該当馬場成績
+        jockey_baba_perf = {}
+        for race in races:
+            baba_jotai = self._get_baba_jotai(race)
+            if int(baba_jotai) == baba_condition:
+                jockey = race.get("KISHUMEI_RYAKUSHO", "")
+                finish = race.get("KAKUTEI_CHAKUJUN", 0)
+                if jockey and finish:
+                    if jockey not in jockey_baba_perf:
+                        jockey_baba_perf[jockey] = []
+                    jockey_baba_perf[jockey].append(int(finish))
+        
+        if jockey_baba_perf:
+            jockey_scores = []
+            for jockey, finishes in jockey_baba_perf.items():
+                avg_finish = sum(finishes) / len(finishes)
+                score = max(0, 2.0 - (avg_finish - 1) * 0.15)
+                jockey_scores.append(score)
+            scores.append(sum(jockey_scores) / len(jockey_scores))
+        
+        # 2. 脚質評価（逃げ・先行有利）
+        early_positions = []
+        for race in races[-5:]:  # 直近5走
+            corner1 = race.get("CORNER1_JUNI", 0)
+            if corner1:
+                early_positions.append(int(corner1))
+        
+        if early_positions:
+            avg_position = sum(early_positions) / len(early_positions)
+            if avg_position <= 3:  # 逃げ・先行
+                pace_score = 1.3
+            elif avg_position <= 6:  # 中団
+                pace_score = 1.0
+            else:  # 後方
+                pace_score = 0.8
+            scores.append(pace_score)
+        
+        return sum(scores) / len(scores) if scores else 1.0
+    
+    def _calc_layer3_daily_factors(self, raw_data: Dict, races: List[Dict], baba_condition: int) -> float:
+        """第3層: 当日要因の評価（25%）"""
+        # 簡易実装：重馬場では内枠不利が解消される効果
+        if baba_condition >= 3:  # 重または不良
+            return 1.1  # 重馬場では有利不利が平準化
+        else:
+            return 1.0
+    
+    def _get_baba_jotai(self, race: Dict) -> int:
+        """レースの馬場状態を取得"""
+        track_code = race.get("TRACK_CODE", "")
+        if str(track_code).startswith("1"):  # 芝
+            return race.get("SHIBA_BABAJOTAI_CODE", 1)
+        else:  # ダート
+            return race.get("DIRT_BABAJOTAI_CODE", 1)
 
 # グローバルインスタンス
 dlogic_manager = DLogicRawDataManager()

@@ -73,6 +73,126 @@ class FastDLogicEngine:
         
         return result
     
+    def analyze_single_horse_weather(self, horse_name: str, baba_condition: int) -> Dict[str, Any]:
+        """単体馬の天候適性分析
+        
+        Args:
+            horse_name: 馬名
+            baba_condition: 馬場状態 (1=良, 2=稍重, 3=重, 4=不良)
+        
+        Returns:
+            天候適性を考慮したD-Logic分析結果
+        """
+        start_time = datetime.now()
+        
+        # ダンスインザダークは基準馬なので特別扱い
+        if horse_name == "ダンスインザダーク":
+            calc_time = (datetime.now() - start_time).total_seconds()
+            result = {
+                "total_score": 100.0,
+                "grade": "SS (基準馬)",
+                "d_logic_scores": {
+                    "1_distance_aptitude": 100.0,
+                    "2_bloodline_evaluation": 100.0,
+                    "3_jockey_compatibility": 100.0,
+                    "4_trainer_evaluation": 100.0,
+                    "5_track_aptitude": 100.0,
+                    "6_weather_aptitude": 100.0,
+                    "7_popularity_factor": 100.0,
+                    "8_weight_impact": 100.0,
+                    "9_horse_weight_impact": 100.0,
+                    "10_corner_specialist_degree": 100.0,
+                    "11_margin_analysis": 100.0,
+                    "12_time_index": 100.0
+                },
+                "data_source": "baseline_horse",
+                "calculation_time_seconds": calc_time,
+                "horse_name": horse_name,
+                "weather_condition": {1: "良", 2: "稍重", 3: "重", 4: "不良"}[baba_condition],
+                "weather_adjustment": 0.0
+            }
+            return result
+        
+        # 天候適性計算を実行
+        result = self.raw_manager.calculate_weather_adaptive_dlogic(horse_name, baba_condition)
+        
+        # ナレッジにない場合のフォールバック
+        if "error" in result:
+            result = {
+                "error": f"{horse_name}のデータは現在のナレッジベースに含まれていません。",
+                "total_score": 50.0,
+                "grade": "未評価",
+                "note": "この馬のデータは次回の更新時に追加される予定です。",
+                "horse_name": horse_name,
+                "weather_condition": {1: "良", 2: "稍重", 3: "重", 4: "不良"}[baba_condition],
+                "data_source": "not_found"
+            }
+        else:
+            result['data_source'] = 'knowledge_base'
+        
+        # 計算時間記録
+        calc_time = (datetime.now() - start_time).total_seconds()
+        result['calculation_time_seconds'] = calc_time
+        
+        return result
+    
+    def analyze_race_horses_weather(self, horse_names: List[str], baba_condition: int) -> Dict[str, Any]:
+        """レース出走馬の天候適性一括分析
+        
+        Args:
+            horse_names: 馬名リスト
+            baba_condition: 馬場状態 (1=良, 2=稍重, 3=重, 4=不良)
+        
+        Returns:
+            天候適性を考慮したレース分析結果
+        """
+        start_time = datetime.now()
+        
+        results = []
+        knowledge_hits = 0
+        mysql_fallbacks = 0
+        
+        for horse_name in horse_names:
+            horse_result = self.analyze_single_horse_weather(horse_name, baba_condition)
+            
+            # 馬名を確実に含める
+            if 'horse_name' in horse_result and 'name' not in horse_result:
+                horse_result['name'] = horse_result['horse_name']
+            elif 'name' not in horse_result:
+                horse_result['name'] = horse_name
+            
+            if horse_result.get('data_source') == 'knowledge_base':
+                knowledge_hits += 1
+            else:
+                mysql_fallbacks += 1
+            
+            results.append(horse_result)
+        
+        # D-Logic順でソート
+        valid_results = [r for r in results if 'total_score' in r]
+        valid_results.sort(key=lambda x: x['total_score'], reverse=True)
+        
+        # 順位付け
+        for i, result in enumerate(valid_results):
+            result['dlogic_rank'] = i + 1
+        
+        total_time = (datetime.now() - start_time).total_seconds()
+        
+        return {
+            'race_analysis': {
+                'total_horses': len(horse_names),
+                'analyzed_horses': len(valid_results),
+                'knowledge_hits': knowledge_hits,
+                'mysql_fallbacks': mysql_fallbacks,
+                'total_calculation_time': total_time,
+                'avg_time_per_horse': total_time / len(horse_names) if horse_names else 0,
+                'baba_condition': baba_condition,
+                'weather_condition': {1: "良", 2: "稍重", 3: "重", 4: "不良"}[baba_condition]
+            },
+            'horses': valid_results,
+            'timestamp': datetime.now().isoformat()
+        }
+    
     def analyze_race_horses(self, horse_names: List[str]) -> Dict[str, Any]:
         """レース出走馬一括分析（目標: 16頭で2秒以内）"""
         start_time = datetime.now()

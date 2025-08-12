@@ -35,7 +35,7 @@ class FastDLogicEngine:
             calc_time = (datetime.now() - start_time).total_seconds()
             return {
                 "total_score": 100.0,
-                "grade": "SS (基準馬)",
+                "grade": "SS",
                 "d_logic_scores": {
                     "1_distance_aptitude": 100.0,
                     "2_bloodline_evaluation": 100.0,
@@ -90,7 +90,7 @@ class FastDLogicEngine:
             calc_time = (datetime.now() - start_time).total_seconds()
             result = {
                 "total_score": 100.0,
-                "grade": "SS (基準馬)",
+                "grade": "SS",
                 "d_logic_scores": {
                     "1_distance_aptitude": 100.0,
                     "2_bloodline_evaluation": 100.0,

@@ -241,6 +241,57 @@ MySQLデータベースから新しい馬のデータを取得し、ナレッジ
 - ファイル名の検証によるディレクトリトラバーサル対策
 - 管理者のみが知る URL
 
+## 🎫 LINE友達紹介機能実装計画 (2025/08/12 開始)
+
+### 概要
+LINE友達紹介システムを実装し、ユーザー獲得と利用促進を図る。紹介者には分析回数増加の特典を提供。
+
+### 使用制限の設計
+1. **Google認証のみ**: 1回/日（お試し）
+2. **Google認証 + LINE連携**: 2回/日
+3. **LINE友達紹介1人達成**: 12回/日
+4. **13回以上**: プレミアムプラン必要
+
+### データベース設計
+```sql
+-- 紹介管理テーブル
+line_referrals (
+  id uuid primary key,
+  referrer_id uuid references users(id),
+  referred_id uuid references users(id),
+  referral_code text unique,
+  status text default 'pending',
+  created_at timestamp default now(),
+  completed_at timestamp
+)
+
+-- ユーザーテーブルに追加
+users テーブルに追加:
+- referral_code text unique
+- referral_count integer default 0
+```
+
+### 実装フェーズ
+1. **Phase 1**: データベース設計（1日）
+2. **Phase 2**: バックエンドAPI（1日）
+   - 紹介コード生成API
+   - 紹介登録API
+   - 使用制限API更新
+3. **Phase 3**: フロントエンド（2日）
+   - マイアカウントに紹介URL表示
+   - 紹介経由の登録処理
+   - 使用制限表示の更新
+4. **Phase 4**: テスト・調整（1日）
+
+### 重要な実装ポイント
+- 紹介URLフォーマット: `https://www.dlogicai.in/?ref=ABC123`
+- 紹介コード: 6-8文字の英数字
+- 不正対策: 同一IP制限、短期間の大量紹介ブロック
+- キャッシュ考慮: 紹介数カウントの効率化
+
+### 安定版タグ
+- **実装前バックアップ**: `v2.2-stable-before-referral`
+
 ## 🎯 今後の課題
 
 ### ✅ 複数馬分析機能 (2025/08/08 完了)
@@ -355,3 +406,32 @@ MySQLデータベースから新しい馬のデータを取得し、ナレッジ
    - 不明な馬名の処理
    - タイムアウト対策
    - メモリ使用量の監視
+
+## 🚀 MyLogicAI実装 (2025-01-13)
+
+### 概要
+ユーザーが12項目の重み付けをカスタマイズして、独自のD-Logic分析を作成できる機能
+
+### 実装状況
+- **Phase 1-4**: 完了 ✅
+  - フロントエンド: 紫色のテーマ、12項目スライダー
+  - データベース: Supabaseマイグレーション作成済み
+  - バックエンドAPI: モック実装（`/api/mylogic.py`）
+  - フロント統合: 全ページAPI連携済み
+
+- **Phase 5**: 実施中 🚧
+  - フロントエンド: Vercelデプロイ済み
+  - バックエンド: Renderデプロイ準備中
+
+### APIエンドポイント
+- GET `/api/my-logic/preferences` - 設定取得
+- POST `/api/my-logic/preferences` - 設定保存
+- GET `/api/my-logic/can-edit` - 編集権限確認
+- POST `/api/my-logic/analyze` - MyLogic分析
+- POST `/api/my-logic/preview` - プレビュー分析
+- GET `/api/my-logic/history` - 編集履歴
+
+### 重要な注意点
+- 現在はモック実装（実際のD-Logic計算は未統合）
+- 認証は簡易実装（本番では要改善）
+- Supabase連携は次フェーズで実装予定

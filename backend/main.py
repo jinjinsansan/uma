@@ -20,6 +20,7 @@ from api.today_races_ocr import router as today_races_ocr_router
 from api.debug_knowledge import router as debug_knowledge_router
 from api.admin_knowledge import router as admin_knowledge_router
 from api.admin_cache import router as admin_cache_router
+from api.mylogic import router as mylogic_router
 from models.d_logic_models import ChatDLogicRequest, ChatDLogicResponse
 from services.knowledge_base import KnowledgeBase
 
@@ -66,6 +67,7 @@ app.include_router(today_races_ocr_router, tags=["Today Races OCR"])
 app.include_router(debug_knowledge_router, tags=["Debug"])
 app.include_router(admin_knowledge_router, tags=["Admin Knowledge"])
 app.include_router(admin_cache_router, tags=["Admin Cache"])
+app.include_router(mylogic_router, tags=["MyLogicAI"])
 
 # 本日レース情報（Phase C用固定データ）
 TODAY_RACES = {

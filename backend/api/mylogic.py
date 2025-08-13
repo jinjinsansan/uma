@@ -33,18 +33,18 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 
 # リクエスト/レスポンスモデル
 class WeightConfig(BaseModel):
-    speed: int
-    stamina: int
-    power: int
-    guts: int
-    intelligence: int
-    condition: int
-    aptitude: int
-    jockey: int
-    trainer: int
-    bloodline: int
-    track_record: int
-    recent_form: int
+    distance_aptitude: int          # 距離適性
+    bloodline_evaluation: int       # 血統評価
+    jockey_compatibility: int       # 騎手相性
+    trainer_evaluation: int         # 調教師評価
+    track_aptitude: int            # トラック適性
+    weather_aptitude: int          # 天候適性
+    popularity_factor: int         # 人気要因
+    weight_impact: int             # 斤量影響
+    horse_weight_impact: int       # 馬体重影響
+    corner_specialist_degree: int  # コーナー巧者度
+    margin_analysis: int           # 着差分析
+    time_index: int                # タイム指数
 
 class SavePreferenceRequest(BaseModel):
     weights: WeightConfig
@@ -90,7 +90,30 @@ async def get_preference(user_id: str = Depends(get_user_id_from_auth)):
         logger.info(f"Getting preference for user: {user_id}")
         
         # モックデータを返す（実際にはSupabaseから取得）
-        return {"preference": None}
+        # デフォルトの重み付けを返す
+        default_preference = {
+            "id": "default",
+            "user_id": user_id,
+            "weights": {
+                "distance_aptitude": 8,
+                "bloodline_evaluation": 8,
+                "jockey_compatibility": 8,
+                "trainer_evaluation": 8,
+                "track_aptitude": 8,
+                "weather_aptitude": 9,
+                "popularity_factor": 9,
+                "weight_impact": 9,
+                "horse_weight_impact": 9,
+                "corner_specialist_degree": 8,
+                "margin_analysis": 8,
+                "time_index": 8
+            },
+            "is_active": True,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+            "version": 1
+        }
+        return {"preference": default_preference}
             
     except Exception as e:
         logger.error(f"Error fetching preference: {str(e)}")

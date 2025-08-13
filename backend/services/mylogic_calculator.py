@@ -16,22 +16,22 @@ logger = logging.getLogger(__name__)
 class MyLogicCalculator:
     """MyLogic計算エンジン - 既存のD-Logicエンジンを拡張"""
     
-    # D-LogicスコアとMyLogic重み付けキーのマッピング
-    SCORE_TO_WEIGHT_MAPPING = {
-        "1_distance_aptitude": "aptitude",        # 距離適性 → 適性
-        "2_bloodline_evaluation": "bloodline",    # 血統評価 → 血統
-        "3_jockey_compatibility": "jockey",       # 騎手相性 → 騎手
-        "4_trainer_evaluation": "trainer",        # 調教師評価 → 調教師
-        "5_track_aptitude": "aptitude",          # トラック適性 → 適性（統合）
-        "6_weather_aptitude": "condition",        # 天候適性 → コンディション
-        "7_popularity_factor": "intelligence",    # 人気要素 → 賢さ
-        "8_weight_impact": "power",              # 斤量影響 → パワー
-        "9_horse_weight_impact": "stamina",      # 馬体重影響 → スタミナ
-        "10_corner_specialist_degree": "guts",    # コーナー力 → 根性
-        "11_margin_analysis": "recent_form",      # 着差分析 → 最近の調子
-        "12_speed_rating": "speed",              # 速度評価 → スピード
-        "13_consistency_rating": "track_record"   # 安定性 → トラックレコード
-    }
+    # D-Logicスコアのキー名（マッピング不要、同じキーを使用）
+    # MyLogicでもD-Logicと同じ項目名を使用する
+    D_LOGIC_KEYS = [
+        "1_distance_aptitude",          # 距離適性
+        "2_bloodline_evaluation",       # 血統評価
+        "3_jockey_compatibility",       # 騎手相性
+        "4_trainer_evaluation",         # 調教師評価
+        "5_track_aptitude",            # トラック適性
+        "6_weather_aptitude",          # 天候適性
+        "7_popularity_factor",         # 人気要因
+        "8_weight_impact",             # 斤量影響
+        "9_horse_weight_impact",       # 馬体重影響
+        "10_corner_specialist_degree",  # コーナー巧者度
+        "11_margin_analysis",           # 着差分析
+        "12_time_index"                 # タイム指数
+    ]
     
     def __init__(self):
         # 既存のD-Logic計算エンジンを使用
@@ -73,6 +73,19 @@ class MyLogicCalculator:
             # 3. カスタム重み付けで再計算
             mylogic_score = self._calculate_mylogic_score(d_logic_scores, weights)
             
+            # デバッグ用: 各項目の貢献度を記録
+            individual_contributions = {}
+            for d_logic_key, score in d_logic_scores.items():
+                mylogic_key = "_".join(d_logic_key.split("_")[1:])
+                if mylogic_key in weights:
+                    weight = weights[mylogic_key]
+                    contribution = score * weight / 100
+                    individual_contributions[mylogic_key] = {
+                        "original_score": score,
+                        "weight": weight,
+                        "contribution": round(contribution, 2)
+                    }
+            
             # 4. 結果を返す
             standard_score = standard_result["total_score"]
             score_difference = round(mylogic_score - standard_score, 1)
@@ -83,7 +96,8 @@ class MyLogicCalculator:
                 "mylogic_score": mylogic_score,
                 "score_difference": score_difference,
                 "grade": self._get_grade(mylogic_score),
-                "individual_scores": d_logic_scores  # デバッグ用
+                "individual_scores": d_logic_scores,  # デバッグ用
+                "individual_contributions": individual_contributions  # 各項目の貢献度
             }
             
         except Exception as e:
@@ -121,17 +135,17 @@ class MyLogicCalculator:
         
         # 各D-Logicスコアにカスタム重み付けを適用
         for d_logic_key, score in d_logic_scores.items():
-            # D-LogicキーからMyLogicの重み付けキーを取得
-            weight_key = self.SCORE_TO_WEIGHT_MAPPING.get(d_logic_key)
+            # D-Logicのキー名からMyLogicのキー名に変換（番号を除去）
+            # 例: "1_distance_aptitude" -> "distance_aptitude"
+            mylogic_key = "_".join(d_logic_key.split("_")[1:])
             
-            if weight_key and weight_key in weights:
-                # 複数のD-Logic項目が同じweight_keyにマップされる場合は平均を取る
-                weight = weights[weight_key] / total_weight * 100
+            if mylogic_key in weights:
+                weight = weights[mylogic_key] / total_weight * 100
                 contribution = score * weight / 100
                 mylogic_score += contribution
                 weight_sum += weight
                 
-                logger.debug(f"{d_logic_key} ({weight_key}): {score} × {weight}% = {contribution}")
+                logger.debug(f"{d_logic_key} ({mylogic_key}): {score} × {weight}% = {contribution}")
         
         # 重み付けの合計が100%にならない場合の調整
         if weight_sum > 0:

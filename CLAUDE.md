@@ -547,3 +547,52 @@ def _calculate_mylogic_score(self, d_logic_scores: Dict[str, float], weights: Di
 - `/supabase/fix_mylogic_complete.sql` - 完全な修正SQL
 - `/chatbot/uma/backend/api/mylogic.py` - バックエンドAPI
 - `/chatbot/uma/backend/services/mylogic_calculator.py` - 計算エンジン
+
+## 🚀 MyLogicAI新計算方式 (2025-08-14実装)
+
+### 概要
+MyLogicAIの計算式を「偏差値変換＋累乗方式」に変更し、ユーザーの重み付けによる劇的な差別化を実現。
+
+### 計算ロジック
+
+#### Step 1: 偏差値変換（線形拡張）
+```python
+# 元のD-Logicスコア（20-95点）を0-100点に拡張
+expanded_score = (score - 20) / 75 * 100
+```
+
+#### Step 2: 重み付けの累乗適用
+```python
+# ユーザーの重み付けを累乗指数に変換
+power = weight / 33.3  # weight=100で3乗
+powered_value = (expanded_score / 100) ** power
+contribution = powered_value * weight
+```
+
+#### Step 3: 最終スコア計算
+```python
+mylogic_score = Σ(各項目の貢献度)  # 0-100点で表示
+```
+
+### パラメータ設定
+```python
+MIN_ORIGINAL = 20   # D-Logicスコアの実際の最小値
+MAX_ORIGINAL = 95   # D-Logicスコアの実際の最大値
+POWER_FACTOR = 33.3 # 累乗の強さ（100点で3乗）
+```
+
+### 実装例：血統100%設定
+| 馬名 | 元の血統点 | MyLogicスコア | 標準D-Logic |
+|------|-----------|---------------|-------------|
+| イクイノックス | 100点 | 100.00点 | 93.18点 |
+| ドウデュース | 80点 | 51.17点 | 81.73点 |
+| エフフォーリア | 40点 | 1.89点 | 64.85点 |
+| ジャスティンパレス | 0点 | 0.00点 | 61.36点 |
+
+### 効果
+1. **劇的な差別化**: 100点 vs 0点の極端な差
+2. **順位の大逆転**: 標準D-Logicとは全く異なる評価
+3. **ユーザーカスタマイズの明確化**: 重視項目が結果に直結
+
+### テストスクリプト
+- `/chatbot/uma/backend/test_mylogic_dramatic.py` - 新計算式の動作確認用

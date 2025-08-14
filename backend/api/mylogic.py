@@ -220,16 +220,26 @@ async def analyze_with_mylogic(
         # デフォルトの重み付け（均等配分）
         if not weights:
             weights = {
-                "speed": 8, "stamina": 8, "power": 8, "guts": 8,
-                "intelligence": 8, "condition": 8, "aptitude": 9,
-                "jockey": 9, "trainer": 9, "bloodline": 9,
-                "track_record": 8, "recent_form": 8
+                "distance_aptitude": 8,
+                "bloodline_evaluation": 8,
+                "jockey_compatibility": 8,
+                "trainer_evaluation": 8,
+                "track_aptitude": 8,
+                "weather_aptitude": 9,
+                "popularity_factor": 9,
+                "weight_impact": 9,
+                "horse_weight_impact": 9,
+                "corner_specialist_degree": 8,
+                "margin_analysis": 8,
+                "time_index": 8
             }
         
         # MyLogic計算エンジンで分析
+        # WeightConfigオブジェクトを辞書に変換
+        weights_dict = dict(weights) if hasattr(weights, '__dict__') else weights
         results = mylogic_calculator.analyze_multiple_horses(
             request.horse_names,
-            weights
+            weights_dict
         )
         
         return {
@@ -263,9 +273,11 @@ async def preview_analysis(
         # 最大3頭までに制限
         preview_horses = request.horse_names[:3]
         
+        # WeightConfigオブジェクトを辞書に変換
+        weights_dict = dict(request.weights) if hasattr(request.weights, '__dict__') else request.weights
         results = mylogic_calculator.analyze_multiple_horses(
             preview_horses,
-            dict(request.weights)
+            weights_dict
         )
         
         # プレビュー用に簡略化された結果を返す

@@ -126,6 +126,10 @@ class MyLogicCalculator:
             MyLogicスコア (0-100)
         """
         # 重み付けの正規化（合計が100でない場合に備えて）
+        # weightsが辞書でない場合は辞書に変換
+        if hasattr(weights, '__dict__'):
+            weights = dict(weights)
+        
         total_weight = sum(weights.values())
         if total_weight == 0:
             return 50.0  # デフォルト値

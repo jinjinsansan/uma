@@ -9,7 +9,7 @@ from datetime import datetime
 import logging
 
 # 既存のD-Logic計算エンジンをインポート
-from .fast_dlogic_engine import FastDLogicEngine
+from services.fast_dlogic_engine import FastDLogicEngine
 
 logger = logging.getLogger(__name__)
 

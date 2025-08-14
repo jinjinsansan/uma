@@ -14,7 +14,7 @@ import aiohttp
 import json
 
 # MyLogic計算エンジンをインポート
-from ..services.mylogic_calculator import MyLogicCalculator
+from services.mylogic_calculator import MyLogicCalculator
 
 load_dotenv()
 

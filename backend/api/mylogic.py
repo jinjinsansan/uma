@@ -10,7 +10,7 @@ from pydantic import BaseModel
 import logging
 import os
 from dotenv import load_dotenv
-import aiohttp
+import requests
 import json
 
 # MyLogic計算エンジンをインポート
@@ -128,9 +128,9 @@ async def save_preference(
     try:
         logger.info(f"Saving preference for user: {user_id}")
         
-        # 重み付けの合計を検証
+        # 重み付けの合計を検証（浮動小数点誤差を考慮）
         total = sum(dict(request.weights).values())
-        if total != 100:
+        if abs(total - 100) > 0.1:  # 浮動小数点誤差を考慮
             raise HTTPException(
                 status_code=400,
                 detail=f"重み付けの合計は100でなければなりません。現在: {total}"
@@ -194,26 +194,25 @@ async def analyze_with_mylogic(
         # 重み付けがリクエストに含まれていない場合は、Supabaseから取得
         if not weights and SUPABASE_URL and SUPABASE_SERVICE_KEY:
             try:
-                async with aiohttp.ClientSession() as session:
-                    headers = {
-                        "apikey": SUPABASE_SERVICE_KEY,
-                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-                        "Content-Type": "application/json"
-                    }
-                    
-                    # ユーザーのMyLogic設定を取得
-                    url = f"{SUPABASE_URL}/rest/v1/user_my_logic_preferences"
-                    params = {
-                        "user_id": f"eq.{actual_user_id}",
-                        "is_active": "eq.true",
-                        "select": "weights"
-                    }
-                    
-                    async with session.get(url, headers=headers, params=params) as resp:
-                        if resp.status == 200:
-                            data = await resp.json()
-                            if data and len(data) > 0:
-                                weights = data[0].get('weights')
+                headers = {
+                    "apikey": SUPABASE_SERVICE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                    "Content-Type": "application/json"
+                }
+                
+                # ユーザーのMyLogic設定を取得
+                url = f"{SUPABASE_URL}/rest/v1/user_my_logic_preferences"
+                params = {
+                    "user_id": f"eq.{actual_user_id}",
+                    "is_active": "eq.true",
+                    "select": "weights"
+                }
+                
+                response = requests.get(url, headers=headers, params=params)
+                if response.status_code == 200:
+                    data = response.json()
+                    if data and len(data) > 0:
+                        weights = data[0].get('weights')
             except Exception as e:
                 logger.warning(f"Supabase fetch failed: {str(e)}")
         
@@ -261,9 +260,9 @@ async def preview_analysis(
 ):
     """保存前のプレビュー分析"""
     try:
-        # 重み付けの合計を検証
+        # 重み付けの合計を検証（浮動小数点誤差を考慮）
         total = sum(dict(request.weights).values())
-        if total != 100:
+        if abs(total - 100) > 0.1:  # 浮動小数点誤差を考慮
             raise HTTPException(
                 status_code=400,
                 detail=f"重み付けの合計は100でなければなりません。現在: {total}"

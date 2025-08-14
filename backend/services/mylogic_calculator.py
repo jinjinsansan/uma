@@ -119,23 +119,25 @@ class MyLogicCalculator:
         D-Logicの個別スコアとカスタム重み付けから総合スコアを計算
         
         Args:
-            d_logic_scores: D-Logicの各項目スコア
-            weights: カスタム重み付け
+            d_logic_scores: D-Logicの各項目スコア（ダンスインザダーク基準 0-100）
+            weights: カスタム重み付け（各項目0-100、合計100）
         
         Returns:
-            MyLogicスコア (0-100)
+            MyLogicスコア (0-100、小数点2桁)
         """
-        # 重み付けの正規化（合計が100でない場合に備えて）
         # weightsが辞書でない場合は辞書に変換
         if hasattr(weights, '__dict__'):
             weights = dict(weights)
         
+        # 重み付けの合計を確認（100でなければエラー）
         total_weight = sum(weights.values())
-        if total_weight == 0:
-            return 50.0  # デフォルト値
+        if abs(total_weight - 100) > 0.1:  # 浮動小数点誤差を考慮
+            logger.warning(f"重み付けの合計が100ではありません: {total_weight}")
+            # 正規化して続行
+            if total_weight == 0:
+                return 50.00  # デフォルト値
         
         mylogic_score = 0.0
-        weight_sum = 0.0
         
         # 各D-Logicスコアにカスタム重み付けを適用
         for d_logic_key, score in d_logic_scores.items():
@@ -144,19 +146,15 @@ class MyLogicCalculator:
             mylogic_key = "_".join(d_logic_key.split("_")[1:])
             
             if mylogic_key in weights:
-                weight = weights[mylogic_key] / total_weight * 100
+                # ユーザーの重み付けをそのまま使用（合計100前提）
+                weight = weights[mylogic_key]
                 contribution = score * weight / 100
                 mylogic_score += contribution
-                weight_sum += weight
                 
-                logger.debug(f"{d_logic_key} ({mylogic_key}): {score} × {weight}% = {contribution}")
+                logger.debug(f"{d_logic_key} ({mylogic_key}): {score} × {weight}/100 = {contribution}")
         
-        # 重み付けの合計が100%にならない場合の調整
-        if weight_sum > 0:
-            mylogic_score = mylogic_score * 100 / weight_sum
-        
-        # 0-100の範囲に収める
-        return round(max(0, min(100, mylogic_score)), 1)
+        # 0-100の範囲に収め、小数点2桁に丸める
+        return round(max(0.00, min(100.00, mylogic_score)), 2)
     
     def _get_grade(self, score: float) -> str:
         """スコアからグレードを判定"""

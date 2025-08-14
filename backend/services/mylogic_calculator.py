@@ -117,6 +117,7 @@ class MyLogicCalculator:
     ) -> float:
         """
         D-Logicの個別スコアとカスタム重み付けから総合スコアを計算
+        【新方式】偏差値変換＋累乗方式で劇的な変化を実現
         
         Args:
             d_logic_scores: D-Logicの各項目スコア（ダンスインザダーク基準 0-100）
@@ -137,23 +138,74 @@ class MyLogicCalculator:
             if total_weight == 0:
                 return 50.00  # デフォルト値
         
+        # 偏差値変換＋累乗方式の実装
+        # 設定可能なパラメータ
+        MIN_ORIGINAL = 20  # 元スコアの想定最小値（実データに基づき調整）
+        MAX_ORIGINAL = 95  # 元スコアの想定最大値（実データに基づき調整）
+        POWER_FACTOR = 33.3  # 累乗の強さ（100点で3乗になる）
+        
         mylogic_score = 0.0
         
-        # 各D-Logicスコアにカスタム重み付けを適用
+        # 各D-Logicスコアに偏差値変換＋累乗を適用
         for d_logic_key, score in d_logic_scores.items():
             # D-Logicのキー名からMyLogicのキー名に変換（番号を除去）
-            # 例: "1_distance_aptitude" -> "distance_aptitude"
             mylogic_key = "_".join(d_logic_key.split("_")[1:])
             
             if mylogic_key in weights:
-                # ユーザーの重み付けをそのまま使用（合計100前提）
+                weight = weights[mylogic_key]
+                
+                # Step 1: 偏差値変換（40-70 → 0-100）
+                expanded_score = (score - MIN_ORIGINAL) / (MAX_ORIGINAL - MIN_ORIGINAL) * 100
+                expanded_score = max(0, min(100, expanded_score))  # 0-100に収める
+                
+                # Step 2: 重み付けの累乗適用
+                if weight > 0:
+                    # 累乗指数を計算（weight=100で3乗）
+                    power = weight / POWER_FACTOR
+                    # 累乗計算（0-1の範囲で計算してから100倍）
+                    normalized_expanded = expanded_score / 100
+                    powered_value = normalized_expanded ** power
+                    contribution = powered_value * weight
+                    mylogic_score += contribution
+                    
+                    logger.debug(f"{d_logic_key}: 元{score}点 → 拡張{expanded_score:.1f}点 → "
+                               f"累乗(^{power:.2f})={powered_value:.4f} × 重み{weight} = {contribution:.2f}")
+        
+        # 最終スコアは既に0-100の範囲なので、100で割らない
+        final_score = mylogic_score
+        
+        # 0-100の範囲に収め、小数点2桁に丸める
+        return round(max(0.00, min(100.00, final_score)), 2)
+    
+    def _calculate_mylogic_score_original(
+        self, 
+        d_logic_scores: Dict[str, float], 
+        weights: Dict[str, int]
+    ) -> float:
+        """
+        【旧方式】オリジナルの計算方式（バックアップ用）
+        """
+        if hasattr(weights, '__dict__'):
+            weights = dict(weights)
+        
+        total_weight = sum(weights.values())
+        if abs(total_weight - 100) > 0.1:
+            logger.warning(f"重み付けの合計が100ではありません: {total_weight}")
+            if total_weight == 0:
+                return 50.00
+        
+        mylogic_score = 0.0
+        
+        for d_logic_key, score in d_logic_scores.items():
+            mylogic_key = "_".join(d_logic_key.split("_")[1:])
+            
+            if mylogic_key in weights:
                 weight = weights[mylogic_key]
                 contribution = score * weight / 100
                 mylogic_score += contribution
                 
                 logger.debug(f"{d_logic_key} ({mylogic_key}): {score} × {weight}/100 = {contribution}")
         
-        # 0-100の範囲に収め、小数点2桁に丸める
         return round(max(0.00, min(100.00, mylogic_score)), 2)
     
     def _get_grade(self, score: float) -> str:

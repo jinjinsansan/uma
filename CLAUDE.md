@@ -435,3 +435,115 @@ users テーブルに追加:
 - 現在はモック実装（実際のD-Logic計算は未統合）
 - 認証は簡易実装（本番では要改善）
 - Supabase連携は次フェーズで実装予定
+
+## 🔧 MyLogicAI保存エラー解決履歴 (2025-08-14)
+
+### 問題の概要
+MyLogicAI設定の保存時に「Total weight must be exactly 100, got 0」エラーが発生し、保存できない問題が発生。
+
+### 根本原因
+データベースとアプリケーション間でのフィールド名の不一致：
+
+#### 1. フロントエンド（TypeScript）
+```typescript
+// 正しいフィールド名
+{
+  distance_aptitude: 8,
+  bloodline_evaluation: 8,
+  jockey_compatibility: 8,
+  // ...
+}
+```
+
+#### 2. データベース（PostgreSQL）
+- **CHECK制約**: 古いフィールド名（speed, stamina等）を参照
+- **Triggerバリデーション**: 同じく古いフィールド名を使用
+
+#### 3. バックエンド（Python）
+- `WeightConfig.values()` でエラー（Pydanticモデルを辞書に変換する必要があった）
+
+### 解決手順
+
+#### Step 1: 問題の調査
+```sql
+-- weightsフィールドの実データを確認
+SELECT weights FROM user_my_logic_preferences WHERE user_id = 'xxx';
+-- 結果: {"distance_aptitude": 8, "bloodline_evaluation": 8, ...}
+```
+
+#### Step 2: CHECK制約の修正
+```sql
+-- 古い制約を削除
+ALTER TABLE user_my_logic_preferences 
+DROP CONSTRAINT IF EXISTS user_my_logic_preferences_weights_check;
+
+-- 正しいフィールド名で制約を再作成
+ALTER TABLE user_my_logic_preferences 
+ADD CONSTRAINT user_my_logic_preferences_weights_check CHECK (
+  weights ? 'distance_aptitude' AND
+  weights ? 'bloodline_evaluation' AND
+  weights ? 'jockey_compatibility' AND
+  weights ? 'trainer_evaluation' AND
+  weights ? 'track_aptitude' AND
+  weights ? 'weather_aptitude' AND
+  weights ? 'popularity_factor' AND
+  weights ? 'weight_impact' AND
+  weights ? 'horse_weight_impact' AND
+  weights ? 'corner_specialist_degree' AND
+  weights ? 'margin_analysis' AND
+  weights ? 'time_index'
+);
+```
+
+#### Step 3: Trigger関数の修正
+```sql
+CREATE OR REPLACE FUNCTION validate_weights_total()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- 正しいフィールド名で合計を計算
+  IF (
+    COALESCE((NEW.weights->>'distance_aptitude')::int, 0) +
+    COALESCE((NEW.weights->>'bloodline_evaluation')::int, 0) +
+    COALESCE((NEW.weights->>'jockey_compatibility')::int, 0) +
+    COALESCE((NEW.weights->>'trainer_evaluation')::int, 0) +
+    COALESCE((NEW.weights->>'track_aptitude')::int, 0) +
+    COALESCE((NEW.weights->>'weather_aptitude')::int, 0) +
+    COALESCE((NEW.weights->>'popularity_factor')::int, 0) +
+    COALESCE((NEW.weights->>'weight_impact')::int, 0) +
+    COALESCE((NEW.weights->>'horse_weight_impact')::int, 0) +
+    COALESCE((NEW.weights->>'corner_specialist_degree')::int, 0) +
+    COALESCE((NEW.weights->>'margin_analysis')::int, 0) +
+    COALESCE((NEW.weights->>'time_index')::int, 0)
+  ) != 100 THEN
+    RAISE EXCEPTION 'Total weight must be exactly 100, got %', 
+      COALESCE((NEW.weights->>'distance_aptitude')::int, 0) +
+      -- ... 省略
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+#### Step 4: バックエンドの修正
+```python
+# /chatbot/uma/backend/services/mylogic_calculator.py
+def _calculate_mylogic_score(self, d_logic_scores: Dict[str, float], weights: Dict[str, int]) -> float:
+    # weightsが辞書でない場合は辞書に変換
+    if hasattr(weights, '__dict__'):
+        weights = dict(weights)
+    
+    total_weight = sum(weights.values())
+    # ...
+```
+
+### 教訓と今後の対策
+1. **命名規則の統一**: プロジェクト全体でフィールド名を統一する
+2. **マイグレーション管理**: Supabaseのマイグレーションファイルを正確に管理
+3. **型変換の明示化**: Pydanticモデルと辞書の変換を明示的に行う
+4. **テスト**: データベーストリガーのテストを含める
+
+### 関連ファイル
+- `/supabase/migrations/012_mylogic_preferences.sql` - 初期マイグレーション（問題のあった制約）
+- `/supabase/fix_mylogic_complete.sql` - 完全な修正SQL
+- `/chatbot/uma/backend/api/mylogic.py` - バックエンドAPI
+- `/chatbot/uma/backend/services/mylogic_calculator.py` - 計算エンジン

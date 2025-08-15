@@ -194,6 +194,36 @@ async def handle_message(event: LineWebhookEvent):
                     
                     conn.commit()
                     
+                    # Supabaseの紹介記録を更新（もし紹介経由の場合）
+                    try:
+                        from supabase import create_client, Client
+                        import os
+                        
+                        supabase_url = os.getenv('SUPABASE_URL')
+                        supabase_key = os.getenv('SUPABASE_SERVICE_KEY')
+                        
+                        if supabase_url and supabase_key:
+                            supabase: Client = create_client(supabase_url, supabase_key)
+                            
+                            # このユーザーが紹介経由で登録されているか確認
+                            result = supabase.table('line_referrals').select('*').eq('referred_id', user_id).eq('status', 'pending').execute()
+                            
+                            if result.data and len(result.data) > 0:
+                                # 紹介記録を completed に更新
+                                referral_id = result.data[0]['id']
+                                from datetime import datetime
+                                update_result = supabase.table('line_referrals').update({
+                                    'status': 'completed',
+                                    'completed_at': datetime.now().isoformat()
+                                }).eq('id', referral_id).execute()
+                                
+                                if update_result:
+                                    print(f"Referral completed for user {user_id}")
+                                    # トリガーが自動的に referral_count を更新する
+                    except Exception as e:
+                        print(f"Supabase referral update error: {e}")
+                        # エラーでもLINE連携自体は成功しているので続行
+                    
                     success_message = """✅ 認証完了！
 
 🎁 LINE連携で1日4回になりました

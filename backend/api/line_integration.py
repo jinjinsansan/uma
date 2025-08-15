@@ -196,8 +196,8 @@ async def handle_message(event: LineWebhookEvent):
                     
                     success_message = """✅ 認証完了！
 
-🎁 3日間延長チケットを付与しました
-⏰ 無料トライアル期間が延長されました
+🎁 LINE連携で1日4回になりました
+📊 分析回数が増加しました（1回 → 4回）
 
 引き続きD-Logic AIをお楽しみください！
 最新の競馬予想情報もLINEでお届けします。"""

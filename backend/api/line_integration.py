@@ -66,6 +66,39 @@ def verify_line_signature(body: bytes, signature: str) -> bool:
     expected_signature = base64.b64encode(hash).decode('utf-8')
     return hmac.compare_digest(signature, expected_signature)
 
+async def check_line_id_duplicate(line_user_id: str, current_user_id: str, cursor) -> dict:
+    """LINE ID重複チェック"""
+    try:
+        # 既に同じLINE IDを使用しているユーザーがいるかチェック
+        cursor.execute("""
+            SELECT lu.user_id, u.email, lu.friend_added_at 
+            FROM line_users lu
+            JOIN users u ON lu.user_id = u.id
+            WHERE lu.line_user_id = %s AND lu.user_id != %s
+            ORDER BY lu.friend_added_at ASC
+            LIMIT 1
+        """, (line_user_id, current_user_id))
+        
+        existing = cursor.fetchone()
+        
+        if existing:
+            return {
+                'is_duplicate': True,
+                'existing_user_id': existing['user_id'],
+                'existing_email': existing['email'],
+                'existing_date': existing['friend_added_at'].strftime('%Y-%m-%d') if existing['friend_added_at'] else '不明'
+            }
+        else:
+            return {
+                'is_duplicate': False
+            }
+    except Exception as e:
+        logger.error(f"LINE ID duplicate check error: {e}")
+        # エラーが発生した場合は重複なしとして処理を続行
+        return {
+            'is_duplicate': False
+        }
+
 async def update_referral_status(user_email: str):
     """Supabaseの紹介記録を更新する共通関数"""
     try:
@@ -154,18 +187,23 @@ async def update_referral_status(user_email: str):
             else:
                 logger.error(f"Failed to update referral_count for referrer {referrer_id}")
         
-        # 紹介通知フラグをセット
-        referrer_code_result = supabase.table('users').select('referral_code').eq('id', referrer_id).execute()
-        if referrer_code_result.data and len(referrer_code_result.data) > 0:
-            referrer_code = referrer_code_result.data[0]['referral_code']
-            
-            supabase.table('users').update({
-                'pending_referral_notification': json.dumps({
-                    'type': 'referred',
-                    'referral_code': referrer_code,
-                    'created_at': datetime.now().isoformat()
-                })
-            }).eq('id', supabase_user_id).execute()
+        # 紹介通知フラグをセット（エラーハンドリング付き）
+        try:
+            referrer_code_result = supabase.table('users').select('referral_code').eq('id', referrer_id).execute()
+            if referrer_code_result.data and len(referrer_code_result.data) > 0:
+                referrer_code = referrer_code_result.data[0]['referral_code']
+                
+                # pending_referral_notificationフィールドが存在しない場合はスキップ
+                supabase.table('users').update({
+                    'pending_referral_notification': json.dumps({
+                        'type': 'referred',
+                        'referral_code': referrer_code,
+                        'created_at': datetime.now().isoformat()
+                    })
+                }).eq('id', supabase_user_id).execute()
+        except Exception as e:
+            logger.warning(f"Failed to set pending_referral_notification: {e}")
+            # このエラーは無視して処理を続行
         
         return True
         
@@ -237,7 +275,7 @@ async def handle_friend_added(event: LineWebhookEvent):
 2. マイページで認証コードを取得
 3. このLINEに認証コードを送信
 
-📱 サイト: https://www.dlogicai.in
+📱 サイト: https://www.dlogicai.in/l
 
 競馬予想の新時代をお楽しみください！"""
         
@@ -283,6 +321,29 @@ async def handle_message(event: LineWebhookEvent):
                 existing = cursor.fetchone()
                 
                 if not existing:
+                    # LINE ID重複チェック
+                    duplicate_check_result = await check_line_id_duplicate(line_user_id, user_id, cursor)
+                    
+                    if duplicate_check_result['is_duplicate']:
+                        # 重複が検出された場合
+                        warning_message = f"""⚠️ 警告: LINE ID重複検出
+                        
+このLINE IDは既に他のアカウントで使用されています。
+
+既存のアカウント: {duplicate_check_result['existing_email']}
+登録日: {duplicate_check_result['existing_date']}
+
+不正利用の可能性があるため、管理者に報告されました。
+正当な理由がある場合は、サポートまでお問い合わせください。
+
+サポート: https://www.dlogicai.in/l"""
+                        
+                        await send_line_message(line_user_id, warning_message)
+                        
+                        # 管理者に通知（ログ記録）
+                        logger.warning(f"LINE ID duplicate detected: {line_user_id} - User: {user_id}, Existing: {duplicate_check_result['existing_user_id']}")
+                        return
+                    
                     # LINE連携記録
                     cursor.execute("""
                         INSERT INTO line_users (user_id, line_user_id, tickets_received, friend_added_at)
@@ -365,7 +426,7 @@ async def handle_message(event: LineWebhookEvent):
             if message_text in ['ヘルプ', 'HELP']:
                 await send_line_message(line_user_id, help_message)
             elif message_text in ['サイト', 'SITE']:
-                await send_line_message(line_user_id, "🌐 D-Logic AI: https://www.dlogicai.in")
+                await send_line_message(line_user_id, "🌐 D-Logic AI: https://www.dlogicai.in/l")
             else:
                 await send_line_message(line_user_id, help_message)
                 

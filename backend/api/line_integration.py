@@ -234,7 +234,25 @@ async def handle_message(event: LineWebhookEvent):
                                         
                                         if update_result:
                                             print(f"Referral completed for user {user_email} (Supabase ID: {supabase_user_id})")
-                                            # トリガーが自動的に referral_count を更新する
+                                            
+                                            # トリガーが動作しない場合のために手動で紹介者のreferral_countを更新
+                                            referrer_id = result.data[0]['referrer_id']
+                                            
+                                            # 現在のreferral_countを取得
+                                            referrer_result = supabase.table('users').select('referral_count').eq('id', referrer_id).execute()
+                                            if referrer_result.data and len(referrer_result.data) > 0:
+                                                current_count = referrer_result.data[0].get('referral_count', 0) or 0
+                                                new_count = current_count + 1
+                                                
+                                                # referral_countを更新
+                                                count_update_result = supabase.table('users').update({
+                                                    'referral_count': new_count
+                                                }).eq('id', referrer_id).execute()
+                                                
+                                                if count_update_result:
+                                                    print(f"Manually updated referral_count to {new_count} for referrer {referrer_id}")
+                                                else:
+                                                    print(f"Failed to update referral_count for referrer {referrer_id}")
                                             
                                             # 紹介元の情報を取得して通知を設定
                                             referrer_id = result.data[0]['referrer_id']

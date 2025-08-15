@@ -460,9 +460,22 @@ async def get_line_qr_code(user_email: str):
 
 # 紹介記録更新用のエンドポイント（フロントエンドから呼び出される）
 @router.post("/complete-referral")
-async def complete_referral(user_email: str):
+async def complete_referral(request: Request):
     """LINE連携完了時の紹介記録更新"""
     try:
+        # ボディまたはクエリパラメータからuser_emailを取得
+        body = await request.body()
+        if body:
+            data = json.loads(body.decode('utf-8'))
+            user_email = data.get('user_email')
+        else:
+            # クエリパラメータから取得
+            user_email = request.query_params.get('user_email')
+        
+        if not user_email:
+            raise HTTPException(status_code=400, detail="user_email is required")
+        
+        logger.info(f"Complete referral called for: {user_email}")
         result = await update_referral_status(user_email)
         if result:
             return {"status": "success", "message": "Referral updated successfully"}

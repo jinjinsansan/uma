@@ -200,26 +200,63 @@ async def handle_message(event: LineWebhookEvent):
                         import os
                         
                         supabase_url = os.getenv('SUPABASE_URL')
-                        supabase_key = os.getenv('SUPABASE_SERVICE_KEY')
+                        supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
                         
                         if supabase_url and supabase_key:
                             supabase: Client = create_client(supabase_url, supabase_key)
                             
-                            # このユーザーが紹介経由で登録されているか確認
-                            result = supabase.table('line_referrals').select('*').eq('referred_id', user_id).eq('status', 'pending').execute()
+                            # MySQLのuser_idからメールアドレスを取得
+                            cursor.execute("""
+                                SELECT email FROM users WHERE id = %s
+                            """, (user_id,))
+                            user_data = cursor.fetchone()
                             
-                            if result.data and len(result.data) > 0:
-                                # 紹介記録を completed に更新
-                                referral_id = result.data[0]['id']
-                                from datetime import datetime
-                                update_result = supabase.table('line_referrals').update({
-                                    'status': 'completed',
-                                    'completed_at': datetime.now().isoformat()
-                                }).eq('id', referral_id).execute()
+                            if user_data and user_data['email']:
+                                user_email = user_data['email']
                                 
-                                if update_result:
-                                    print(f"Referral completed for user {user_id}")
-                                    # トリガーが自動的に referral_count を更新する
+                                # Supabaseでメールアドレスからuser_idを取得
+                                supabase_user_result = supabase.table('users').select('id').eq('email', user_email).execute()
+                                
+                                if supabase_user_result.data and len(supabase_user_result.data) > 0:
+                                    supabase_user_id = supabase_user_result.data[0]['id']
+                                    
+                                    # このユーザーが紹介経由で登録されているか確認
+                                    result = supabase.table('line_referrals').select('*').eq('referred_id', supabase_user_id).eq('status', 'pending').execute()
+                                    
+                                    if result.data and len(result.data) > 0:
+                                        # 紹介記録を completed に更新
+                                        referral_id = result.data[0]['id']
+                                        from datetime import datetime
+                                        update_result = supabase.table('line_referrals').update({
+                                            'status': 'completed',
+                                            'completed_at': datetime.now().isoformat()
+                                        }).eq('id', referral_id).execute()
+                                        
+                                        if update_result:
+                                            print(f"Referral completed for user {user_email} (Supabase ID: {supabase_user_id})")
+                                            # トリガーが自動的に referral_count を更新する
+                                            
+                                            # 紹介元の情報を取得して通知を設定
+                                            referrer_id = result.data[0]['referrer_id']
+                                            referrer_result = supabase.table('users').select('referral_code').eq('id', referrer_id).execute()
+                                            if referrer_result.data and len(referrer_result.data) > 0:
+                                                referrer_code = referrer_result.data[0]['referral_code']
+                                                # 紹介通知フラグをセット
+                                                supabase.table('users').update({
+                                                    'pending_referral_notification': json.dumps({
+                                                        'type': 'referred',
+                                                        'referral_code': referrer_code,
+                                                        'created_at': datetime.now().isoformat()
+                                                    })
+                                                }).eq('id', supabase_user_id).execute()
+                                        else:
+                                            print(f"Failed to update referral status for {user_email}")
+                                    else:
+                                        print(f"No pending referral found for user {user_email}")
+                                else:
+                                    print(f"Supabase user not found for email: {user_email}")
+                            else:
+                                print(f"Email not found for MySQL user_id: {user_id}")
                     except Exception as e:
                         print(f"Supabase referral update error: {e}")
                         # エラーでもLINE連携自体は成功しているので続行

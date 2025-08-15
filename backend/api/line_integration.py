@@ -81,20 +81,43 @@ async def update_referral_status(user_email: str):
         supabase: Client = create_client(supabase_url, supabase_key)
         
         # メールアドレスからSupabaseユーザーIDを取得
-        user_result = supabase.table('users').select('id').eq('email', user_email).execute()
+        user_result = supabase.table('users').select('id, referral_code').eq('email', user_email).execute()
         
         if not user_result.data or len(user_result.data) == 0:
             logger.warning(f"Supabase user not found for email: {user_email}")
             return False
         
         supabase_user_id = user_result.data[0]['id']
-        logger.info(f"Found Supabase user: {supabase_user_id} for email: {user_email}")
+        user_referral_code = user_result.data[0].get('referral_code')
+        logger.info(f"Found Supabase user: {supabase_user_id} for email: {user_email}, referral_code: {user_referral_code}")
         
-        # このユーザーが紹介経由で登録されているか確認
+        # アプローチ1: referred_idで検索
+        logger.info(f"Approach 1: Searching for pending referral with referred_id: {supabase_user_id}")
         referral_result = supabase.table('line_referrals').select('*').eq('referred_id', supabase_user_id).eq('status', 'pending').execute()
         
+        # アプローチ2: 紹介コードで検索（ユーザーが再作成された場合）
+        if not referral_result.data and user_referral_code:
+            logger.info(f"Approach 2: Searching by referral_code: {user_referral_code}")
+            # 紹介コードで紹介記録を検索
+            code_referral_result = supabase.table('line_referrals').select('*').eq('referral_code', user_referral_code).eq('status', 'pending').execute()
+            
+            if code_referral_result.data and len(code_referral_result.data) > 0:
+                # referred_idを更新
+                referral_id = code_referral_result.data[0]['id']
+                logger.info(f"Found referral by code, updating referred_id to {supabase_user_id}")
+                supabase.table('line_referrals').update({
+                    'referred_id': supabase_user_id
+                }).eq('id', referral_id).execute()
+                
+                referral_result = code_referral_result
+        
+        logger.info(f"Referral query result: {referral_result.data}")
+        
         if not referral_result.data or len(referral_result.data) == 0:
-            logger.info(f"No pending referral found for user {user_email}")
+            # 全ての紹介記録を確認（デバッグ用）
+            all_referrals = supabase.table('line_referrals').select('*').eq('referred_id', supabase_user_id).execute()
+            logger.info(f"All referrals for this user: {all_referrals.data}")
+            logger.info(f"No pending referral found for user {user_email} (ID: {supabase_user_id})")
             return False
         
         referral = referral_result.data[0]

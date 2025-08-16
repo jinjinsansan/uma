@@ -1,3 +1,6 @@
 data/dlogic_raw_knowledge_*.json
 data/dlogic_raw_knowledge_*.txt
 data/*_backup.*
+data/jockey_knowledge_intermediate_*.json
+data/jockey_knowledge.json
+data/jockey_knowledge_summary.txt

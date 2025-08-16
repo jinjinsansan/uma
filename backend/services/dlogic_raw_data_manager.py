@@ -3,7 +3,10 @@
 D-Logic生データナレッジマネージャー
 12項目分析に必要な生データのみを保存（計算はリアルタイム）
 """
-import json
+try:
+    import ujson as json
+except ImportError:
+    import json
 import os
 import requests
 from typing import Dict, List, Any, Optional

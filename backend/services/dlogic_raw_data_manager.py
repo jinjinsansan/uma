@@ -59,12 +59,13 @@ class DLogicRawDataManager:
         return self._download_from_github()
     
     def _download_from_github(self) -> Dict[str, Any]:
-        """GitHub Releasesからナレッジファイルをダウンロード"""
-        github_url = "https://github.com/jinjinsansan/dlogic-knowledge-data/releases/download/V2.0/dlogic_raw_knowledge.json"
+        """Cloudflare R2からナレッジファイルをダウンロード（高速CDN）"""
+        # 旧URL（バックアップ用）: https://github.com/jinjinsansan/dlogic-knowledge-data/releases/download/V2.0/dlogic_raw_knowledge.json
+        cdn_url = "https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/dlogic_raw_knowledge.json"
         
         try:
-            print("📥 GitHub Releasesからナレッジファイルをダウンロード中...")
-            response = requests.get(github_url, timeout=120)
+            print("🚀 Cloudflare R2（CDN）からナレッジファイルをダウンロード中...")
+            response = requests.get(cdn_url, timeout=120)
             
             if response.status_code == 200:
                 data = response.json()

@@ -30,6 +30,8 @@ from api.debug_knowledge import router as debug_knowledge_router
 from api.admin_knowledge import router as admin_knowledge_router
 from api.admin_cache import router as admin_cache_router
 from api.mylogic import router as mylogic_router
+from api.future_races import router as future_races_router
+from api.batch_dlogic_complete import router as batch_dlogic_router
 from models.d_logic_models import ChatDLogicRequest, ChatDLogicResponse
 from services.knowledge_base import KnowledgeBase
 
@@ -77,6 +79,8 @@ app.include_router(debug_knowledge_router, tags=["Debug"])
 app.include_router(admin_knowledge_router, tags=["Admin Knowledge"])
 app.include_router(admin_cache_router, tags=["Admin Cache"])
 app.include_router(mylogic_router, tags=["MyLogicAI"])
+app.include_router(future_races_router, prefix="/api/future-races", tags=["Future Races"])
+app.include_router(batch_dlogic_router, tags=["Batch D-Logic Analysis"])
 
 # 本日レース情報（Phase C用固定データ）
 TODAY_RACES = {

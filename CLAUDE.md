@@ -596,3 +596,73 @@ POWER_FACTOR = 33.3 # 累乗の強さ（100点で3乗）
 
 ### テストスクリプト
 - `/chatbot/uma/backend/test_mylogic_dramatic.py` - 新計算式の動作確認用
+
+## レース結果管理システム (2025-08-18)
+
+### 概要
+D-Logic V2開発のためのデータ収集を目的とした、レース結果の記録・表示システムを実装。
+
+### 実装内容
+
+#### 1. 結果表示コンポーネント
+- **ファイル**: `/src/components/race/RaceResultDisplay.tsx`
+- **機能**:
+  - 払い戻し結果（1着・2着・3着）
+  - D-Logic上位5頭
+  - 的中タイプ（🎯的中/⚡一部的中/❌不的中）
+  - グラデーション背景による美しいUI
+
+#### 2. バッチD-Logic分析機能
+- **管理者パネル**: `/admin/batch-analysis`
+- **対象**:
+  - 土日のアーカイブレース
+  - 2024年過去G1レース（全21レース）
+- **APIエンドポイント**:
+  - `POST /api/admin/batch-dlogic-analyze`
+  - `POST /api/admin/apply-dlogic-results`
+  - `GET /api/admin/g1-results`
+
+#### 3. 払い戻し結果の運用フロー
+
+##### 毎週月曜日の定期作業
+1. **MySQLから結果取得**
+   ```bash
+   cd /chatbot/uma/backend
+   python get_weekend_race_results.py
+   ```
+
+2. **Claudeが結果を報告**
+   - 土日の全レース結果（1-3着）
+   - JSON形式で保存済み
+
+3. **管理者がメモ**
+
+4. **チャットで更新指示**
+   - 「アーカイブページに払い戻し結果を反映させてください」
+   - 結果データを貼り付け
+
+5. **Claudeが更新実行**
+   - アーカイブページの各レースに結果追加
+   - RaceResultDisplayで自動表示
+
+#### 4. データ構造
+```typescript
+interface RaceResult {
+  first: string;        // 1着馬
+  second: string;       // 2着馬  
+  third: string;        // 3着馬
+  dlogicTop5?: string[]; // D-Logic上位5頭
+  hitType?: string;      // 的中タイプ
+  hitDescription?: string; // 的中詳細
+}
+```
+
+#### 5. 重要な変更点
+- **サンプルデータの完全削除**: 競馬予想において架空のデータは不適切
+- **実データのみ使用**: 管理者パネルでの分析実行後に表示
+- **段階的なデータ蓄積**: V2開発に向けた3ヶ月間のデータ収集
+
+### 注意事項
+- 払い戻し結果の更新は手動作業（自動化は将来検討）
+- D-Logic分析は管理者パネルから実行必要
+- 結果データはgit管理外（`data/archive_updates/`）

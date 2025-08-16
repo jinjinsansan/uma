@@ -214,7 +214,7 @@ async def handle_friend_added(event: LineWebhookEvent):
 2. マイページで認証コードを取得
 3. このLINEに認証コードを送信
 
-📱 サイト: https://www.dlogicai.in/l
+📱 サイト: https://www.dlogicai.in/?openExternalBrowser=1
 
 競馬予想の新時代をお楽しみください！"""
         
@@ -342,7 +342,7 @@ async def handle_message(event: LineWebhookEvent):
             if message_text in ['ヘルプ', 'HELP']:
                 await send_line_message(line_user_id, help_message)
             elif message_text in ['サイト', 'SITE']:
-                await send_line_message(line_user_id, "🌐 D-Logic AI: https://www.dlogicai.in/l")
+                await send_line_message(line_user_id, "🌐 D-Logic AI: https://www.dlogicai.in/?openExternalBrowser=1")
             else:
                 await send_line_message(line_user_id, help_message)
                 

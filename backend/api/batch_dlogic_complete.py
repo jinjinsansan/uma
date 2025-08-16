@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 import json
 import os
 from datetime import datetime
-from services.dlogic_calculator import FastDLogicEngine
+from services.fast_dlogic_engine import FastDLogicEngine
 
 router = APIRouter()
 

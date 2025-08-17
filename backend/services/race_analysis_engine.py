@@ -6,7 +6,6 @@ import logging
 from typing import Dict, Any, List, Optional
 from .modern_dlogic_engine import ModernDLogicEngine
 from .jockey_data_manager import jockey_manager
-from .fast_dlogic_engine import fast_engine_instance
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +16,20 @@ class RaceAnalysisEngine:
     HORSE_WEIGHT = 0.7    # 70%
     JOCKEY_WEIGHT = 0.3   # 30%
     
-    def __init__(self):
-        """初期化"""
+    def __init__(self, fast_engine_instance=None):
+        """初期化
+        
+        Args:
+            fast_engine_instance: 既存のFastDLogicEngineインスタンス（オプション）
+        """
+        # fast_engine_instanceが渡されない場合は、ここで新規作成
+        if fast_engine_instance is None:
+            from .fast_dlogic_engine import FastDLogicEngine
+            fast_engine_instance = FastDLogicEngine()
+            logger.info("新しいFastDLogicEngineインスタンスを作成しました")
+        else:
+            logger.info("既存のFastDLogicEngineインスタンスを使用します")
+            
         # モダンD-Logicエンジン（イクイノックス基準）
         self.modern_engine = ModernDLogicEngine(fast_engine_instance)
         # 騎手データマネージャー
@@ -251,5 +262,15 @@ class RaceAnalysisEngine:
         
         return summary
 
-# グローバルインスタンス
-race_analysis_engine = RaceAnalysisEngine()
+# グローバルインスタンス（遅延初期化）
+_race_analysis_engine = None
+
+def get_race_analysis_engine(fast_engine_instance=None):
+    """レース分析エンジンのシングルトンインスタンスを取得"""
+    global _race_analysis_engine
+    if _race_analysis_engine is None:
+        _race_analysis_engine = RaceAnalysisEngine(fast_engine_instance)
+    return _race_analysis_engine
+
+# 後方互換性のため
+race_analysis_engine = get_race_analysis_engine()

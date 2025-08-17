@@ -269,10 +269,37 @@ async def get_multiple_horses_analysis(horse_names: List[str], race_info: str = 
         
         # FastDLogicEngineを使用して一括分析
         logger.info(f"Analyzing {len(horse_names)} horses: {horse_names[:5]}..." if len(horse_names) > 5 else f"Analyzing {len(horse_names)} horses: {horse_names}")
-        result = fast_engine_instance.analyze_race_horses(horse_names)
+        
+        # タイムアウトとエラーハンドリングを改善
+        try:
+            result = fast_engine_instance.analyze_race_horses(horse_names)
+        except MemoryError:
+            logger.error("Memory error during race analysis")
+            return {
+                "status": "error",
+                "message": "メモリ不足エラーが発生しました。システム管理者に連絡してください。",
+                "requested_horses": horse_names,
+                "race_info": race_info
+            }
+        except Exception as analysis_error:
+            logger.error(f"Race analysis engine error: {analysis_error}")
+            return {
+                "status": "error",
+                "message": f"分析エンジンエラー: {str(analysis_error)}",
+                "requested_horses": horse_names,
+                "race_info": race_info
+            }
         
         # 分析結果の検証
+        if not result or not isinstance(result, dict):
+            logger.error(f"Invalid result from analysis engine: {type(result)}")
+            return {
+                "status": "error",
+                "message": "分析結果の形式が不正です"
+            }
+        
         if not result.get('horses'):
+            logger.error(f"No horses in result: {result}")
             return {
                 "status": "error",
                 "message": "分析結果が取得できませんでした"
@@ -293,8 +320,12 @@ async def get_multiple_horses_analysis(horse_names: List[str], race_info: str = 
         }
         
         # キャッシュに保存（6時間）
-        cache_service.set('race_analysis', cache_key, success_result)
-        logger.info(f"レース分析をキャッシュに保存: {len(horse_names)}頭")
+        try:
+            cache_service.set('race_analysis', cache_key, success_result)
+            logger.info(f"レース分析をキャッシュに保存: {len(horse_names)}頭")
+        except Exception as cache_error:
+            logger.warning(f"Failed to cache result: {cache_error}")
+            # キャッシュエラーは無視して続行
         
         return success_result
         
@@ -370,38 +401,6 @@ async def chat_message(request: Dict[str, Any]):
         
         logger.info(f"Chat message received: {user_message[:100]}...")  # 最初の100文字のみログ
         logger.info(f"Full message length: {len(user_message)} chars")
-        
-        # レースアナリシス要求をチェック
-        if race_analysis_chat_handler.is_race_analysis_request(user_message):
-            logger.info("Race analysis request detected")
-            race_analysis_result = race_analysis_chat_handler.process_race_analysis_request(user_message)
-            
-            if race_analysis_result['type'] == 'race_analysis_result':
-                # 分析結果をそのまま返す
-                return {
-                    "status": "success",
-                    "message": race_analysis_result['message'],
-                    "analysis_type": "race_analysis_v2",
-                    "has_d_logic": False,
-                    "raw_analysis_data": race_analysis_result.get('raw_data')
-                }
-            elif race_analysis_result['type'] == 'race_analysis_info':
-                # 出走馬情報が必要な場合のメッセージ
-                return {
-                    "status": "success",
-                    "message": race_analysis_result['message'],
-                    "analysis_type": "race_analysis_info",
-                    "has_d_logic": False,
-                    "race_info": race_analysis_result.get('race_info')
-                }
-            else:
-                # エラーメッセージ
-                return {
-                    "status": "success",
-                    "message": race_analysis_result['message'],
-                    "analysis_type": "race_analysis_error",
-                    "has_d_logic": False
-                }
         
         # まず複数馬名をチェック
         try:
@@ -725,7 +724,11 @@ D-Logic 12項目説明：
             
     except Exception as e:
         logger.error(f"Chat message processing error: {e}")
-        raise HTTPException(status_code=500, detail="チャット処理中にエラーが発生しました")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        # 開発環境ではより詳細なエラーを返す
+        error_detail = f"チャット処理中にエラーが発生しました: {str(e)}"
+        raise HTTPException(status_code=500, detail=error_detail)
 
 # 以下は旧実装（現在未使用）
 async def handle_race_related_message_legacy(user_message: str, chat_history: List[Dict[str, str]]) -> Dict[str, Any]:

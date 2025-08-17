@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import logging
 
-from services.jockey_data_manager import jockey_data_manager
+from services.jockey_manager import jockey_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -23,14 +23,14 @@ async def get_jockey_data(jockey_name: str) -> Dict[str, Any]:
     """
     try:
         # 騎手データの存在確認
-        if not jockey_data_manager.has_jockey_data(jockey_name):
+        if not jockey_manager.has_jockey_data(jockey_name):
             raise HTTPException(
                 status_code=404,
                 detail=f"騎手 {jockey_name} のデータが見つかりません"
             )
         
         # 騎手データ取得
-        jockey_data = jockey_data_manager.jockey_data.get(jockey_name, {})
+        jockey_data = jockey_manager.jockey_data.get(jockey_name, {})
         
         return {
             "jockey_name": jockey_name,
@@ -59,7 +59,7 @@ async def get_jockey_list() -> Dict[str, Any]:
         騎手リスト
     """
     try:
-        jockey_names = list(jockey_data_manager.jockey_data.keys())
+        jockey_names = list(jockey_manager.jockey_data.keys())
         
         return {
             "total": len(jockey_names),

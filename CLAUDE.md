@@ -198,6 +198,74 @@ backend/data/immediate_batch_*.json
 - GitHub Releases は2GBまでアップロード可能
 - 全馬名検索対応（「ヤマニンバロネスは？」などのシンプルな質問もOK）
 
+## レースアナリシスV2実装 (2025-08-17)
+
+### アーカイブページシステムの重要な仕様
+
+#### データ入力の流れ（毎週末）
+1. **土日の作業**:
+   - netkeiba.comから馬名、騎手、枠順をコピペ
+   - 一度の入力で3つの分析機能に対応:
+     - D-Logic/MyLogic: 馬名のみ使用（URLパラメータ）
+     - レースアナリシス: 馬名＋騎手＋枠順（モーダル表示）
+
+2. **月曜日の作業**:
+   - MySQLから払い戻し結果を取得
+   - レースアナリシス上位5頭を優先表示（D-Logic上位5頭より優先）
+   - 的中判定を自動計算
+
+#### 技術的な実装詳細
+
+##### 1. データ構造（ArchiveRace型）
+```typescript
+interface ArchiveRace {
+  // 基本情報
+  race_id: string
+  race_date: string
+  venue: string
+  race_number: number
+  race_name: string
+  horses: string[]
+  
+  // レースアナリシス用（オプション）
+  distance?: string
+  track_condition?: string
+  jockeys?: string[]
+  posts?: number[]
+  horse_numbers?: number[]
+  
+  // 結果情報（月曜日に追加）
+  result?: {
+    first: string
+    second: string
+    third: string
+    raceAnalysisTop5?: string[]  // 優先表示
+    dlogicTop5?: string[]         // フォールバック
+    hitType?: string
+    hitDescription?: string
+  }
+}
+```
+
+##### 2. 3ボタン表示ロジック
+- 騎手・枠順データがない場合: D-Logic、MyLogicの2ボタン
+- 騎手・枠順データがある場合: D-Logic、MyLogic、レースアナリシスの3ボタン
+
+##### 3. レースアナリシス結果の保存
+- localStorage使用: `race_analysis_${race_id}`
+- 保存内容: `{ analyzed_at, top5: string[] }`
+- 月曜日の結果反映時に自動読み込み
+
+##### 4. 結果表示の優先順位
+1. レースアナリシス上位5頭（緑背景）
+2. D-Logic上位5頭（グレー背景）
+3. どちらもない場合は非表示
+
+#### 運用上の注意事項
+- **URL互換性維持**: D-Logic/MyLogicは馬名のみのパラメータを維持
+- **モーダル方式**: レースアナリシスはURLパラメータを使わない
+- **バックエンド独立性**: FastDLogicEngineインスタンスを共有（メモリ効率化）
+
 ## 🚀 現在進行中の開発 (2025-01-11)
 
 ### 天候適性D-Logic実装
@@ -792,3 +860,77 @@ interface RaceResult {
 
 ### バックアップタグ
 - **実装前**: `v3.2-before-race-analysis-20250817`
+
+## レースアナリシスV2 アーカイブページ統合 (2025-08-17)
+
+### 重要な設計決定
+レースアナリシスV2機能をアーカイブページに統合する際、既存のD-Logic/MyLogic機能に影響を与えない設計を採用。
+
+### データ形式の拡張
+```typescript
+interface ArchiveRace {
+  // 既存フィールド（D-Logic/MyLogic用）
+  race_id: string;
+  race_date: string;
+  venue: string;
+  race_number: number;
+  race_name: string;
+  horses: string[];              // 馬名のみ
+  
+  // レースアナリシスV2用の追加フィールド
+  distance?: string;             // "2000m"
+  track_condition?: string;      // "良"
+  jockeys?: string[];           // 騎手名リスト
+  posts?: number[];             // 枠順リスト
+  horse_numbers?: number[];     // 馬番リスト
+}
+```
+
+### 3つの分析ボタンの実装
+```typescript
+{/* D-Logic分析（馬名のみ使用） */}
+<button onClick={() => router.push(`/d-logic-ai?horses=${horses.join(',')}`)}>
+  D-Logic分析
+</button>
+
+{/* MyLogic分析（馬名のみ使用） */}
+<button onClick={() => router.push(`/my-logic-ai?horses=${horses.join(',')}`)}>
+  MyLogic分析
+</button>
+
+{/* レースアナリシス（全情報使用）- モーダル表示 */}
+<button onClick={() => openRaceAnalysisModal({
+  horses, jockeys, posts, horse_numbers, venue, distance, track_condition
+})}>
+  レースアナリシス
+</button>
+```
+
+### 運用効率化のポイント
+1. **一度のデータ入力で3機能対応**
+   - netkeiba.comからコピペした情報を一括で処理
+   - D-Logic/MyLogic: 馬名のみ抽出
+   - レースアナリシス: 全情報を活用
+
+2. **既存機能への影響ゼロ**
+   - URLパラメータは馬名のみ維持
+   - チャットAPIの動作に変更なし
+   - レースアナリシスは独立したモーダル処理
+
+3. **週末の作業フロー**
+   ```
+   1. netkeiba.comから情報コピー
+   2. Claudeにペースト
+   3. アーカイブページに以下を一括追加:
+      - horses: [...] （全機能で使用）
+      - jockeys: [...] （レースアナリシスのみ）
+      - posts: [...] （レースアナリシスのみ）
+      - horse_numbers: [...] （レースアナリシスのみ）
+   ```
+
+### 技術的な分離
+- **D-Logic/MyLogic**: `/api/chat/message` エンドポイント（馬名のみ）
+- **レースアナリシスV2**: `/api/race-analysis-v2` エンドポイント（全情報）
+- **モーダル実装**: 結果をその場で表示、ページ遷移なし
+
+この設計により、毎週の運用作業が効率化され、かつ既存機能の安定性を保証します。

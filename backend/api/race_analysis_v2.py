@@ -143,6 +143,7 @@ async def race_analysis_chat(request: Dict[str, Any]):
     try:
         message = request.get('message', '').strip()
         user_id = request.get('user_id')
+        race_info = request.get('race_info')  # フロントエンドから渡されるレース情報
         
         logger.info(f"Race analysis chat request: {message[:100]}...")
         
@@ -150,28 +151,73 @@ async def race_analysis_chat(request: Dict[str, Any]):
         race_keywords = ['記念', 'ステークス', 'カップ', 'トロフィー', '賞', 'を分析', 'を予想']
         is_race_query = any(keyword in message for keyword in race_keywords)
         
-        if not is_race_query:
+        if not is_race_query and not race_info:
             return {
                 "status": "success",
                 "response": "レース名を入力してください。例：「札幌記念を分析して」",
                 "message": message
             }
         
-        # レース名の抽出（簡易版）
+        # レース情報がある場合は実際の分析を実行
+        if race_info and race_info.get('horses') and race_info.get('jockeys'):
+            try:
+                # レースデータの構築
+                race_data = {
+                    'venue': race_info.get('venue', ''),
+                    'race_number': race_info.get('race_number', 0),
+                    'race_name': race_info.get('race_name', ''),
+                    'grade': '',  # TODO: レース名から推定
+                    'distance': race_info.get('distance', ''),
+                    'track_condition': race_info.get('track_condition', '良'),
+                    'horses': race_info.get('horses', []),
+                    'jockeys': race_info.get('jockeys', []),
+                    'posts': race_info.get('posts', []),
+                    'horse_numbers': race_info.get('horse_numbers', [])
+                }
+                
+                # 分析実行
+                from api.chat import fast_engine_instance
+                race_analysis_engine = get_race_analysis_engine(fast_engine_instance)
+                result = race_analysis_engine.analyze_race(race_data)
+                
+                # 結果をフォーマット
+                if 'error' in result:
+                    response_text = f"分析エラー: {result['error']}"
+                else:
+                    response_text = f"""🏆 {race_data['race_name']}のレースアナリシス V2
+
+馬の能力（70%）と騎手の能力（30%）を総合評価した結果です。
+
+"""
+                    # 上位5頭を表示
+                    if 'results' in result and len(result['results']) > 0:
+                        for i, horse_result in enumerate(result['results'][:5]):
+                            emoji = ['🥇', '🥈', '🥉', '🏅', '🏅'][i]
+                            response_text += f"{emoji} {i+1}位: {horse_result['horse']} × {horse_result['jockey']} 【{horse_result['total_score']:.1f}点】\n"
+                            response_text += f"   馬: {horse_result['horse_score']:.1f}点 / 騎手: {horse_result['jockey_score']:.1f}点\n\n"
+                    
+                    response_text += f"\n📊 分析基準: 独自基準（100点）"
+                
+                return {
+                    "status": "success",
+                    "response": response_text,
+                    "message": message
+                }
+                
+            except Exception as analysis_error:
+                logger.error(f"Race analysis execution error: {analysis_error}")
+                return {
+                    "status": "success",
+                    "response": f"レース分析中にエラーが発生しました: {str(analysis_error)}",
+                    "message": message
+                }
+        
+        # レース情報がない場合は従来のモックレスポンス
         race_name = message.replace('を分析して', '').replace('を予想して', '').strip()
-        
-        # TODO: ここでレース情報を取得して実際の分析を実行
-        # 現在はモックレスポンス
-        
         response_text = f"""🏆 {race_name}のレースアナリシス
 
-現在、レースアナリシスV2は開発中です。
-
-レースアナリシスでは、以下の情報を総合的に分析します：
-• 馬の能力（70%）- 独自基準による12項目評価
-• 騎手の能力（30%）- 開催場適性、枠順適性
-
-まもなく本格稼働予定です。"""
+レース情報を取得できませんでした。
+アーカイブページから「レースアナリシス」ボタンをクリックしてお試しください。"""
         
         return {
             "status": "success",

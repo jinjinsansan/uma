@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import logging
 
-from ..services.jockey_data_manager import jockey_data_manager
+from services.jockey_data_manager import jockey_data_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

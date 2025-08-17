@@ -266,11 +266,13 @@ class RaceAnalysisEngine:
 _race_analysis_engine = None
 
 def get_race_analysis_engine(fast_engine_instance=None):
-    """レース分析エンジンのシングルトンインスタンスを取得"""
+    """レース分析エンジンのシングルトンインスタンスを取得
+    
+    Args:
+        fast_engine_instance: 既存のFastDLogicEngineインスタンス（オプション）
+                            chat.pyから渡される共有インスタンス
+    """
     global _race_analysis_engine
     if _race_analysis_engine is None:
         _race_analysis_engine = RaceAnalysisEngine(fast_engine_instance)
     return _race_analysis_engine
-
-# 後方互換性のため
-race_analysis_engine = get_race_analysis_engine()

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import logging
 from datetime import datetime
-from services.race_analysis_engine import race_analysis_engine
+from services.race_analysis_engine import get_race_analysis_engine
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,9 @@ async def analyze_race(request: RaceAnalysisRequest):
             'horse_numbers': request.horse_numbers or []
         }
         
-        # 分析実行
+        # 分析実行（chat.pyの共有インスタンスを使用）
+        from api.chat import fast_engine_instance
+        race_analysis_engine = get_race_analysis_engine(fast_engine_instance)
         result = race_analysis_engine.analyze_race(race_data)
         
         # エラーチェック
@@ -120,6 +122,9 @@ async def test_analysis():
         'horse_numbers': [1, 2, 3]
     }
     
+    # テスト用でもchat.pyの共有インスタンスを使用
+    from api.chat import fast_engine_instance
+    race_analysis_engine = get_race_analysis_engine(fast_engine_instance)
     result = race_analysis_engine.analyze_race(test_data)
     
     return {

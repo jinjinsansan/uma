@@ -4,7 +4,7 @@
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import logging
 from datetime import datetime
 from services.race_analysis_engine import get_race_analysis_engine
@@ -133,3 +133,60 @@ async def test_analysis():
         "analysis_type": "race_analysis_v2",
         "base_horse": "イクイノックス"
     }
+
+@router.post("/chat")
+async def race_analysis_chat(request: Dict[str, Any]):
+    """レースアナリシスチャット用エンドポイント
+    
+    D-Logicチャットと同じインターフェースで、レース名から自動的に分析を実行
+    """
+    try:
+        message = request.get('message', '').strip()
+        user_id = request.get('user_id')
+        
+        logger.info(f"Race analysis chat request: {message[:100]}...")
+        
+        # レース名を検出（簡易的な実装）
+        race_keywords = ['記念', 'ステークス', 'カップ', 'トロフィー', '賞', 'を分析', 'を予想']
+        is_race_query = any(keyword in message for keyword in race_keywords)
+        
+        if not is_race_query:
+            return {
+                "status": "success",
+                "response": "レース名を入力してください。例：「札幌記念を分析して」",
+                "message": message
+            }
+        
+        # レース名の抽出（簡易版）
+        race_name = message.replace('を分析して', '').replace('を予想して', '').strip()
+        
+        # TODO: ここでレース情報を取得して実際の分析を実行
+        # 現在はモックレスポンス
+        
+        response_text = f"""🏆 {race_name}のレースアナリシス
+
+現在、レースアナリシスV2は開発中です。
+
+レースアナリシスでは、以下の情報を総合的に分析します：
+• 馬の能力（70%）- 独自基準による12項目評価
+• 騎手の能力（30%）- 開催場適性、枠順適性
+
+まもなく本格稼働予定です。"""
+        
+        return {
+            "status": "success",
+            "response": response_text,
+            "message": message
+        }
+        
+    except Exception as e:
+        logger.error(f"Race analysis chat error: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        
+        return {
+            "status": "error",
+            "response": "エラーが発生しました。しばらく待ってから再度お試しください。",
+            "message": request.get('message', ''),
+            "error": str(e)
+        }

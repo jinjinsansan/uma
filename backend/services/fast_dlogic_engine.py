@@ -344,3 +344,6 @@ if __name__ == "__main__":
     stats = engine.get_performance_stats()
     for key, value in stats.items():
         print(f"  {key}: {value}")
+
+# グローバルインスタンス（モジュールレベルで初期化）
+fast_engine_instance = FastDLogicEngine()

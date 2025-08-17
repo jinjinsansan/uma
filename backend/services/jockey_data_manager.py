@@ -60,7 +60,19 @@ class JockeyDataManager:
     
     def get_jockey_data(self, jockey_name: str) -> Optional[Dict[str, Any]]:
         """指定された騎手のデータを取得"""
-        return self.jockey_knowledge.get(jockey_name)
+        # 騎手名の正規化（全角スペースを除去）
+        normalized_name = jockey_name.strip()
+        
+        # 直接マッチを試みる
+        if normalized_name in self.jockey_knowledge:
+            return self.jockey_knowledge[normalized_name]
+        
+        # 全角スペース付きでも検索
+        for key in self.jockey_knowledge.keys():
+            if key.strip() == normalized_name:
+                return self.jockey_knowledge[key]
+        
+        return None
     
     def calculate_venue_aptitude(self, jockey_name: str, venue: str) -> float:
         """騎手の開催場適性を計算"""
@@ -69,15 +81,27 @@ class JockeyDataManager:
             return 0.0
         
         venue_stats = jockey_data.get('venue_course_stats', {})
-        venue_data = venue_stats.get(venue, {})
         
-        if not venue_data or venue_data.get('total_races', 0) == 0:
+        # 開催場名を含むすべてのキーを集計
+        total_races = 0
+        total_fukusho = 0
+        
+        for key, stats in venue_stats.items():
+            if venue in key:  # 「札幌」が「札幌_2000」にマッチ
+                race_count = stats.get('race_count', 0)
+                if race_count > 0:
+                    total_races += race_count
+                    fukusho_rate = stats.get('fukusho_rate', 0)
+                    total_fukusho += (fukusho_rate * race_count / 100)
+        
+        if total_races == 0:
             return 0.0
         
-        # 複勝率を基準に適性スコアを計算（-10～+10）
-        fukusho_rate = venue_data.get('fukusho_rate', 0) / 100  # パーセントを小数に
-        # 複勝率30%を基準（0点）として計算
-        aptitude_score = (fukusho_rate - 0.3) * 20
+        # 総合複勝率を計算
+        overall_fukusho_rate = total_fukusho / total_races
+        
+        # 複勝率30%を基準（0点）として計算（-10～+10）
+        aptitude_score = (overall_fukusho_rate - 0.3) * 20
         
         return max(-10, min(10, aptitude_score))  # -10～+10の範囲に制限
     
@@ -88,9 +112,13 @@ class JockeyDataManager:
             return 0.0
         
         post_stats = jockey_data.get('post_position_stats', {})
-        post_data = post_stats.get(str(post), {})
+        # 「枠1」形式のキーに対応
+        post_key = f'枠{post}'
+        post_data = post_stats.get(post_key, {})
         
-        if not post_data or post_data.get('total_races', 0) == 0:
+        # race_countまたはtotal_racesをチェック
+        race_count = post_data.get('race_count', post_data.get('total_races', 0))
+        if not post_data or race_count == 0:
             return 0.0
         
         # 複勝率を基準に適性スコアを計算

@@ -371,6 +371,38 @@ async def chat_message(request: Dict[str, Any]):
         logger.info(f"Chat message received: {user_message[:100]}...")  # 最初の100文字のみログ
         logger.info(f"Full message length: {len(user_message)} chars")
         
+        # レースアナリシス要求をチェック
+        if race_analysis_chat_handler.is_race_analysis_request(user_message):
+            logger.info("Race analysis request detected")
+            race_analysis_result = race_analysis_chat_handler.process_race_analysis_request(user_message)
+            
+            if race_analysis_result['type'] == 'race_analysis_result':
+                # 分析結果をそのまま返す
+                return {
+                    "status": "success",
+                    "message": race_analysis_result['message'],
+                    "analysis_type": "race_analysis_v2",
+                    "has_d_logic": False,
+                    "raw_analysis_data": race_analysis_result.get('raw_data')
+                }
+            elif race_analysis_result['type'] == 'race_analysis_info':
+                # 出走馬情報が必要な場合のメッセージ
+                return {
+                    "status": "success",
+                    "message": race_analysis_result['message'],
+                    "analysis_type": "race_analysis_info",
+                    "has_d_logic": False,
+                    "race_info": race_analysis_result.get('race_info')
+                }
+            else:
+                # エラーメッセージ
+                return {
+                    "status": "success",
+                    "message": race_analysis_result['message'],
+                    "analysis_type": "race_analysis_error",
+                    "has_d_logic": False
+                }
+        
         # まず複数馬名をチェック
         try:
             horse_names, race_info = extract_multiple_horse_names(user_message)

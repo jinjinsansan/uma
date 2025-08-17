@@ -30,7 +30,7 @@ from api.debug_knowledge import router as debug_knowledge_router
 from api.admin_knowledge import router as admin_knowledge_router
 from api.admin_cache import router as admin_cache_router
 from api.mylogic import router as mylogic_router
-from api.future_races import router as future_races_router
+# from api.future_races import router as future_races_router  # 一時的にコメントアウト（pymysqlエラー回避）
 from api.batch_dlogic_complete import router as batch_dlogic_router
 from models.d_logic_models import ChatDLogicRequest, ChatDLogicResponse
 from services.knowledge_base import KnowledgeBase

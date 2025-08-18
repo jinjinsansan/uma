@@ -32,7 +32,15 @@ class ExtendedKnowledgeManager:
             # ファイルを読み込む
             if self.knowledge_file.exists():
                 with open(self.knowledge_file, 'r', encoding='utf-8') as f:
-                    self.knowledge_data = json.load(f)
+                    raw_data = json.load(f)
+                    # データ構造を確認して適切に処理
+                    if isinstance(raw_data, dict) and 'horses' in raw_data:
+                        # 旧形式: {"horses": {...}}
+                        self.knowledge_data = raw_data
+                    else:
+                        # 新形式: 馬名が直接キー
+                        self.knowledge_data = {'horses': raw_data}
+                    
                     horse_count = len(self.knowledge_data.get('horses', {}))
                     logger.info(f"拡張ナレッジデータを読み込みました: {horse_count}頭")
                     self.is_loaded = True
@@ -88,5 +96,15 @@ class ExtendedKnowledgeManager:
         
         return self.knowledge_data.get('horses', {})
 
-# グローバルインスタンス
-extended_knowledge_manager = ExtendedKnowledgeManager()
+# グローバルインスタンス（遅延初期化）
+_extended_knowledge_manager_instance = None
+
+def get_extended_knowledge_manager():
+    """拡張ナレッジマネージャーのシングルトンインスタンスを取得"""
+    global _extended_knowledge_manager_instance
+    if _extended_knowledge_manager_instance is None:
+        _extended_knowledge_manager_instance = ExtendedKnowledgeManager()
+    return _extended_knowledge_manager_instance
+
+# 互換性のため
+extended_knowledge_manager = get_extended_knowledge_manager

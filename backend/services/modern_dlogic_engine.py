@@ -5,7 +5,7 @@
 import logging
 from typing import Dict, Any, Optional, List
 from .fast_dlogic_engine import FastDLogicEngine
-from .extended_knowledge_manager import extended_knowledge_manager
+from .extended_knowledge_manager import get_extended_knowledge_manager
 
 logger = logging.getLogger(__name__)
 
@@ -75,18 +75,19 @@ class ModernDLogicEngine:
         self.base_engine = base_engine
         # レース分析V2用の拡張ナレッジデータを使用
         try:
-            # 拡張ナレッジマネージャーから取得
-            self.knowledge = extended_knowledge_manager.get_all_horses()
+            # 拡張ナレッジマネージャーから取得（9回分のデータが必要）
+            extended_manager = get_extended_knowledge_manager()
+            self.knowledge = extended_manager.get_all_horses()
             logger.info(f"拡張ナレッジデータ取得成功: {len(self.knowledge)}頭")
         except Exception as e:
-            # フォールバック: 通常のナレッジデータを使用
-            logger.warning(f"拡張ナレッジデータ取得失敗、通常データを使用: {e}")
+            # エラー: レース分析には拡張データが必須
+            logger.error(f"拡張ナレッジデータの取得に失敗しました: {e}")
+            logger.error("レース分析V2には9回分の過去データが含まれる拡張ナレッジファイルが必要です")
+            self.knowledge = {}
+            # 一時的なフォールバックとして通常データを試みる（機能制限あり）
             if hasattr(base_engine, 'raw_manager') and hasattr(base_engine.raw_manager, 'knowledge_data'):
                 self.knowledge = base_engine.raw_manager.knowledge_data.get('horses', {})
-                logger.info(f"通常ナレッジデータ取得成功: {len(self.knowledge)}頭")
-            else:
-                self.knowledge = {}
-                logger.error("ナレッジデータへのアクセスに失敗")
+                logger.warning(f"警告: 通常ナレッジデータを使用（5回分のみ）: {len(self.knowledge)}頭")
         
         # イクイノックスの基準スコアを取得
         self.equinox_base_score = self._get_equinox_base_score()
@@ -124,9 +125,15 @@ class ModernDLogicEngine:
                 'details': 詳細情報
             }
         """
-        # データ確認
+        # データ確認（新旧両形式に対応）
         horse_data = self.knowledge.get(horse_name, {})
-        races = horse_data.get('races', [])
+        if isinstance(horse_data, list):
+            # 新形式: 直接レースのリスト
+            races = horse_data
+            horse_data = {'races': races}  # 旧形式互換のため
+        else:
+            # 旧形式: {'races': [...]}
+            races = horse_data.get('races', [])
         race_count = len(races)
         
         result = {
@@ -225,7 +232,10 @@ class ModernDLogicEngine:
             prior_score = self._get_adjusted_prior(horse_data)
             
             # 2. 限定データからのスコア計算
-            races = horse_data.get('races', [])
+            if isinstance(horse_data, list):
+                races = horse_data
+            else:
+                races = horse_data.get('races', [])
             if races:
                 # 既存D-Logicでの計算を試みる
                 try:
@@ -271,7 +281,10 @@ class ModernDLogicEngine:
             prior_score += self.TOP_SIRES[sire]
         
         # 年齢補正（レースデータから推定）
-        races = horse_data.get('races', [])
+        if isinstance(horse_data, list):
+            races = horse_data
+        else:
+            races = horse_data.get('races', [])
         if races and races[0].get('BAREI'):
             try:
                 age = int(races[0]['BAREI'])
@@ -320,7 +333,10 @@ class ModernDLogicEngine:
         """開催場・距離の複合適性を計算（-10～+10）"""
         try:
             horse_data = self.knowledge.get(horse_name, {})
-            past_races = horse_data.get('races', [])
+            if isinstance(horse_data, list):
+                past_races = horse_data
+            else:
+                past_races = horse_data.get('races', [])
             
             # 指定開催場かつ指定距離±200mでの成績を抽出
             distance_min = distance - 200
@@ -400,7 +416,10 @@ class ModernDLogicEngine:
         """開催場適性を計算（-10～+10）"""
         try:
             horse_data = self.knowledge.get(horse_name, {})
-            past_races = horse_data.get('races', [])
+            if isinstance(horse_data, list):
+                past_races = horse_data
+            else:
+                past_races = horse_data.get('races', [])
             
             # 指定開催場での成績を抽出
             venue_races = []
@@ -449,7 +468,10 @@ class ModernDLogicEngine:
         
         try:
             horse_data = self.knowledge.get(horse_name, {})
-            past_races = horse_data.get('races', [])
+            if isinstance(horse_data, list):
+                past_races = horse_data
+            else:
+                past_races = horse_data.get('races', [])
             
             # 指定馬場状態での成績を抽出
             condition_races = []
@@ -495,7 +517,10 @@ class ModernDLogicEngine:
         """開催場での過去成績を取得"""
         try:
             horse_data = self.knowledge.get(horse_name, {})
-            past_races = horse_data.get('races', [])
+            if isinstance(horse_data, list):
+                past_races = horse_data
+            else:
+                past_races = horse_data.get('races', [])
             
             venue_races = []
             for race in past_races:
@@ -526,7 +551,10 @@ class ModernDLogicEngine:
         """馬場状態別の過去成績を取得"""
         try:
             horse_data = self.knowledge.get(horse_name, {})
-            past_races = horse_data.get('races', [])
+            if isinstance(horse_data, list):
+                past_races = horse_data
+            else:
+                past_races = horse_data.get('races', [])
             
             condition_races = []
             for race in past_races:

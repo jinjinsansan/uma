@@ -169,11 +169,9 @@ async def race_analysis_chat(request: Dict[str, Any]):
             
             if resolved.get('resolved'):
                 # 日付が特定できた場合
-                response_text = f"""🏆 {resolved['venue']}{resolved['race_number']}R（{resolved['date']}）のレースアナリシス
+                response_text = f"""🏆 {resolved['venue']}{resolved['race_number']}R（{resolved['estimated_date']}）のレースアナリシス
 
-アーカイブページから該当レースの「レースアナリシス」ボタンをクリックして詳細な分析をご覧ください。"""
-                if resolved.get('auto_selected'):
-                    response_text += f"\n\n📅 {resolved['date']}のデータを使用しています。"
+{resolved.get('suggestion', '')}"""
             else:
                 # 日付が特定できない場合
                 response_text = resolved.get('suggestion', 'レース情報を特定できませんでした。')
@@ -260,5 +258,7 @@ async def race_analysis_chat(request: Dict[str, Any]):
             "status": "error",
             "response": "エラーが発生しました。しばらく待ってから再度お試しください。",
             "message": request.get('message', ''),
-            "error": str(e)
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc()
         }

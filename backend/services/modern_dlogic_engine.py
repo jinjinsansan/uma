@@ -5,6 +5,7 @@
 import logging
 from typing import Dict, Any, Optional, List
 from .fast_dlogic_engine import FastDLogicEngine
+from .extended_knowledge_manager import extended_knowledge_manager
 
 logger = logging.getLogger(__name__)
 
@@ -72,18 +73,20 @@ class ModernDLogicEngine:
             base_engine: 既存のD-Logicエンジン（ダンスインザダーク基準）
         """
         self.base_engine = base_engine
-        # FastDLogicEngineのナレッジデータを正しく参照
+        # レース分析V2用の拡張ナレッジデータを使用
         try:
-            # 正しいパスでアクセス
+            # 拡張ナレッジマネージャーから取得
+            self.knowledge = extended_knowledge_manager.get_all_horses()
+            logger.info(f"拡張ナレッジデータ取得成功: {len(self.knowledge)}頭")
+        except Exception as e:
+            # フォールバック: 通常のナレッジデータを使用
+            logger.warning(f"拡張ナレッジデータ取得失敗、通常データを使用: {e}")
             if hasattr(base_engine, 'raw_manager') and hasattr(base_engine.raw_manager, 'knowledge_data'):
                 self.knowledge = base_engine.raw_manager.knowledge_data.get('horses', {})
-                logger.info(f"ナレッジデータ取得成功: {len(self.knowledge)}頭")
+                logger.info(f"通常ナレッジデータ取得成功: {len(self.knowledge)}頭")
             else:
                 self.knowledge = {}
-                logger.warning("ナレッジデータへのアクセスに失敗")
-        except Exception as e:
-            self.knowledge = {}
-            logger.error(f"ナレッジデータ取得エラー: {e}")
+                logger.error("ナレッジデータへのアクセスに失敗")
         
         # イクイノックスの基準スコアを取得
         self.equinox_base_score = self._get_equinox_base_score()

@@ -83,7 +83,7 @@ app.include_router(admin_cache_router, tags=["Admin Cache"])
 app.include_router(mylogic_router, tags=["MyLogicAI"])
 # app.include_router(future_races_router, prefix="/api/future-races", tags=["Future Races"])
 app.include_router(batch_dlogic_router, tags=["Batch D-Logic Analysis"])
-app.include_router(race_analysis_v2_router, tags=["Race Analysis V2"])
+app.include_router(race_analysis_v2_router, prefix="/api/race-analysis-v2", tags=["Race Analysis V2"])
 app.include_router(jockey_data_router, prefix="/api", tags=["Jockey Data"])
 
 # 本日レース情報（Phase C用固定データ）

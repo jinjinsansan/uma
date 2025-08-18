@@ -5,9 +5,11 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+import re
 import logging
 from datetime import datetime
 from services.race_analysis_engine import get_race_analysis_engine
+from services.race_date_resolver import race_date_resolver
 
 logger = logging.getLogger(__name__)
 
@@ -147,14 +149,38 @@ async def race_analysis_chat(request: Dict[str, Any]):
         
         logger.info(f"Race analysis chat request: {message[:100]}...")
         
-        # レース名を検出（簡易的な実装）
+        # レース名を検出（改良版）
         race_keywords = ['記念', 'ステークス', 'カップ', 'トロフィー', '賞', 'を分析', 'を予想']
-        is_race_query = any(keyword in message for keyword in race_keywords)
+        venue_pattern = r'(東京|中山|京都|阪神|中京|新潟|札幌|函館|福島|小倉)\d+[Rr]'
         
-        if not is_race_query and not race_info:
+        is_race_query = any(keyword in message for keyword in race_keywords)
+        is_venue_race = re.search(venue_pattern, message) is not None
+        
+        if not is_race_query and not is_venue_race and not race_info:
             return {
                 "status": "success",
-                "response": "レース名を入力してください。例：「札幌記念を分析して」",
+                "response": "レース名を入力してください。例：「札幌記念を分析して」「新潟3Rを分析して」",
+                "message": message
+            }
+        
+        # 開催場とレース番号の形式の場合、日付解決を試みる
+        if is_venue_race and not race_info:
+            resolved = race_date_resolver.resolve_race_query(message)
+            
+            if resolved.get('resolved'):
+                # 日付が特定できた場合
+                response_text = f"""🏆 {resolved['venue']}{resolved['race_number']}R（{resolved['date']}）のレースアナリシス
+
+アーカイブページから該当レースの「レースアナリシス」ボタンをクリックして詳細な分析をご覧ください。"""
+                if resolved.get('auto_selected'):
+                    response_text += f"\n\n📅 {resolved['date']}のデータを使用しています。"
+            else:
+                # 日付が特定できない場合
+                response_text = resolved.get('suggestion', 'レース情報を特定できませんでした。')
+            
+            return {
+                "status": "success",
+                "response": response_text,
                 "message": message
             }
         

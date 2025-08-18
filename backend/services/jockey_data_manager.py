@@ -147,6 +147,11 @@ class JockeyDataManager:
     
     def calculate_jockey_score(self, jockey_name: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """騎手の総合スコアを計算"""
+        # 騎手データの存在確認
+        jockey_data = self.get_jockey_data(jockey_name)
+        if not jockey_data:
+            logger.warning(f"騎手データが見つかりません: {jockey_name}")
+        
         venue_score = self.calculate_venue_aptitude(jockey_name, context.get('venue', ''))
         post_score = self.calculate_post_position_aptitude(jockey_name, context.get('post', 1))
         sire_score = self.calculate_sire_aptitude(jockey_name, context.get('sire', ''))

@@ -208,19 +208,29 @@ async def race_analysis_chat(request: Dict[str, Any]):
                 if 'error' in result:
                     response_text = f"分析エラー: {result['error']}"
                 else:
-                    response_text = f"""🏆 {race_data['race_name']}のレースアナリシス V2
-
-馬の能力（70%）と騎手の能力（30%）を総合評価した結果です。
+                    # レース名を正しく構築
+                    full_race_name = f"{race_data['venue']}{race_data['race_number']}R {race_data['race_name']}"
+                    response_text = f"""🏆 {full_race_name}のレースアナリシス
 
 """
-                    # 上位5頭を表示
+                    # 全頭を表示
                     if 'results' in result and len(result['results']) > 0:
-                        for i, horse_result in enumerate(result['results'][:5]):
-                            emoji = ['🥇', '🥈', '🥉', '🏅', '🏅'][i]
-                            response_text += f"{emoji} {i+1}位: {horse_result['horse']} × {horse_result['jockey']} 【{horse_result['total_score']:.1f}点】\n"
-                            response_text += f"   馬: {horse_result['horse_score']:.1f}点 / 騎手: {horse_result['jockey_score']:.1f}点\n\n"
-                    
-                    response_text += f"\n📊 分析基準: 独自基準（100点）"
+                        for i, horse_result in enumerate(result['results']):
+                            position = i + 1
+                            if position <= 3:
+                                emoji = ['🥇', '🥈', '🥉'][i]
+                            elif position <= 5:
+                                emoji = '🏅'
+                            else:
+                                emoji = f'{position}位:'
+                            
+                            response_text += f"{emoji} {horse_result['horse']} 【{horse_result['total_score']:.1f}点】\n"
+                            
+                            # 上位5頭のみ詳細表示
+                            if position <= 5:
+                                response_text += f"   騎手: {horse_result['jockey']}\n\n"
+                            elif position == 6:
+                                response_text += "\n"  # 6位以降は改行のみ
                 
                 return {
                     "status": "success",

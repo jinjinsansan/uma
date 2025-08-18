@@ -8,6 +8,7 @@ from services.integrated_d_logic_calculator import d_logic_calculator
 from services.dlogic_raw_data_manager import dlogic_manager
 from services.fast_dlogic_engine import FastDLogicEngine
 from services.cache_service import cache_service, cached
+from services.archive_race_handler import archive_race_handler
 
 router = APIRouter(prefix="/api/chat", tags=["Chat"])
 
@@ -413,6 +414,30 @@ async def chat_message(request: Dict[str, Any]):
             horse_names = []
             race_info = ""
         
+        # アーカイブレースの検索をチェック
+        archive_race_info = archive_race_handler.extract_race_info(user_message)
+        archive_race_match = None
+        
+        if archive_race_info and archive_race_info.get("action") == "analyze":
+            # アーカイブレースの分析要求
+            logger.info(f"Archive race request detected: {archive_race_info}")
+            search_result = await archive_race_handler.search_archive_races(archive_race_info)
+            
+            if search_result["found"]:
+                if search_result["need_selection"]:
+                    # 複数候補がある場合
+                    selection_message = archive_race_handler.format_selection_message(search_result["matches"])
+                    return {
+                        "status": "success",
+                        "message": selection_message,
+                        "archive_matches": search_result["matches"],
+                        "analysis_type": "archive_selection"
+                    }
+                else:
+                    # 単一候補の場合、レース分析V2に誘導
+                    archive_race_match = search_result["matches"][0]
+                    logger.info(f"Single archive race found: {archive_race_match}")
+        
         # D-Logic分析結果を準備
         d_logic_result = None
         analysis_type = None
@@ -687,6 +712,25 @@ D-Logic 12項目説明：
                             current_message += f"{label}: データなし\n"
                     
                     current_message += f"\n上記のデータを使って、必ず指定された形式で12項目すべてのスコアを明記した応答を生成してください。"
+        
+        # アーカイブレースが見つかった場合は特別な処理
+        if archive_race_match:
+            # レース分析V2を呼び出すための情報を追加
+            response_data = {
+                "status": "success",
+                "message": f"📅 {archive_race_match['date']} {archive_race_match['venue']}{archive_race_match['race_number']}R「{archive_race_match['race_name']}」のレース分析を実行します。",
+                "archive_race_found": True,
+                "archive_race": archive_race_match,
+                "analysis_type": "archive_race_analysis",
+                "redirect_to": "race_analysis_v2",
+                "race_data": {
+                    "date": archive_race_match["date"],
+                    "venue": archive_race_match["venue"],
+                    "race_number": archive_race_match["race_number"],
+                    "race_name": archive_race_match["race_name"]
+                }
+            }
+            return response_data
         
         messages.append({"role": "user", "content": current_message})
         

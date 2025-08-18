@@ -34,6 +34,7 @@ from api.mylogic import router as mylogic_router
 from api.batch_dlogic_complete import router as batch_dlogic_router
 from api.race_analysis_v2 import router as race_analysis_v2_router
 from api.jockey_data import router as jockey_data_router
+from api.archive_races import router as archive_races_router
 from models.d_logic_models import ChatDLogicRequest, ChatDLogicResponse
 from services.knowledge_base import KnowledgeBase
 
@@ -85,6 +86,7 @@ app.include_router(mylogic_router, tags=["MyLogicAI"])
 app.include_router(batch_dlogic_router, tags=["Batch D-Logic Analysis"])
 app.include_router(race_analysis_v2_router, prefix="/api/race-analysis-v2", tags=["Race Analysis V2"])
 app.include_router(jockey_data_router, prefix="/api", tags=["Jockey Data"])
+app.include_router(archive_races_router, tags=["Archive Races"])
 
 # 本日レース情報（Phase C用固定データ）
 TODAY_RACES = {

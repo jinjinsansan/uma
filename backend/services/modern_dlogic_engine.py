@@ -96,13 +96,40 @@ class ModernDLogicEngine:
     def _get_equinox_base_score(self) -> float:
         """イクイノックスの現行D-Logicスコアを取得"""
         try:
-            # 現行システムでのイクイノックスのスコア
-            equinox_data = self.base_engine.analyze_single_horse(self.BASE_HORSE)
-            if isinstance(equinox_data, dict) and 'total_score' in equinox_data:
-                return equinox_data['total_score']
+            # 拡張ナレッジにイクイノックスのデータがあるか確認
+            if self.BASE_HORSE in self.knowledge:
+                # 拡張データを使用して計算
+                original_knowledge = self.base_engine.raw_manager.knowledge_data
+                try:
+                    # 拡張ナレッジデータを一時的に設定
+                    extended_data = {}
+                    for h_name, h_races in self.knowledge.items():
+                        if isinstance(h_races, list):
+                            # 拡張形式：直接レースリスト
+                            extended_data[h_name] = {'races': h_races}
+                        else:
+                            # 既に辞書形式
+                            extended_data[h_name] = h_races
+                    
+                    self.base_engine.raw_manager.knowledge_data = {'horses': extended_data}
+                    # イクイノックスのスコアを計算
+                    equinox_data = self.base_engine.analyze_single_horse(self.BASE_HORSE)
+                    
+                    if isinstance(equinox_data, dict) and 'total_score' in equinox_data:
+                        return equinox_data['total_score']
+                    else:
+                        # デフォルト値（イクイノックスは通常90点以上）
+                        return 92.0
+                finally:
+                    # 元のナレッジデータに戻す
+                    self.base_engine.raw_manager.knowledge_data = original_knowledge
             else:
-                # デフォルト値（イクイノックスは通常90点以上）
-                return 92.0
+                # 通常のナレッジで試す
+                equinox_data = self.base_engine.analyze_single_horse(self.BASE_HORSE)
+                if isinstance(equinox_data, dict) and 'total_score' in equinox_data:
+                    return equinox_data['total_score']
+                else:
+                    return 92.0
         except Exception as e:
             logger.warning(f"イクイノックスの基準スコア取得エラー: {e}")
             return 92.0  # デフォルト値
@@ -126,11 +153,11 @@ class ModernDLogicEngine:
             }
         """
         # データ確認（新旧両形式に対応）
-        horse_data = self.knowledge.get(horse_name, {})
+        horse_data = self.knowledge.get(horse_name, [])  # 拡張ナレッジは馬名が直接キーで値はリスト
         if isinstance(horse_data, list):
             # 新形式: 直接レースのリスト
             races = horse_data
-            horse_data = {'races': races}  # 旧形式互換のため
+            # 旧形式互換のため、辞書に包む（ただし後の処理でもリスト対応が必要）
         else:
             # 旧形式: {'races': [...]}
             races = horse_data.get('races', [])
@@ -157,12 +184,42 @@ class ModernDLogicEngine:
                 result['estimation_method'] = 'full_data'
                 result['data_confidence'] = 'high' if race_count >= 9 else 'medium'
                 
-                # 1. 基本スコア計算（ダンスインザダーク基準からイクイノックス基準に変換）
-                original_data = self.base_engine.analyze_single_horse(horse_name)
-                if isinstance(original_data, dict) and 'total_score' in original_data:
-                    original_score = original_data['total_score']
-                    # イクイノックス基準に変換（イクイノックス=100）
-                    result['base_score'] = (original_score / self.equinox_base_score) * 100
+                # 1. 基本スコア計算
+                # 拡張ナレッジデータがある場合は、より多くのレースデータを使用して計算
+                if race_count >= 5:
+                    # 拡張データを使用してD-Logic計算（エンジンに拡張データを渡す）
+                    # 注: base_engineのraw_managerを一時的に拡張データで置き換える
+                    original_knowledge = self.base_engine.raw_manager.knowledge_data
+                    try:
+                        # 拡張ナレッジデータを一時的に設定
+                        # 拡張ナレッジの形式に合わせて辞書形式に変換
+                        extended_data = {}
+                        for h_name, h_races in self.knowledge.items():
+                            if isinstance(h_races, list):
+                                # 拡張形式：直接レースリスト
+                                extended_data[h_name] = {'races': h_races}
+                            else:
+                                # 既に辞書形式
+                                extended_data[h_name] = h_races
+                        
+                        self.base_engine.raw_manager.knowledge_data = {'horses': extended_data}
+                        # 拡張データで計算実行
+                        original_data = self.base_engine.analyze_single_horse(horse_name)
+                        
+                        if isinstance(original_data, dict) and 'total_score' in original_data:
+                            original_score = original_data['total_score']
+                            # イクイノックス基準に変換（イクイノックス=100）
+                            result['base_score'] = (original_score / self.equinox_base_score) * 100
+                            result['d_logic_scores'] = original_data.get('d_logic_scores', {})
+                    finally:
+                        # 元のナレッジデータに戻す
+                        self.base_engine.raw_manager.knowledge_data = original_knowledge
+                else:
+                    # データ不足の場合は通常のエンジンを使用
+                    original_data = self.base_engine.analyze_single_horse(horse_name)
+                    if isinstance(original_data, dict) and 'total_score' in original_data:
+                        original_score = original_data['total_score']
+                        result['base_score'] = (original_score / self.equinox_base_score) * 100
                     
             elif race_count > 0 and enable_bayesian:
                 # ベイズ推定モード（1-4走）
@@ -237,16 +294,35 @@ class ModernDLogicEngine:
             else:
                 races = horse_data.get('races', [])
             if races:
-                # 既存D-Logicでの計算を試みる
+                # 既存D-Logicでの計算を試みる（拡張データを使用）
                 try:
-                    original_data = self.base_engine.analyze_single_horse(horse_name)
-                    if isinstance(original_data, dict) and 'total_score' in original_data:
-                        original_score = original_data['total_score']
-                        # イクイノックス基準に変換
-                        limited_score = (original_score / self.equinox_base_score) * 100
-                    else:
-                        # フォールバック：着順から推定
-                        limited_score = self._estimate_from_results(races)
+                    original_knowledge = self.base_engine.raw_manager.knowledge_data
+                    try:
+                        # 拡張ナレッジデータを一時的に設定
+                        # 拡張ナレッジの形式に合わせて辞書形式に変換
+                        extended_data = {}
+                        for h_name, h_races in self.knowledge.items():
+                            if isinstance(h_races, list):
+                                # 拡張形式：直接レースリスト
+                                extended_data[h_name] = {'races': h_races}
+                            else:
+                                # 既に辞書形式
+                                extended_data[h_name] = h_races
+                        
+                        self.base_engine.raw_manager.knowledge_data = {'horses': extended_data}
+                        # 拡張データで計算実行
+                        original_data = self.base_engine.analyze_single_horse(horse_name)
+                        
+                        if isinstance(original_data, dict) and 'total_score' in original_data:
+                            original_score = original_data['total_score']
+                            # イクイノックス基準に変換
+                            limited_score = (original_score / self.equinox_base_score) * 100
+                        else:
+                            # フォールバック：着順から推定
+                            limited_score = self._estimate_from_results(races)
+                    finally:
+                        # 元のナレッジデータに戻す
+                        self.base_engine.raw_manager.knowledge_data = original_knowledge
                 except:
                     limited_score = self._estimate_from_results(races)
                 
@@ -275,17 +351,23 @@ class ModernDLogicEngine:
         """馬の属性から事前分布を調整"""
         prior_score = self.PRIOR_MEAN
         
+        # データ形式の確認
+        if isinstance(horse_data, list):
+            # 新形式: 直接レースのリスト
+            races = horse_data
+            # 血統情報は取得できない（レースデータのみ）
+            sire = ''
+        else:
+            # 旧形式: {'races': [...], 'sire': ...}
+            races = horse_data.get('races', [])
+            sire = horse_data.get('sire', '')
+        
         # 血統補正
-        sire = horse_data.get('sire', '')
         if sire in self.TOP_SIRES:
             prior_score += self.TOP_SIRES[sire]
         
         # 年齢補正（レースデータから推定）
-        if isinstance(horse_data, list):
-            races = horse_data
-        else:
-            races = horse_data.get('races', [])
-        if races and races[0].get('BAREI'):
+        if races and len(races) > 0 and isinstance(races[0], dict) and races[0].get('BAREI'):
             try:
                 age = int(races[0]['BAREI'])
                 if age <= 3:
@@ -296,7 +378,7 @@ class ModernDLogicEngine:
                 pass
         
         # 性別補正
-        if races and races[0].get('SEIBETSU_CODE'):
+        if races and len(races) > 0 and isinstance(races[0], dict) and races[0].get('SEIBETSU_CODE'):
             sex_code = races[0]['SEIBETSU_CODE']
             if sex_code == '2':  # 牝馬
                 prior_score -= 2
@@ -332,7 +414,7 @@ class ModernDLogicEngine:
     def _calculate_venue_distance_aptitude(self, horse_name: str, venue: str, distance: int) -> float:
         """開催場・距離の複合適性を計算（-10～+10）"""
         try:
-            horse_data = self.knowledge.get(horse_name, {})
+            horse_data = self.knowledge.get(horse_name, [])
             if isinstance(horse_data, list):
                 past_races = horse_data
             else:
@@ -415,7 +497,7 @@ class ModernDLogicEngine:
     def _calculate_venue_aptitude(self, horse_name: str, venue: str) -> float:
         """開催場適性を計算（-10～+10）"""
         try:
-            horse_data = self.knowledge.get(horse_name, {})
+            horse_data = self.knowledge.get(horse_name, [])
             if isinstance(horse_data, list):
                 past_races = horse_data
             else:
@@ -467,7 +549,7 @@ class ModernDLogicEngine:
             return 0  # 良馬場は標準
         
         try:
-            horse_data = self.knowledge.get(horse_name, {})
+            horse_data = self.knowledge.get(horse_name, [])
             if isinstance(horse_data, list):
                 past_races = horse_data
             else:
@@ -516,7 +598,7 @@ class ModernDLogicEngine:
     def _get_venue_history(self, horse_name: str, venue: str) -> Dict[str, Any]:
         """開催場での過去成績を取得"""
         try:
-            horse_data = self.knowledge.get(horse_name, {})
+            horse_data = self.knowledge.get(horse_name, [])
             if isinstance(horse_data, list):
                 past_races = horse_data
             else:
@@ -550,7 +632,7 @@ class ModernDLogicEngine:
     def _get_track_condition_history(self, horse_name: str, track_condition: str) -> Dict[str, Any]:
         """馬場状態別の過去成績を取得"""
         try:
-            horse_data = self.knowledge.get(horse_name, {})
+            horse_data = self.knowledge.get(horse_name, [])
             if isinstance(horse_data, list):
                 past_races = horse_data
             else:

@@ -6,6 +6,7 @@ import logging
 from typing import Dict, Any, List, Optional
 from .modern_dlogic_engine import ModernDLogicEngine
 from .jockey_data_manager import jockey_manager
+from .jockey_name_mapper import normalize_jockey_name
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,8 @@ class RaceAnalysisEngine:
             for i in range(len(horses)):
                 try:
                     horse_name = horses[i]
-                    jockey_name = jockeys[i] if i < len(jockeys) else ''
+                    raw_jockey_name = jockeys[i] if i < len(jockeys) else ''
+                    jockey_name = normalize_jockey_name(raw_jockey_name)
                     post = posts[i] if i < len(posts) else 1
                     horse_number = horse_numbers[i] if i < len(horse_numbers) else i + 1
                     

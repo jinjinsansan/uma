@@ -208,8 +208,9 @@ async def race_analysis_chat(request: Dict[str, Any]):
                 if 'error' in result:
                     response_text = f"分析エラー: {result['error']}"
                 else:
-                    # レース名を正しく構築
-                    full_race_name = f"{race_data['venue']}{race_data['race_number']}R {race_data['race_name']}"
+                    # レース名を正しく構築（日付も含める）
+                    race_date = race_info.get('race_date', '')
+                    full_race_name = f"{race_date} {race_data['venue']}{race_data['race_number']}R {race_data['race_name']}"
                     response_text = f"""🏆 {full_race_name}のレースアナリシス
 
 """
@@ -224,13 +225,15 @@ async def race_analysis_chat(request: Dict[str, Any]):
                             else:
                                 emoji = f'{position}位:'
                             
-                            response_text += f"{emoji} {horse_result['horse']} 【{horse_result['total_score']:.1f}点】\n"
+                            # すべての馬で統一フォーマット表示
+                            horse_name = horse_result['horse']
+                            jockey_name = horse_result['jockey']
+                            total_score = horse_result['total_score']
+                            horse_score = horse_result.get('horse_score', 0)
+                            jockey_score = horse_result.get('jockey_score', 0)
                             
-                            # 上位5頭のみ詳細表示
-                            if position <= 5:
-                                response_text += f"   騎手: {horse_result['jockey']}\n\n"
-                            elif position == 6:
-                                response_text += "\n"  # 6位以降は改行のみ
+                            response_text += f"{emoji} {position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
+                            response_text += f"   馬: {horse_score:.1f}点 / 騎手: {jockey_score:.1f}点\n\n"
                 
                 return {
                     "status": "success",

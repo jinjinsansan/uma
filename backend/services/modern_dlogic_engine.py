@@ -50,14 +50,40 @@ class ModernDLogicEngine:
         '不良': 0
     }
     
+    # ベイズ推定パラメータ
+    PRIOR_MEAN = 72.0  # 全馬の平均的なスコア（やや控えめ）
+    PRIOR_WEIGHT = 5   # 仮想的な5レース分の重み
+    
+    # 血統による事前分布調整
+    TOP_SIRES = {
+        'ディープインパクト': 5,
+        'キタサンブラック': 4,
+        'ロードカナロア': 3,
+        'オルフェーヴル': 3,
+        'ハーツクライ': 2,
+        'エピファネイア': 2,
+        'ドゥラメンテ': 2,
+        'モーリス': 2
+    }
+    
     def __init__(self, base_engine: FastDLogicEngine):
         """
         Args:
             base_engine: 既存のD-Logicエンジン（ダンスインザダーク基準）
         """
         self.base_engine = base_engine
-        # FastDLogicEngineのナレッジデータを参照
-        self.knowledge = base_engine.raw_manager.knowledge_data.get('horses', {})
+        # FastDLogicEngineのナレッジデータを正しく参照
+        try:
+            # 正しいパスでアクセス
+            if hasattr(base_engine, 'raw_manager') and hasattr(base_engine.raw_manager, 'knowledge_data'):
+                self.knowledge = base_engine.raw_manager.knowledge_data.get('horses', {})
+                logger.info(f"ナレッジデータ取得成功: {len(self.knowledge)}頭")
+            else:
+                self.knowledge = {}
+                logger.warning("ナレッジデータへのアクセスに失敗")
+        except Exception as e:
+            self.knowledge = {}
+            logger.error(f"ナレッジデータ取得エラー: {e}")
         
         # イクイノックスの基準スコアを取得
         self.equinox_base_score = self._get_equinox_base_score()
@@ -77,7 +103,7 @@ class ModernDLogicEngine:
             logger.warning(f"イクイノックスの基準スコア取得エラー: {e}")
             return 92.0  # デフォルト値
     
-    def calculate_horse_score(self, horse_name: str, context: Dict[str, Any]) -> Dict[str, Any]:
+    def calculate_horse_score(self, horse_name: str, context: Dict[str, Any], enable_bayesian: bool = True) -> Dict[str, Any]:
         """
         馬の総合スコアを計算（イクイノックス基準）
         
@@ -95,23 +121,50 @@ class ModernDLogicEngine:
                 'details': 詳細情報
             }
         """
+        # データ確認
+        horse_data = self.knowledge.get(horse_name, {})
+        races = horse_data.get('races', [])
+        race_count = len(races)
+        
         result = {
             'horse_name': horse_name,
             'base_score': 50.0,  # デフォルト
             'venue_bonus': 0,
+            'venue_distance_bonus': 0,
             'class_factor': 1.0,
             'track_bonus': 0,
             'final_score': 50.0,
+            'race_count': race_count,
+            'data_confidence': 'none',
+            'estimation_method': 'default',
             'details': {}
         }
         
         try:
-            # 1. 基本スコア計算（ダンスインザダーク基準からイクイノックス基準に変換）
-            original_data = self.base_engine.analyze_single_horse(horse_name)
-            if isinstance(original_data, dict) and 'total_score' in original_data:
-                original_score = original_data['total_score']
-                # イクイノックス基準に変換（イクイノックス=100）
-                result['base_score'] = (original_score / self.equinox_base_score) * 100
+            # データ量に応じた処理分岐
+            if race_count >= 5 or not enable_bayesian:
+                # 通常計算（データ十分 or ベイズ無効）
+                result['estimation_method'] = 'full_data'
+                result['data_confidence'] = 'high' if race_count >= 9 else 'medium'
+                
+                # 1. 基本スコア計算（ダンスインザダーク基準からイクイノックス基準に変換）
+                original_data = self.base_engine.analyze_single_horse(horse_name)
+                if isinstance(original_data, dict) and 'total_score' in original_data:
+                    original_score = original_data['total_score']
+                    # イクイノックス基準に変換（イクイノックス=100）
+                    result['base_score'] = (original_score / self.equinox_base_score) * 100
+                    
+            elif race_count > 0 and enable_bayesian:
+                # ベイズ推定モード（1-4走）
+                result['estimation_method'] = 'bayesian'
+                result['data_confidence'] = 'low'
+                result['base_score'] = self._calculate_bayesian_score(horse_name, horse_data, race_count)
+                
+            else:
+                # データなし
+                result['estimation_method'] = 'default'
+                result['data_confidence'] = 'none'
+                result['base_score'] = self._get_default_score(horse_data)
             
             # 2. 開催場・距離適性ボーナス（統合評価）
             venue = context.get('venue', '')
@@ -145,16 +198,120 @@ class ModernDLogicEngine:
             result['final_score'] = max(0, min(150, result['final_score']))
             
             # 6. 詳細情報
-            result['details'] = {
-                'original_system_score': original_data.get('total_score', 50.0),
-                'venue_history': self._get_venue_history(horse_name, venue),
-                'track_condition_history': self._get_track_condition_history(horse_name, track_condition)
-            }
+            if 'original_data' in locals():
+                result['details'] = {
+                    'original_system_score': original_data.get('total_score', 50.0),
+                    'venue_history': self._get_venue_history(horse_name, venue),
+                    'track_condition_history': self._get_track_condition_history(horse_name, track_condition)
+                }
+            else:
+                result['details'] = {
+                    'venue_history': self._get_venue_history(horse_name, venue),
+                    'track_condition_history': self._get_track_condition_history(horse_name, track_condition)
+                }
             
         except Exception as e:
             logger.error(f"馬スコア計算エラー（{horse_name}）: {e}")
         
         return result
+    
+    def _calculate_bayesian_score(self, horse_name: str, horse_data: Dict, race_count: int) -> float:
+        """ベイズ推定による基本スコア計算"""
+        try:
+            # 1. 事前分布の調整
+            prior_score = self._get_adjusted_prior(horse_data)
+            
+            # 2. 限定データからのスコア計算
+            races = horse_data.get('races', [])
+            if races:
+                # 既存D-Logicでの計算を試みる
+                try:
+                    original_data = self.base_engine.analyze_single_horse(horse_name)
+                    if isinstance(original_data, dict) and 'total_score' in original_data:
+                        original_score = original_data['total_score']
+                        # イクイノックス基準に変換
+                        limited_score = (original_score / self.equinox_base_score) * 100
+                    else:
+                        # フォールバック：着順から推定
+                        limited_score = self._estimate_from_results(races)
+                except:
+                    limited_score = self._estimate_from_results(races)
+                
+                # 3. ベイズ推定（加重平均）
+                weight_actual = race_count
+                weight_prior = self.PRIOR_WEIGHT
+                
+                bayesian_score = (
+                    (limited_score * weight_actual + prior_score * weight_prior) /
+                    (weight_actual + weight_prior)
+                )
+                
+                return bayesian_score
+            else:
+                return prior_score
+                
+        except Exception as e:
+            logger.error(f"ベイズ推定エラー（{horse_name}）: {e}")
+            return self.PRIOR_MEAN
+    
+    def _get_default_score(self, horse_data: Dict) -> float:
+        """デフォルトスコア（データなしの場合）"""
+        return self._get_adjusted_prior(horse_data)
+    
+    def _get_adjusted_prior(self, horse_data: Dict) -> float:
+        """馬の属性から事前分布を調整"""
+        prior_score = self.PRIOR_MEAN
+        
+        # 血統補正
+        sire = horse_data.get('sire', '')
+        if sire in self.TOP_SIRES:
+            prior_score += self.TOP_SIRES[sire]
+        
+        # 年齢補正（レースデータから推定）
+        races = horse_data.get('races', [])
+        if races and races[0].get('BAREI'):
+            try:
+                age = int(races[0]['BAREI'])
+                if age <= 3:
+                    prior_score += 2  # 若馬は成長余地
+                elif age >= 7:
+                    prior_score -= 3  # 高齢馬
+            except:
+                pass
+        
+        # 性別補正
+        if races and races[0].get('SEIBETSU_CODE'):
+            sex_code = races[0]['SEIBETSU_CODE']
+            if sex_code == '2':  # 牝馬
+                prior_score -= 2
+        
+        return max(60, min(85, prior_score))  # 60-85の範囲に制限
+    
+    def _estimate_from_results(self, races: List[Dict]) -> float:
+        """着順からスコアを推定"""
+        if not races:
+            return self.PRIOR_MEAN
+            
+        total_score = 0
+        count = 0
+        
+        for race in races[:5]:  # 最新5走まで
+            chakujun = race.get('KAKUTEI_CHAKUJUN', '99')
+            try:
+                position = int(chakujun) if chakujun != '00' else 99
+                if position == 1:
+                    total_score += 85
+                elif position <= 3:
+                    total_score += 75
+                elif position <= 5:
+                    total_score += 68
+                else:
+                    total_score += 60
+                count += 1
+            except:
+                pass
+        
+        return total_score / count if count > 0 else self.PRIOR_MEAN
     
     def _calculate_venue_distance_aptitude(self, horse_name: str, venue: str, distance: int) -> float:
         """開催場・距離の複合適性を計算（-10～+10）"""

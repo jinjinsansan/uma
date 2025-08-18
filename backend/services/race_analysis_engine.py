@@ -93,10 +93,11 @@ class RaceAnalysisEngine:
                     post = posts[i] if i < len(posts) else 1
                     horse_number = horse_numbers[i] if i < len(horse_numbers) else i + 1
                     
-                    # 馬の評価
+                    # 馬の評価（ベイズ推定を有効化）
                     horse_analysis = self.modern_engine.calculate_horse_score(
                         horse_name, 
-                        context
+                        context,
+                        enable_bayesian=True
                     )
                     
                     # 騎手の評価

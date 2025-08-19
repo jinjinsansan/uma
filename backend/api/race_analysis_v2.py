@@ -149,6 +149,95 @@ async def race_analysis_chat(request: Dict[str, Any]):
         
         logger.info(f"Race analysis chat request: {message[:100]}...")
         
+        # アーカイブレース認識チェック
+        from services.archive_race_handler import archive_race_handler
+        archive_race_info = archive_race_handler.extract_race_info(message)
+        
+        if archive_race_info and archive_race_info.get("action") == "analyze":
+            # アーカイブレースを検索
+            search_result = await archive_race_handler.search_archive_races(archive_race_info)
+            
+            if search_result["found"]:
+                if search_result["need_selection"]:
+                    # 複数候補がある場合
+                    selection_msg = archive_race_handler.format_selection_message(search_result["matches"])
+                    return {
+                        "status": "success",
+                        "response": selection_msg,
+                        "message": message,
+                        "multiple_archive_matches": True
+                    }
+                else:
+                    # 単一の候補が見つかった場合、アーカイブデータを取得して分析実行
+                    match = search_result["matches"][0]
+                    
+                    # アーカイブデータをロードして分析を実行
+                    try:
+                        logger.info(f"Loading archive race data for {match['date']} {match['venue']}{match['race_number']}R")
+                        
+                        # アーカイブデータマネージャーから取得
+                        from services.archive_data_manager import archive_data_manager
+                        race_data = archive_data_manager.get_race_data(
+                            match['date'],
+                            match['venue'],
+                            match['race_number']
+                        )
+                        
+                        if not race_data:
+                            return {
+                                "status": "success",
+                                "response": f"申し訳ございません。{match['date']} {match['venue']}{match['race_number']}R のデータはまだ準備されていません。",
+                                "message": message
+                            }
+                        
+                        # 分析実行
+                        from api.chat import fast_engine_instance
+                        race_analysis_engine = get_race_analysis_engine(fast_engine_instance)
+                        result = race_analysis_engine.analyze_race(race_data)
+                        
+                        # 結果をフォーマット
+                        if 'error' in result:
+                            response_text = f"分析エラー: {result['error']}"
+                        else:
+                            response_text = f"""🏆 {match['date']} {match['venue']}{match['race_number']}R「{match['race_name']}」のレースアナリシス
+
+"""
+                            # 全頭を表示
+                            if 'results' in result and len(result['results']) > 0:
+                                for i, horse_result in enumerate(result['results']):
+                                    position = i + 1
+                                    if position <= 3:
+                                        emoji = ['🥇', '🥈', '🥉'][i]
+                                    elif position <= 5:
+                                        emoji = '🏅'
+                                    else:
+                                        emoji = f'{position}位:'
+                                    
+                                    horse_name = horse_result['horse']
+                                    jockey_name = horse_result['jockey']
+                                    total_score = horse_result['total_score']
+                                    horse_score = horse_result.get('horse_score', 0)
+                                    jockey_score = horse_result.get('jockey_score', 0)
+                                    
+                                    response_text += f"{emoji} {position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
+                                    response_text += f"   馬: {horse_score:.1f}点 / 騎手: {jockey_score:.1f}点\n\n"
+                        
+                        return {
+                            "status": "success",
+                            "response": response_text,
+                            "message": message
+                        }
+                        
+                    except Exception as e:
+                        logger.error(f"Archive race analysis error: {e}")
+                        import traceback
+                        logger.error(traceback.format_exc())
+                        return {
+                            "status": "success",
+                            "response": f"アーカイブレースの分析中にエラーが発生しました: {str(e)}",
+                            "message": message
+                        }
+        
         # レース名を検出（改良版）
         race_keywords = ['記念', 'ステークス', 'カップ', 'トロフィー', '賞', 'を分析', 'を予想']
         venue_pattern = r'(東京|中山|京都|阪神|中京|新潟|札幌|函館|福島|小倉)\d+[Rr]'

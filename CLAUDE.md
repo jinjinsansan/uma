@@ -274,6 +274,86 @@ interface ArchiveRace {
 - **概要**: 標準D-Logicに加えて稍重・重・不良の天候適性分析を追加
 - **実装方式**: 階層的評価方式（第1層40%、第2層35%、第3層25%）
 
+## 🏇 アーカイブレース ハイブリッド実装計画 (2025-08-19)
+
+### 概要
+レースアナリシスV2のアーカイブ認識機能を、TSファイル（高速）とSupabase（拡張性）のハイブリッド方式で実装。
+
+### データ管理の3層構造
+
+#### 1層目：最新5レース（TSファイル）- 超高速
+```typescript
+const RECENT_ARCHIVES = {
+  '2025-08-24': [...], // 未来（土曜日）
+  '2025-08-23': [...], // 未来（金曜日）
+  '2025-08-17': [...], // 直近1
+  '2025-08-16': [...], // 直近2
+  '2025-08-10': [...], // 直近3
+}
+```
+
+#### 2層目：メモリキャッシュ - 高速
+- 頻繁にアクセスされる古いデータを一時保存
+
+#### 3層目：Supabase - 完全なアーカイブ
+- 2025-08-09以前のすべてのデータ
+- 傾向分析エンジン用のSQLクエリ対応
+
+### Supabaseテーブル設計
+```sql
+CREATE TABLE archive_races (
+  id UUID PRIMARY KEY,
+  race_id TEXT UNIQUE NOT NULL,
+  race_date DATE NOT NULL,
+  venue TEXT NOT NULL,
+  race_number INTEGER NOT NULL,
+  race_name TEXT NOT NULL,
+  distance TEXT,
+  track_condition TEXT DEFAULT '良',
+  grade TEXT,
+  horses TEXT[] NOT NULL,
+  jockeys TEXT[],
+  posts INTEGER[],
+  horse_numbers INTEGER[],
+  result JSONB, -- 払い戻し結果、的中情報など
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+);
+```
+
+### 検索ロジック
+1. TSファイルから検索（1-5ms）
+2. 5件見つかったら即返却
+3. 不足分をSupabaseから取得（50-200ms）
+4. 結果をマージして返却
+
+### 運用フロー
+**毎週土曜日**：
+1. netkeiba.comからコピペ
+2. Claudeが最新TSファイルを更新
+3. 自動的にSupabaseにも同期
+4. 古いデータを自動アーカイブ
+
+**月曜日**：
+1. 払い戻し結果を更新
+2. TSファイルとSupabase両方に反映
+
+### パフォーマンス目標
+- 80%のケース：1-5ms（TSファイルのみ）
+- 20%のケース：50-200ms（Supabase併用）
+- 平均レスポンス：約10ms
+
+### 実装フェーズ
+1. **Phase 1**: Supabaseテーブル作成と既存データ移行
+2. **Phase 2**: ハイブリッド検索ロジック実装
+3. **Phase 3**: 自動同期・メンテナンス機能
+4. **Phase 4**: 傾向分析エンジン実装
+
+### 注意事項
+- D-Logic AI、MyLogicには一切干渉しない
+- 既存のレースアナリシスV2機能を保護
+- エラー時は3段階のフォールバック（TS→Supabase→エラー）
+
 ## 🔄 月次ナレッジファイル更新システム (2025/08/12 追加)
 
 ### 概要

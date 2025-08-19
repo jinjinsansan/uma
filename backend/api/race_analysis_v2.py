@@ -149,18 +149,50 @@ async def race_analysis_chat(request: Dict[str, Any]):
         
         logger.info(f"Race analysis chat request: {message[:100]}...")
         
-        # アーカイブレース認識チェック
-        from services.archive_race_handler import archive_race_handler
-        archive_race_info = archive_race_handler.extract_race_info(message)
+        # アーカイブレース認識チェック（ハイブリッド版）
+        from services.hybrid_archive_handler import hybrid_archive_handler
+        
+        # まず具体的な日付が含まれているかチェック
+        specific_date = hybrid_archive_handler.extract_specific_date(message)
+        archive_race_info = hybrid_archive_handler.extract_race_info(message)
         
         if archive_race_info and archive_race_info.get("action") == "analyze":
-            # アーカイブレースを検索
-            search_result = await archive_race_handler.search_archive_races(archive_race_info)
+            # 具体的な日付が指定されている場合
+            if specific_date:
+                # 特定の日付のレースを検索（ハイブリッド）
+                search_result = await hybrid_archive_handler.search_archive_races_with_priority({
+                    "venue": archive_race_info.get("venue"),
+                    "race_number": archive_race_info.get("race_number"),
+                    "date": specific_date
+                })
+                
+                if search_result.get("found") and len(search_result.get("matches", [])) > 0:
+                    specific_race = search_result["matches"][0]
+                else:
+                    specific_race = None
+                
+                if specific_race:
+                    # 見つかった場合は直接分析を実行
+                    logger.info(f"Found specific date race: {specific_date} {specific_race['venue']}{specific_race['race_number']}R")
+                    # このまま下の分析処理に進む（match変数に設定）
+                    search_result = {"found": True, "matches": [specific_race], "need_selection": False}
+                else:
+                    return {
+                        "status": "success",
+                        "response": f"申し訳ございません。{specific_date}の{archive_race_info.get('venue')}{archive_race_info.get('race_number')}Rのデータは見つかりませんでした。",
+                        "message": message
+                    }
+            else:
+                # 日付が指定されていない場合は優先順位付きで検索（ハイブリッド）
+                search_result = await hybrid_archive_handler.search_archive_races_with_priority(archive_race_info)
             
             if search_result["found"]:
-                if search_result["need_selection"]:
-                    # 複数候補がある場合
-                    selection_msg = archive_race_handler.format_selection_message(search_result["matches"])
+                if search_result.get("need_selection", False):
+                    # 複数候補がある場合（最大5件、優先順位付き）
+                    selection_msg = hybrid_archive_handler.format_selection_message_with_priority(
+                        search_result["matches"],
+                        search_result.get("has_more", False)
+                    )
                     return {
                         "status": "success",
                         "response": selection_msg,
@@ -175,18 +207,17 @@ async def race_analysis_chat(request: Dict[str, Any]):
                     try:
                         logger.info(f"Loading archive race data for {match['date']} {match['venue']}{match['race_number']}R")
                         
-                        # アーカイブデータマネージャーから取得
-                        from services.archive_data_manager import archive_data_manager
-                        race_data = archive_data_manager.get_race_data(
+                        # ハイブリッドアーカイブからデータを取得
+                        race_data = await hybrid_archive_handler.get_race_data(
                             match['date'],
                             match['venue'],
                             match['race_number']
                         )
-                        
+                            
                         if not race_data:
                             return {
                                 "status": "success",
-                                "response": f"申し訳ございません。{match['date']} {match['venue']}{match['race_number']}R のデータはまだ準備されていません。",
+                                "response": f"申し訳ございません。{match['date']} {match['venue']}{match['race_number']}R のデータは見つかりませんでした。",
                                 "message": message
                             }
                         

@@ -36,7 +36,7 @@ class QuickAnalysisRequest(BaseModel):
     message: str  # 例: "札幌記念を分析して"
     track_condition: Optional[str] = "良"
 
-@router.post("/api/race-analysis-v2")
+@router.post("")
 async def analyze_race(request: RaceAnalysisRequest):
     """
     レース総合分析（イクイノックス基準）
@@ -87,7 +87,7 @@ async def analyze_race(request: RaceAnalysisRequest):
         logger.error(f"レース分析エラー: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/race-analysis-v2/quick")
+@router.post("/quick")
 async def quick_analyze(request: QuickAnalysisRequest):
     """
     クイック分析（会話形式から）
@@ -105,7 +105,7 @@ async def quick_analyze(request: QuickAnalysisRequest):
         logger.error(f"クイック分析エラー: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/api/race-analysis-v2/test")
+@router.get("/test")
 async def test_analysis():
     """
     テスト用エンドポイント
@@ -136,7 +136,7 @@ async def test_analysis():
         "base_horse": "イクイノックス"
     }
 
-@router.post("/api/race-analysis-v2/chat")
+@router.post("/chat")
 async def race_analysis_chat(request: Dict[str, Any]):
     """レースアナリシスチャット用エンドポイント
     

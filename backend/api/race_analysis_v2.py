@@ -137,18 +137,22 @@ async def test_analysis():
     }
 
 @router.post("/chat")
-async def race_analysis_chat(request: Dict[str, Any]):
+async def race_analysis_chat(request: Dict[str, Any], headers: dict = None):
     """レースアナリシスチャット用エンドポイント
     
     D-Logicチャットと同じインターフェースで、レース名から自動的に分析を実行
+    将来の拡張（トレンド分析エンジンなど）にも対応可能な設計
     """
     try:
         message = request.get('message', '').strip()
         user_id = request.get('user_id')
         race_info = request.get('race_info')  # フロントエンドから渡されるレース情報
+        engine_type = request.get('engine_type', 'race_analysis_v2')  # 将来の拡張用
+        version = request.get('version', '2.0')
         
         logger.info(f"Race analysis chat request: {message[:100]}...")
         logger.info(f"Race info from frontend: {race_info}")
+        logger.info(f"Engine type: {engine_type}, Version: {version}")
         
         # アーカイブレース認識チェック（ハイブリッド版）
         from services.hybrid_archive_handler import hybrid_archive_handler

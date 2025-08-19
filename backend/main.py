@@ -40,26 +40,39 @@ from services.knowledge_base import KnowledgeBase
 
 app = FastAPI(title="Dロジック競馬予想AI", version="2.0.0")
 
-# CORS設定
+# CORS設定（環境変数で動的に設定可能）
+import os
+
+# 環境変数からCORS設定を読み込む（デフォルト値を含む）
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else []
+
+# 基本的な許可オリジン
+DEFAULT_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3001", 
+    "http://localhost:3002",
+    "http://localhost:3003",
+    "http://localhost:3004",
+    "https://uma-oracle-ai.netlify.app",
+    "https://dlogicai.in",
+    "https://www.dlogicai.in",
+    "https://d-logic-ai-frontend.vercel.app",
+    "https://d-logic-ai-frontend-git-main-jinjinsansans-projects.vercel.app"
+]
+
+# 開発環境では全オリジンを許可（本番環境では厳密に）
+if os.getenv("ENVIRONMENT") == "development":
+    allowed_origins = ["*"]
+else:
+    allowed_origins = DEFAULT_ORIGINS + CORS_ORIGINS
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:3002",
-        "http://localhost:3003",
-        "http://localhost:3004",
-        "https://uma-oracle-ai.netlify.app",
-        "https://*.netlify.app",
-        "https://*.onrender.com",
-        "https://dlogicai.in",
-        "https://www.dlogicai.in",
-        "https://*.vercel.app",
-        "*"
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-Session-Token", "X-User-Email"],  # カスタムヘッダーを追加
+    expose_headers=["*"]  # レスポンスヘッダーも公開
 )
 
 # OpenAI API設定

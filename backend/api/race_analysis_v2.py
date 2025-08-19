@@ -136,7 +136,7 @@ async def test_analysis():
         "base_horse": "イクイノックス"
     }
 
-@router.post("/chat")
+@router.post("/api/race-analysis-v2/chat")
 async def race_analysis_chat(request: Dict[str, Any]):
     """レースアナリシスチャット用エンドポイント
     

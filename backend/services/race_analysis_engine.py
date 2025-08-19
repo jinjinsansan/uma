@@ -189,7 +189,7 @@ class RaceAnalysisEngine:
                 'results': results,
                 'summary': summary,
                 'analysis_type': 'race_analysis_v2',
-                'base_horse': 'イクイノックス',
+                'base_horse': 'レースアナリシスV2基準',
                 'weights': {
                     'horse': self.HORSE_WEIGHT,
                     'jockey': self.JOCKEY_WEIGHT

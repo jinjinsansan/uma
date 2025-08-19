@@ -92,7 +92,7 @@ class ModernDLogicEngine:
         
         # イクイノックスの基準スコアを取得
         self.equinox_base_score = self._get_equinox_base_score()
-        logger.info(f"イクイノックス基準スコア: {self.equinox_base_score}")
+        logger.info(f"レースアナリシスV2基準: {self.equinox_base_score}")
     
     def _get_equinox_base_score(self) -> float:
         """イクイノックスの現行D-Logicスコアを取得"""

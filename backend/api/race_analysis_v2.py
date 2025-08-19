@@ -1,6 +1,6 @@
 """
 レースアナリシスV2 APIエンドポイント
-イクイノックス基準の総合分析
+馬と騎手の総合分析
 """
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -39,7 +39,7 @@ class QuickAnalysisRequest(BaseModel):
 @router.post("")
 async def analyze_race(request: RaceAnalysisRequest):
     """
-    レース総合分析（イクイノックス基準）
+    レース総合分析
     """
     try:
         logger.info(f"レース分析リクエスト: {request.venue} {request.race_number}R")
@@ -141,7 +141,7 @@ async def test_analysis():
         "message": "テスト分析完了",
         "sample_result": result.get('results', [])[:3],  # 上位3頭のみ
         "analysis_type": "race_analysis_v2",
-        "base_horse": "イクイノックス"
+        "base_horse": "レースアナリシスV2基準"
     }
 
 @router.post("/chat")
@@ -215,17 +215,21 @@ async def race_analysis_chat(request: Dict[str, Any]):
                 
                 # 分析結果の整形
                 if not result.get('error') and result.get('results'):
-                    response_text = f"🏆 {race_info.get('venue')}{race_info.get('race_number')}R {race_info.get('race_name', '')} のレースアナリシス（イクイノックス基準）\\n\\n"
+                    race_date = race_info.get('race_date') or race_info.get('date', '')
+                    if race_date:
+                        response_text = f"🏆 {race_date} {race_info.get('venue')}{race_info.get('race_number')}R {race_info.get('race_name', '')} のレースアナリシス\n\n"
+                    else:
+                        response_text = f"🏆 {race_info.get('venue')}{race_info.get('race_number')}R {race_info.get('race_name', '')} のレースアナリシス\n\n"
                     
                     # 上位馬の結果を表示
-                    for i, horse_result in enumerate(result['results'][:10]):
+                    for i, horse_result in enumerate(result['results']):
                         position = i + 1
                         if position <= 3:
                             emoji = ['🥇', '🥈', '🥉'][i]
                         elif position <= 5:
                             emoji = '🏅'
                         else:
-                            emoji = f'{position}位:'
+                            emoji = ''
                         
                         # すべての馬で統一フォーマット表示
                         horse_name = horse_result['horse']
@@ -234,8 +238,11 @@ async def race_analysis_chat(request: Dict[str, Any]):
                         horse_score = horse_result.get('horse_score', 0)
                         jockey_score = horse_result.get('jockey_score', 0)
                         
-                        response_text += f"{emoji} {position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\\n"
-                        response_text += f"   馬: {horse_score:.1f}点 / 騎手: {jockey_score:.1f}点\\n\\n"
+                        if emoji:
+                            response_text += f"{emoji} {position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
+                        else:
+                            response_text += f"{position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
+                        response_text += f"馬: {horse_score:.1f}点 / 騎手: {jockey_score:.1f}点\n\n"
                     
                     return {
                         "status": "success",
@@ -353,7 +360,7 @@ async def race_analysis_chat(request: Dict[str, Any]):
                                     elif position <= 5:
                                         emoji = '🏅'
                                     else:
-                                        emoji = f'{position}位:'
+                                        emoji = ''
                                     
                                     horse_name = horse_result['horse']
                                     jockey_name = horse_result['jockey']
@@ -361,8 +368,11 @@ async def race_analysis_chat(request: Dict[str, Any]):
                                     horse_score = horse_result.get('horse_score', 0)
                                     jockey_score = horse_result.get('jockey_score', 0)
                                     
-                                    response_text += f"{emoji} {position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
-                                    response_text += f"   馬: {horse_score:.1f}点 / 騎手: {jockey_score:.1f}点\n\n"
+                                    if emoji:
+                                        response_text += f"{emoji} {position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
+                                    else:
+                                        response_text += f"{position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
+                                    response_text += f"馬: {horse_score:.1f}点 / 騎手: {jockey_score:.1f}点\n\n"
                         
                         return {
                             "status": "success",
@@ -454,7 +464,7 @@ async def race_analysis_chat(request: Dict[str, Any]):
                             elif position <= 5:
                                 emoji = '🏅'
                             else:
-                                emoji = f'{position}位:'
+                                emoji = ''
                             
                             # すべての馬で統一フォーマット表示
                             horse_name = horse_result['horse']
@@ -463,8 +473,11 @@ async def race_analysis_chat(request: Dict[str, Any]):
                             horse_score = horse_result.get('horse_score', 0)
                             jockey_score = horse_result.get('jockey_score', 0)
                             
-                            response_text += f"{emoji} {position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
-                            response_text += f"   馬: {horse_score:.1f}点 / 騎手: {jockey_score:.1f}点\n\n"
+                            if emoji:
+                                response_text += f"{emoji} {position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
+                            else:
+                                response_text += f"{position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
+                            response_text += f"馬: {horse_score:.1f}点 / 騎手: {jockey_score:.1f}点\n\n"
                 
                 return {
                     "status": "success",

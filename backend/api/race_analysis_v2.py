@@ -148,10 +148,85 @@ async def race_analysis_chat(request: Dict[str, Any]):
         race_info = request.get('race_info')  # フロントエンドから渡されるレース情報
         
         logger.info(f"Race analysis chat request: {message[:100]}...")
+        logger.info(f"Race info from frontend: {race_info}")
         
         # アーカイブレース認識チェック（ハイブリッド版）
         from services.hybrid_archive_handler import hybrid_archive_handler
         
+        # フロントエンドから race_info が渡された場合（アーカイブページから）
+        if race_info and race_info.get('venue') and race_info.get('race_number'):
+            # race_infoから直接レースデータを取得して分析を実行
+            try:
+                # chat.pyの共有インスタンスを使用
+                from api.chat import fast_engine_instance
+                race_analysis_engine = get_race_analysis_engine(fast_engine_instance)
+                
+                # レース分析を実行
+                logger.info(f"Executing race analysis with provided race_info: {race_info}")
+                
+                # race_infoの形式を正規化
+                analysis_data = {
+                    'venue': race_info.get('venue'),
+                    'race_number': race_info.get('race_number'),
+                    'race_name': race_info.get('race_name', ''),
+                    'grade': race_info.get('grade', ''),
+                    'distance': race_info.get('distance', ''),
+                    'track_condition': race_info.get('track_condition', '良'),
+                    'horses': race_info.get('horses', []),
+                    'jockeys': race_info.get('jockeys', []),
+                    'posts': race_info.get('posts', []),
+                    'horse_numbers': race_info.get('horse_numbers', [])
+                }
+                
+                result = race_analysis_engine.analyze_race(analysis_data)
+                
+                # 分析結果の整形
+                if result.get('status') == 'success' and result.get('results'):
+                    response_text = f"🏆 {race_info.get('venue')}{race_info.get('race_number')}R {race_info.get('race_name', '')} のレースアナリシス（イクイノックス基準）\\n\\n"
+                    
+                    # 上位馬の結果を表示
+                    for i, horse_result in enumerate(result['results'][:10]):
+                        position = i + 1
+                        if position <= 3:
+                            emoji = ['🥇', '🥈', '🥉'][i]
+                        elif position <= 5:
+                            emoji = '🏅'
+                        else:
+                            emoji = f'{position}位:'
+                        
+                        # すべての馬で統一フォーマット表示
+                        horse_name = horse_result['horse']
+                        jockey_name = horse_result['jockey']
+                        total_score = horse_result['total_score']
+                        horse_score = horse_result.get('horse_score', 0)
+                        jockey_score = horse_result.get('jockey_score', 0)
+                        
+                        response_text += f"{emoji} {position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\\n"
+                        response_text += f"   馬: {horse_score:.1f}点 / 騎手: {jockey_score:.1f}点\\n\\n"
+                    
+                    return {
+                        "status": "success",
+                        "response": response_text,
+                        "message": message
+                    }
+                else:
+                    return {
+                        "status": "success",
+                        "response": "レース分析中にエラーが発生しました。データが不足している可能性があります。",
+                        "message": message
+                    }
+                    
+            except Exception as analysis_error:
+                logger.error(f"Race analysis execution error: {analysis_error}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return {
+                    "status": "success",
+                    "response": f"レース分析中にエラーが発生しました: {str(analysis_error)}",
+                    "message": message
+                }
+        
+        # 通常のチャット入力の場合
         # まず具体的な日付が含まれているかチェック
         specific_date = hybrid_archive_handler.extract_specific_date(message)
         archive_race_info = hybrid_archive_handler.extract_race_info(message)

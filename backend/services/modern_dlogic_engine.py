@@ -79,15 +79,16 @@ class ModernDLogicEngine:
             extended_manager = get_extended_knowledge_manager()
             self.knowledge = extended_manager.get_all_horses()
             logger.info(f"拡張ナレッジデータ取得成功: {len(self.knowledge)}頭")
+            # データが空または少なすぎる場合はエラー
+            if not self.knowledge or len(self.knowledge) < 1000:
+                raise ValueError(f"拡張ナレッジデータが不正です。取得数: {len(self.knowledge)}頭")
         except Exception as e:
             # エラー: レース分析には拡張データが必須
             logger.error(f"拡張ナレッジデータの取得に失敗しました: {e}")
             logger.error("レース分析V2には9回分の過去データが含まれる拡張ナレッジファイルが必要です")
-            self.knowledge = {}
-            # 一時的なフォールバックとして通常データを試みる（機能制限あり）
-            if hasattr(base_engine, 'raw_manager') and hasattr(base_engine.raw_manager, 'knowledge_data'):
-                self.knowledge = base_engine.raw_manager.knowledge_data.get('horses', {})
-                logger.warning(f"警告: 通常ナレッジデータを使用（5回分のみ）: {len(self.knowledge)}頭")
+            logger.error("CDN URL: https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/dlogic_extended_knowledge.json")
+            # 絶対に通常ナレッジデータにフォールバックしない！
+            raise RuntimeError("拡張ナレッジデータの取得に失敗しました。レース分析V2を使用できません。")
         
         # イクイノックスの基準スコアを取得
         self.equinox_base_score = self._get_equinox_base_score()

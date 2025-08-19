@@ -32,7 +32,14 @@ class RaceAnalysisEngine:
             logger.info("既存のFastDLogicEngineインスタンスを使用します")
             
         # モダンD-Logicエンジン（イクイノックス基準）
-        self.modern_engine = ModernDLogicEngine(fast_engine_instance)
+        try:
+            self.modern_engine = ModernDLogicEngine(fast_engine_instance)
+            logger.info("ModernDLogicEngineの初期化に成功しました")
+        except Exception as e:
+            logger.error(f"ModernDLogicEngineの初期化に失敗しました: {e}")
+            # 拡張ナレッジデータが必須なので、エラーを再発生させる
+            raise RuntimeError(f"レース分析エンジンの初期化に失敗しました: {e}")
+            
         # 騎手データマネージャー
         self.jockey_manager = jockey_manager
         

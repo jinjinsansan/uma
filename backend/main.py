@@ -81,6 +81,50 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI
 # ナレッジベース初期化
 kb = KnowledgeBase()
 
+# アプリケーション起動時に全ナレッジファイルを初期化
+@app.on_event("startup")
+async def startup_event():
+    """アプリケーション起動時の初期化処理"""
+    print("=" * 80)
+    print("🚀 アプリケーション起動時の初期化開始...")
+    print("=" * 80)
+    
+    # 1. 通常のナレッジファイル（FastDLogicEngine経由で自動的に初期化される）
+    try:
+        from api.chat import fast_engine_instance
+        print("✅ 通常ナレッジファイル: FastDLogicEngine経由で初期化済み")
+    except Exception as e:
+        print(f"⚠️  通常ナレッジファイル初期化エラー: {e}")
+    
+    # 2. 騎手ナレッジファイル
+    try:
+        from services.jockey_data_manager import jockey_manager
+        jockey_count = len(jockey_manager.jockey_data)
+        print(f"✅ 騎手ナレッジファイル: {jockey_count}騎手のデータを初期化")
+    except Exception as e:
+        print(f"⚠️  騎手ナレッジファイル初期化エラー: {e}")
+    
+    # 3. 拡張ナレッジファイル（レース分析V2用）
+    try:
+        from services.extended_knowledge_manager import get_extended_knowledge_manager
+        extended_manager = get_extended_knowledge_manager()
+        extended_horses = extended_manager.get_all_horses()
+        print(f"✅ 拡張ナレッジファイル: {len(extended_horses)}頭のデータを初期化")
+        
+        # レース分析エンジンも事前に初期化
+        from services.race_analysis_engine import get_race_analysis_engine
+        from api.chat import fast_engine_instance
+        race_engine = get_race_analysis_engine(fast_engine_instance)
+        print("✅ レース分析エンジン: 初期化完了")
+    except Exception as e:
+        print(f"⚠️  拡張ナレッジファイル初期化エラー: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    print("=" * 80)
+    print("✅ 起動時初期化完了")
+    print("=" * 80)
+
 # ルーターを含める
 app.include_router(d_logic_router, prefix="/api/d-logic", tags=["D-Logic"])
 app.include_router(today_races_router, prefix="/api", tags=["Today-Races"])

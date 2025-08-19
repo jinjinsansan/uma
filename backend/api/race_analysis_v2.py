@@ -68,9 +68,17 @@ async def analyze_race(request: RaceAnalysisRequest):
         }
         
         # 分析実行（chat.pyの共有インスタンスを使用）
-        from api.chat import fast_engine_instance
-        race_analysis_engine = get_race_analysis_engine(fast_engine_instance)
-        result = race_analysis_engine.analyze_race(race_data)
+        try:
+            from api.chat import fast_engine_instance
+            race_analysis_engine = get_race_analysis_engine(fast_engine_instance)
+            result = race_analysis_engine.analyze_race(race_data)
+        except RuntimeError as e:
+            # 拡張ナレッジデータの取得に失敗した場合
+            logger.error(f"拡張ナレッジデータエラー: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail="レース分析中にエラーが発生しました。拡張ナレッジデータ（9回分のデータ）が不足している可能性があります。"
+            )
         
         # エラーチェック
         if 'error' in result:
@@ -170,7 +178,16 @@ async def race_analysis_chat(request: Dict[str, Any]):
             try:
                 # chat.pyの共有インスタンスを使用
                 from api.chat import fast_engine_instance
-                race_analysis_engine = get_race_analysis_engine(fast_engine_instance)
+                try:
+                    race_analysis_engine = get_race_analysis_engine(fast_engine_instance)
+                except RuntimeError as e:
+                    # 拡張ナレッジデータの取得に失敗した場合
+                    logger.error(f"拡張ナレッジデータエラー: {e}")
+                    return {
+                        "status": "success",
+                        "response": "レース分析中にエラーが発生しました。データが不足している可能性があります。",
+                        "message": message
+                    }
                 
                 # レース分析を実行
                 logger.info(f"Executing race analysis with provided race_info: {race_info}")
@@ -191,8 +208,13 @@ async def race_analysis_chat(request: Dict[str, Any]):
                 
                 result = race_analysis_engine.analyze_race(analysis_data)
                 
+                # デバッグ用ログ
+                logger.info(f"Analysis result keys: {result.keys()}")
+                if 'error' in result:
+                    logger.error(f"Analysis error: {result['error']}")
+                
                 # 分析結果の整形
-                if result.get('status') == 'success' and result.get('results'):
+                if not result.get('error') and result.get('results'):
                     response_text = f"🏆 {race_info.get('venue')}{race_info.get('race_number')}R {race_info.get('race_name', '')} のレースアナリシス（イクイノックス基準）\\n\\n"
                     
                     # 上位馬の結果を表示
@@ -221,9 +243,12 @@ async def race_analysis_chat(request: Dict[str, Any]):
                         "message": message
                     }
                 else:
+                    error_msg = result.get('error', 'レース分析中にエラーが発生しました。')
+                    logger.error(f"Race analysis failed: {error_msg}")
+                    logger.error(f"Result content: {result}")
                     return {
                         "status": "success",
-                        "response": "レース分析中にエラーが発生しました。データが不足している可能性があります。",
+                        "response": f"レース分析中にエラーが発生しました: {error_msg}",
                         "message": message
                     }
                     

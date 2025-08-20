@@ -169,8 +169,8 @@ async def race_analysis_chat(request: Dict[str, Any]):
         logger.info(f"Engine type: {engine_type}, Version: {version}")
         # logger.info(f"Headers - User: {user_email}, Has Token: {bool(session_token)}")
         
-        # アーカイブレース認識チェック（ハイブリッド版）
-        from services.hybrid_archive_handler import hybrid_archive_handler
+        # アーカイブレース認識チェック（Supabase版）
+        from services.supabase_archive_handler import supabase_archive_handler
         
         # フロントエンドから race_info が渡された場合（アーカイブページから）
         if race_info and race_info.get('venue') and race_info.get('race_number'):
@@ -271,14 +271,14 @@ async def race_analysis_chat(request: Dict[str, Any]):
         
         # 通常のチャット入力の場合
         # まず具体的な日付が含まれているかチェック
-        specific_date = hybrid_archive_handler.extract_specific_date(message)
-        archive_race_info = hybrid_archive_handler.extract_race_info(message)
+        specific_date = supabase_archive_handler.extract_specific_date(message)
+        archive_race_info = supabase_archive_handler.extract_race_info(message)
         
         if archive_race_info and archive_race_info.get("action") == "analyze":
             # 具体的な日付が指定されている場合
             if specific_date:
-                # 特定の日付のレースを検索（ハイブリッド）
-                search_result = await hybrid_archive_handler.search_archive_races_with_priority({
+                # 特定の日付のレースを検索（Supabase）
+                search_result = await supabase_archive_handler.search_archive_races_with_priority({
                     "venue": archive_race_info.get("venue"),
                     "race_number": archive_race_info.get("race_number"),
                     "date": specific_date
@@ -301,13 +301,13 @@ async def race_analysis_chat(request: Dict[str, Any]):
                         "message": message
                     }
             else:
-                # 日付が指定されていない場合は優先順位付きで検索（ハイブリッド）
-                search_result = await hybrid_archive_handler.search_archive_races_with_priority(archive_race_info)
+                # 日付が指定されていない場合は優先順位付きで検索（Supabase）
+                search_result = await supabase_archive_handler.search_archive_races_with_priority(archive_race_info)
             
             if search_result["found"]:
                 if search_result.get("need_selection", False):
                     # 複数候補がある場合（最大5件、優先順位付き）
-                    selection_msg = hybrid_archive_handler.format_selection_message_with_priority(
+                    selection_msg = supabase_archive_handler.format_selection_message_with_priority(
                         search_result["matches"],
                         search_result.get("has_more", False)
                     )
@@ -325,8 +325,8 @@ async def race_analysis_chat(request: Dict[str, Any]):
                     try:
                         logger.info(f"Loading archive race data for {match['date']} {match['venue']}{match['race_number']}R")
                         
-                        # ハイブリッドアーカイブからデータを取得
-                        race_data = await hybrid_archive_handler.get_race_data(
+                        # Supabaseアーカイブからデータを取得
+                        race_data = await supabase_archive_handler.get_race_data(
                             match['date'],
                             match['venue'],
                             match['race_number']

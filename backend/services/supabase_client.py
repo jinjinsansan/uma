@@ -23,7 +23,8 @@ class SupabaseClient:
     def __init__(self):
         if self._client is None:
             supabase_url = os.getenv("SUPABASE_URL")
-            supabase_key = os.getenv("SUPABASE_ANON_KEY")
+            # SERVICE_KEYまたはSERVICE_ROLE_KEYの両方を試す
+            supabase_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
             
             if not supabase_url or not supabase_key:
                 logger.warning("Supabase環境変数が設定されていません")

@@ -286,7 +286,10 @@ async def race_analysis_chat(request: Dict[str, Any]):
                     "date": specific_date
                 })
                 
-                if search_result.get("found") and len(search_result.get("matches", [])) > 0:
+                # デバッグログ追加
+                logger.info(f"Search result for {specific_date}: {search_result}")
+                
+                if search_result.get("found") and search_result.get("matches") and len(search_result.get("matches", [])) > 0:
                     specific_race = search_result["matches"][0]
                 else:
                     specific_race = None
@@ -321,6 +324,13 @@ async def race_analysis_chat(request: Dict[str, Any]):
                     }
                 else:
                     # 単一の候補が見つかった場合、アーカイブデータを取得して分析実行
+                    if not search_result.get("matches") or len(search_result["matches"]) == 0:
+                        logger.error(f"No matches found in search_result: {search_result}")
+                        return {
+                            "status": "success",
+                            "response": "該当するレースが見つかりませんでした。",
+                            "message": message
+                        }
                     match = search_result["matches"][0]
                     
                     # アーカイブデータをロードして分析を実行

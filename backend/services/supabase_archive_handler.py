@@ -124,6 +124,8 @@ class SupabaseArchiveHandler:
         """
         Supabaseから優先順位付きでレースを検索
         """
+        logger.info(f"search_archive_races_with_priority called with race_info: {race_info}, current_date: {current_date}")
+        
         if not current_date:
             current_date = datetime.now().strftime("%Y-%m-%d")
         
@@ -221,16 +223,21 @@ class SupabaseArchiveHandler:
             
             response = query.execute()
             
+            logger.info(f"Supabase query response: {response}")
+            
             if response.data:
                 matches = []
                 for race in response.data:
                     match = self._format_race_data(race)
                     matches.append(match)
                 
+                logger.info(f"Found {len(matches)} matches from Supabase")
                 return {
                     "found": True,
                     "matches": matches
                 }
+            else:
+                logger.warning(f"No data found from Supabase for {venue} {race_number}R")
             
         except Exception as e:
             logger.error(f"Supabase検索エラー: {e}")
@@ -300,7 +307,7 @@ class SupabaseArchiveHandler:
     
     def format_selection_message_with_priority(self, matches: List[Dict[str, Any]], has_more: bool = False) -> str:
         """優先順位付きの選択メッセージを生成"""
-        if not matches:
+        if not matches or len(matches) == 0:
             return "該当するレースが見つかりませんでした。"
         
         if len(matches) == 1:
@@ -331,9 +338,10 @@ class SupabaseArchiveHandler:
             message += "より詳しい情報（日付など）を教えてください。"
         
         # 2週間以上前のレースの場合はアーカイブページ誘導
-        oldest_match = matches[-1] if matches else None
-        if oldest_match and oldest_match.get("days_diff", 0) < -14:
-            message += "\n\n💡 2週間以上前のレースは、アーカイブページから直接分析することをお勧めします。"
+        if matches and len(matches) > 0:
+            oldest_match = matches[-1]
+            if oldest_match and oldest_match.get("days_diff", 0) < -14:
+                message += "\n\n💡 2週間以上前のレースは、アーカイブページから直接分析することをお勧めします。"
         
         return message
     

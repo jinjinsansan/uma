@@ -223,7 +223,8 @@ class SupabaseArchiveHandler:
             
             response = query.execute()
             
-            logger.info(f"Supabase query response: {response}")
+            logger.info(f"Supabase query executed for {venue} {race_number}R on {specific_date or 'any date'}")
+            logger.info(f"Supabase query response data count: {len(response.data) if response.data else 0}")
             
             if response.data:
                 matches = []

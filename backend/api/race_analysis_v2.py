@@ -510,6 +510,44 @@ async def race_analysis_chat(request: Dict[str, Any]):
                             "message": message
                         }
         
+        # デバッグ用：Supabaseに登録されているレースを確認
+        if message.lower() == "debug races":
+            try:
+                from services.supabase_client import supabase_client
+                
+                if not supabase_client.is_available():
+                    return {
+                        "status": "success",
+                        "response": "Supabaseに接続できません。環境変数を確認してください。",
+                        "message": message
+                    }
+                
+                # 最新のレースデータを取得
+                response = supabase_client.client.table('archive_races') \
+                    .select('race_date, venue, race_number, race_name') \
+                    .order('race_date', desc=True) \
+                    .limit(20) \
+                    .execute()
+                
+                if response.data:
+                    debug_msg = "📊 Supabaseに登録されている最新レース:\n\n"
+                    for race in response.data:
+                        debug_msg += f"• {race['race_date']} {race['venue']}{race['race_number']}R: {race['race_name']}\n"
+                else:
+                    debug_msg = "Supabaseにレースデータが見つかりません。"
+                
+                return {
+                    "status": "success",
+                    "response": debug_msg,
+                    "message": message
+                }
+            except Exception as e:
+                return {
+                    "status": "success",
+                    "response": f"デバッグエラー: {str(e)}",
+                    "message": message
+                }
+        
         # レース名を検出（改良版）
         race_keywords = ['記念', 'ステークス', 'カップ', 'トロフィー', '賞', 'を分析', 'を予想']
         venue_pattern = r'(東京|中山|京都|阪神|中京|新潟|札幌|函館|福島|小倉)\d+[Rr]'

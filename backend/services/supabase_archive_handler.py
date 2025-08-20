@@ -326,7 +326,7 @@ class SupabaseArchiveHandler:
             match = matches[0]
             return f"📅 {match['date']} {match['venue']}{match['race_number']}R「{match['race_name']}」を分析します。"
         
-        message = "複数のレースが見つかりました。どちらを分析しますか？\n\n"
+        message = "複数のレースが見つかりました。以下のボタンから選択してください。\n\n"
         
         for i, match in enumerate(matches, 1):
             future_mark = "（未来のレース）" if match.get("is_future", False) else ""
@@ -340,14 +340,7 @@ class SupabaseArchiveHandler:
             elif match.get("grade") == "G3":
                 grade_badge = "🥉 "
             
-            message += f"{i}. 📅 {match['date']} {match['venue']}{match['race_number']}R「{grade_badge}{match['race_name']}」{weekday}{future_mark}\n"
-        
-        message += "\n番号を選択するか、"
-        
-        if has_more:
-            message += "上記以外の日付をご希望の場合は、日付を直接入力してください（例：7月20日）。"
-        else:
-            message += "より詳しい情報（日付など）を教えてください。"
+            message += f"• 📅 {match['date']} {match['venue']}{match['race_number']}R「{grade_badge}{match['race_name']}」{weekday}{future_mark}\n"
         
         # 2週間以上前のレースの場合はアーカイブページ誘導
         if matches and len(matches) > 0:

@@ -1,0 +1,109 @@
+{
+  "Ｃ．デム": {
+    "venue_course_stats": {
+      "中山_2000": {
+        "races": 1,
+        "wins": 0,
+        "top3": 0,
+        "win_rate": 0.0,
+        "top3_rate": 0.0
+      },
+      "中山_2500": {
+        "races": 2,
+        "wins": 0,
+        "top3": 1,
+        "win_rate": 0.0,
+        "top3_rate": 0.5
+      },
+      "中山_1800": {
+        "races": 1,
+        "wins": 1,
+        "top3": 1,
+        "win_rate": 1.0,
+        "top3_rate": 1.0
+      },
+      "中山_1200": {
+        "races": 2,
+        "wins": 0,
+        "top3": 1,
+        "win_rate": 0.0,
+        "top3_rate": 0.5
+      },
+      "中山_1600": {
+        "races": 1,
+        "wins": 0,
+        "top3": 0,
+        "win_rate": 0.0,
+        "top3_rate": 0.0
+      },
+      "京都_1800": {
+        "races": 1,
+        "wins": 0,
+        "top3": 0,
+        "win_rate": 0.0,
+        "top3_rate": 0.0
+      },
+      "京都_1400": {
+        "races": 1,
+        "wins": 0,
+        "top3": 0,
+        "win_rate": 0.0,
+        "top3_rate": 0.0
+      }
+    },
+    "track_condition_stats": {
+      "良": {
+        "races": 6,
+        "wins": 0,
+        "top3": 1,
+        "win_rate": 0.0,
+        "top3_rate": 0.167
+      },
+      "稍重": {
+        "races": 3,
+        "wins": 1,
+        "top3": 2,
+        "win_rate": 0.333,
+        "top3_rate": 0.667
+      }
+    },
+    "post_position_stats": {
+      "6": {
+        "races": 2,
+        "wins": 0,
+        "top3": 0,
+        "win_rate": 0.0,
+        "top3_rate": 0.0
+      },
+      "8": {
+        "races": 2,
+        "wins": 0,
+        "top3": 1,
+        "win_rate": 0.0,
+        "top3_rate": 0.5
+      },
+      "4": {
+        "races": 4,
+        "wins": 1,
+        "top3": 1,
+        "win_rate": 0.25,
+        "top3_rate": 0.25
+      },
+      "3": {
+        "races": 1,
+        "wins": 0,
+        "top3": 1,
+        "win_rate": 0.0,
+        "top3_rate": 1.0
+      }
+    },
+    "sire_stats": {},
+    "overall_stats": {
+      "total_races_analyzed": 9,
+      "overall_win_rate": 0.111,
+      "overall_top3_rate": 0.333
+    },
+    "venue_course_full_stats": {
+      "中山_1800": {
+        "total_races": 31,
+        "wins": 

@@ -166,6 +166,7 @@ async def race_analysis_chat(request: Dict[str, Any]):
         
         logger.info(f"Race analysis chat request: {message[:100]}...")
         logger.info(f"Race info from frontend: {race_info}")
+        logger.info(f"Race info type: {type(race_info)}, has horses: {race_info.get('horses') if race_info else 'None'}")
         logger.info(f"Engine type: {engine_type}, Version: {version}")
         # logger.info(f"Headers - User: {user_email}, Has Token: {bool(session_token)}")
         
@@ -173,7 +174,8 @@ async def race_analysis_chat(request: Dict[str, Any]):
         from services.supabase_archive_handler import supabase_archive_handler
         
         # フロントエンドから race_info が渡された場合（アーカイブページから）
-        if race_info and race_info.get('venue') and race_info.get('race_number'):
+        # ただし、horsesデータがない場合は自然言語処理を優先
+        if race_info and race_info.get('horses') and len(race_info.get('horses', [])) > 0:
             # race_infoから直接レースデータを取得して分析を実行
             try:
                 # chat.pyの共有インスタンスを使用

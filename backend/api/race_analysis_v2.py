@@ -217,9 +217,9 @@ async def race_analysis_chat(request: Dict[str, Any]):
                 if not result.get('error') and result.get('results'):
                     race_date = race_info.get('race_date') or race_info.get('date', '')
                     if race_date:
-                        response_text = f"🏆 {race_date} {race_info.get('venue')}{race_info.get('race_number')}R {race_info.get('race_name', '')} のレースアナリシス\n\n"
+                        response_text = f"🏆 {race_date} {race_info.get('venue')}{race_info.get('race_number')}R {race_info.get('race_name', '')} のI-Logic分析\n\n"
                     else:
-                        response_text = f"🏆 {race_info.get('venue')}{race_info.get('race_number')}R {race_info.get('race_name', '')} のレースアナリシス\n\n"
+                        response_text = f"🏆 {race_info.get('venue')}{race_info.get('race_number')}R {race_info.get('race_name', '')} のI-Logic分析\n\n"
                     
                     # 上位馬の結果を表示
                     for i, horse_result in enumerate(result['results']):
@@ -348,7 +348,7 @@ async def race_analysis_chat(request: Dict[str, Any]):
                         if 'error' in result:
                             response_text = f"分析エラー: {result['error']}"
                         else:
-                            response_text = f"""🏆 {match['date']} {match['venue']}{match['race_number']}R「{match['race_name']}」のレースアナリシス
+                            response_text = f"""🏆 {match['date']} {match['venue']}{match['race_number']}R「{match['race_name']}」のI-Logic分析
 
 """
                             # 全頭を表示
@@ -410,7 +410,7 @@ async def race_analysis_chat(request: Dict[str, Any]):
             
             if resolved.get('resolved'):
                 # 日付が特定できた場合
-                response_text = f"""🏆 {resolved['venue']}{resolved['race_number']}R（{resolved['estimated_date']}）のレースアナリシス
+                response_text = f"""🏆 {resolved['venue']}{resolved['race_number']}R（{resolved['estimated_date']}）のI-Logic分析
 
 {resolved.get('suggestion', '')}"""
             else:
@@ -452,7 +452,7 @@ async def race_analysis_chat(request: Dict[str, Any]):
                     # レース名を正しく構築（日付も含める）
                     race_date = race_info.get('race_date', '')
                     full_race_name = f"{race_date} {race_data['venue']}{race_data['race_number']}R {race_data['race_name']}"
-                    response_text = f"""🏆 {full_race_name}のレースアナリシス
+                    response_text = f"""🏆 {full_race_name}のI-Logic分析
 
 """
                     # 全頭を表示
@@ -495,10 +495,10 @@ async def race_analysis_chat(request: Dict[str, Any]):
         
         # レース情報がない場合は従来のモックレスポンス
         race_name = message.replace('を分析して', '').replace('を予想して', '').strip()
-        response_text = f"""🏆 {race_name}のレースアナリシス
+        response_text = f"""🏆 {race_name}のI-Logic分析
 
 レース情報を取得できませんでした。
-アーカイブページから「レースアナリシス」ボタンをクリックしてお試しください。"""
+アーカイブページから「I-Logic分析」ボタンをクリックしてお試しください。"""
         
         return {
             "status": "success",

@@ -199,7 +199,7 @@ class RaceAnalysisChatHandler:
         summary = analysis_result.get('summary', {})
         
         # ヘッダー
-        response = f"🏆 D-Logic レースアナリシス - {race_info.get('race_name', 'レース')}\n"
+        response = f"🏆 I-Logic分析 - {race_info.get('race_name', 'レース')}\n"
         response += f"📍 {race_info.get('venue', '')} {race_info.get('distance', '')} "
         if race_info.get('grade'):
             response += f"【{race_info.get('grade')}】"

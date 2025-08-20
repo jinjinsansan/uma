@@ -10,8 +10,12 @@ import logging
 from datetime import datetime
 from services.race_analysis_engine import get_race_analysis_engine
 from services.race_date_resolver import race_date_resolver
+from datetime import timedelta
 
 logger = logging.getLogger(__name__)
+
+# ユーザーの選択を一時的に保存する仕組み
+race_selection_cache = {}
 
 router = APIRouter()
 
@@ -173,6 +177,102 @@ async def race_analysis_chat(request: Dict[str, Any]):
         # アーカイブレース認識チェック（Supabase版）
         from services.supabase_archive_handler import supabase_archive_handler
         
+        # 数字のみのメッセージかチェック（1, 2, 3などの選択）
+        if message.strip().isdigit():
+            selection_number = int(message.strip())
+            logger.info(f"Number selection detected: {selection_number}")
+            
+            # キャッシュから前回の検索結果を取得
+            cached_results = race_selection_cache.get(user_id)
+            if cached_results and cached_results.get('expire_at', datetime.min) > datetime.now():
+                matches = cached_results.get('matches', [])
+                if 1 <= selection_number <= len(matches):
+                    # 選択されたレースを取得
+                    selected_race = matches[selection_number - 1]
+                    logger.info(f"Selected race: {selected_race}")
+                    
+                    # キャッシュをクリア
+                    del race_selection_cache[user_id]
+                    
+                    # 選択されたレースで分析を実行
+                    try:
+                        # Supabaseからレースデータを取得
+                        race_data = await supabase_archive_handler.get_race_data(
+                            selected_race['date'],
+                            selected_race['venue'],
+                            selected_race['race_number']
+                        )
+                        
+                        if not race_data:
+                            return {
+                                "status": "success",
+                                "response": f"申し訳ございません。選択されたレースのデータが見つかりませんでした。",
+                                "message": message
+                            }
+                        
+                        # 分析実行
+                        from api.chat import fast_engine_instance
+                        race_analysis_engine = get_race_analysis_engine(fast_engine_instance)
+                        result = race_analysis_engine.analyze_race(race_data)
+                        
+                        # 結果をフォーマット
+                        if 'error' in result:
+                            response_text = f"分析エラー: {result['error']}"
+                        else:
+                            response_text = f"🏆 {selected_race['date']} {selected_race['venue']}{selected_race['race_number']}R「{selected_race['race_name']}」のI-Logic分析\n\n"
+                            
+                            # 全頭を表示
+                            if 'results' in result and len(result['results']) > 0:
+                                for i, horse_result in enumerate(result['results']):
+                                    position = i + 1
+                                    if position <= 3:
+                                        emoji = ['🥇', '🥈', '🥉'][i]
+                                    elif position <= 5:
+                                        emoji = '🏅'
+                                    else:
+                                        emoji = ''
+                                    
+                                    horse_name = horse_result['horse']
+                                    jockey_name = horse_result['jockey']
+                                    total_score = horse_result['total_score']
+                                    horse_score = horse_result.get('horse_score', 0)
+                                    jockey_score = horse_result.get('jockey_score', 0)
+                                    
+                                    if emoji:
+                                        response_text += f"{emoji} {position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
+                                    else:
+                                        response_text += f"{position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
+                                    response_text += f"馬: {horse_score:.1f}点 / 騎手: {jockey_score:.1f}点\n\n"
+                        
+                        return {
+                            "status": "success",
+                            "response": response_text,
+                            "message": message
+                        }
+                        
+                    except Exception as e:
+                        logger.error(f"Race analysis error: {e}")
+                        import traceback
+                        logger.error(traceback.format_exc())
+                        return {
+                            "status": "success",
+                            "response": f"レース分析中にエラーが発生しました: {str(e)}",
+                            "message": message
+                        }
+                else:
+                    return {
+                        "status": "success",
+                        "response": f"無効な選択です。1から{len(matches)}の間の数字を入力してください。",
+                        "message": message
+                    }
+            else:
+                # キャッシュが期限切れまたは存在しない
+                return {
+                    "status": "success",
+                    "response": "選択の有効期限が切れました。もう一度レース名を入力してください。",
+                    "message": message
+                }
+        
         # フロントエンドから race_info が渡された場合（アーカイブページから）
         # ただし、horsesデータがない場合は自然言語処理を優先
         if race_info and race_info.get('horses') and len(race_info.get('horses', [])) > 0:
@@ -312,8 +412,16 @@ async def race_analysis_chat(request: Dict[str, Any]):
             if search_result["found"]:
                 if search_result.get("need_selection", False):
                     # 複数候補がある場合（最大5件、優先順位付き）
+                    matches = search_result["matches"]
+                    
+                    # ユーザーの選択を待つために結果を保存
+                    race_selection_cache[user_id] = {
+                        "matches": matches,
+                        "expire_at": datetime.now() + timedelta(minutes=5)  # 5分間有効
+                    }
+                    
                     selection_msg = supabase_archive_handler.format_selection_message_with_priority(
-                        search_result["matches"],
+                        matches,
                         search_result.get("has_more", False)
                     )
                     return {

@@ -421,15 +421,40 @@ async def race_analysis_chat(request: Dict[str, Any]):
                         "expire_at": datetime.now() + timedelta(minutes=5)  # 5分間有効
                     }
                     
+                    # 3件以上ある場合の追加メッセージ
+                    additional_msg = ""
+                    if len(matches) > 3:
+                        additional_msg = "\n\n※これより過去のレースをI-Logic分析する場合は、アーカイブページから分析してください。"
+                    
                     selection_msg = supabase_archive_handler.format_selection_message_with_priority(
                         matches,
                         search_result.get("has_more", False)
-                    )
+                    ) + additional_msg
+                    
+                    # 日付が新しい順に最大3件のレース選択肢を構築
+                    sorted_matches = sorted(matches, key=lambda x: x['date'], reverse=True)[:3]
+                    race_options = []
+                    for match in sorted_matches:
+                        race_options.append({
+                            "date": match['date'],
+                            "venue": match['venue'],
+                            "race_number": match['race_number'],
+                            "race_name": match['race_name'],
+                            "is_future": match.get('is_future', False),
+                            "has_jockey_data": match.get('has_jockey_data', False),
+                            "horses": match.get('horses', []),
+                            "jockeys": match.get('jockeys', []),
+                            "posts": match.get('posts', []),
+                            "horse_numbers": match.get('horse_numbers', [])
+                        })
+                    
+                    # 既存のレスポンスに race_options を追加
                     return {
                         "status": "success",
                         "response": selection_msg,
                         "message": message,
-                        "multiple_archive_matches": True
+                        "multiple_archive_matches": True,
+                        "race_options": race_options
                     }
                 else:
                     # 単一の候補が見つかった場合、アーカイブデータを取得して分析実行

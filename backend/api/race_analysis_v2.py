@@ -513,9 +513,18 @@ async def race_analysis_chat(request: Dict[str, Any]):
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
         
+        # より詳細なエラーメッセージ
+        error_message = "エラーが発生しました。"
+        if "supabase" in str(e).lower():
+            error_message = "データベース接続エラーが発生しました。管理者にお問い合わせください。"
+        elif "not found" in str(e).lower():
+            error_message = "レースデータが見つかりませんでした。"
+        else:
+            error_message = f"エラーが発生しました: {str(e)}"
+        
         return {
             "status": "error",
-            "response": "エラーが発生しました。しばらく待ってから再度お試しください。",
+            "response": error_message,
             "message": request.get('message', ''),
             "error": str(e),
             "error_type": type(e).__name__,

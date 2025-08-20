@@ -23,6 +23,17 @@ class SupabaseArchiveHandler:
         # 分析要求の判定
         is_analysis = any(word in message for word in ["分析", "予想", "診断", "解析", "して"])
         
+        # 0. 完全な日付＋レース情報のパターン（例：2025-08-17 札幌6R）
+        full_date_pattern = r'(\d{4}-\d{2}-\d{2})\s+(東京|中山|京都|阪神|中京|新潟|札幌|函館|福島|小倉)(\d+)[RrＲ]'
+        full_match = re.search(full_date_pattern, message)
+        if full_match:
+            return {
+                "date": full_match.group(1),
+                "venue": full_match.group(2),
+                "race_number": int(full_match.group(3)),
+                "action": "analyze" if is_analysis else "info"
+            }
+        
         # 1. レース名での検索（札幌記念など）
         race_name_patterns = {
             "札幌記念": {"venue": "札幌", "race_number": 11},

@@ -177,8 +177,9 @@ async def race_analysis_chat(request: Dict[str, Any]):
         # アーカイブレース認識チェック（Supabase版）
         from services.supabase_archive_handler import supabase_archive_handler
         
-        # 数字のみのメッセージかチェック（1, 2, 3などの選択）
-        if message.strip().isdigit():
+        # 一時的に数字選択機能を無効化（バグ修正のため）
+        # TODO: セッション管理を改善後に再度有効化
+        if False and message.strip().isdigit():
             selection_number = int(message.strip())
             logger.info(f"Number selection detected: {selection_number}")
             
@@ -522,11 +523,13 @@ async def race_analysis_chat(request: Dict[str, Any]):
                         "message": message
                     }
                 
-                # 最新のレースデータを取得
+                # 最新のレースデータを取得（日付、開催場、レース番号でソート）
                 response = supabase_client.client.table('archive_races') \
                     .select('race_date, venue, race_number, race_name') \
                     .order('race_date', desc=True) \
-                    .limit(20) \
+                    .order('venue') \
+                    .order('race_number') \
+                    .limit(50) \
                     .execute()
                 
                 if response.data:

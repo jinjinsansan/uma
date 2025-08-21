@@ -202,9 +202,15 @@ class SupabaseArchiveHandler:
         all_matches = []
         current_date_obj = datetime.strptime(current_date, "%Y-%m-%d")
         
-        # 未来7日間 + 過去7日間を検索
-        future_matches = await self._search_date_range(venue, race_number, current_date_obj, 0, 7, race_name)
-        past_matches = await self._search_date_range(venue, race_number, current_date_obj, -7, -1, race_name)
+        # レース名が指定されている場合（G1レースなど）は、より広い範囲を検索
+        if race_name:
+            # G1レースの場合は過去2年分を検索
+            future_matches = await self._search_date_range(venue, race_number, current_date_obj, 0, 30, race_name)
+            past_matches = await self._search_date_range(venue, race_number, current_date_obj, -730, -1, race_name)  # 2年前まで
+        else:
+            # 通常のレースは未来7日間 + 過去7日間を検索
+            future_matches = await self._search_date_range(venue, race_number, current_date_obj, 0, 7, race_name)
+            past_matches = await self._search_date_range(venue, race_number, current_date_obj, -7, -1, race_name)
         
         all_matches = future_matches + past_matches
         

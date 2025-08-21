@@ -174,6 +174,7 @@ class SupabaseArchiveHandler:
         
         venue = race_info.get("venue")
         race_number = race_info.get("race_number")
+        race_name = race_info.get("race_name")
         specific_date = race_info.get("date")
         
         # キャッシュチェック

@@ -277,6 +277,9 @@ async def race_analysis_chat(request: Dict[str, Any]):
         specific_date = supabase_archive_handler.extract_specific_date(message)
         archive_race_info = supabase_archive_handler.extract_race_info(message)
         
+        logger.info(f"Extracted race info: {archive_race_info}")
+        logger.info(f"Extracted specific date: {specific_date}")
+        
         if archive_race_info and archive_race_info.get("action") == "analyze":
             # 具体的な日付が指定されている場合
             if specific_date:
@@ -284,6 +287,7 @@ async def race_analysis_chat(request: Dict[str, Any]):
                 search_result = await supabase_archive_handler.search_archive_races_with_priority({
                     "venue": archive_race_info.get("venue"),
                     "race_number": archive_race_info.get("race_number"),
+                    "race_name": archive_race_info.get("race_name"),
                     "date": specific_date
                 })
                 

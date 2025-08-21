@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-22T01:00:26.053336",
+  "process_running": true,
+  "log_lines": 1230,
+  "total_errors": 579,
+  "new_errors": 1,
+  "progress": {
+    "processed": 580,
+    "total": 810,
+    "progress_rate": 71.60493827160494,
+    "remaining_hours": 5.75
+  },
+  "latest_logs": "2025-08-22 00:56:32,081 - INFO - 処理中: 橋本直哉\n2025-08-22 00:58:04,655 - ERROR - 種牡馬別成績取得エラー(橋本直哉): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-22 00:58:05,157 - INFO - 処理中: 櫻井光輔\n2025-08-22 00:59:41,446 - ERROR - 種牡馬別成績取得エラー(櫻井光輔): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-22 00:59:41,947 - INFO - 処理中: 櫻井拓章\n",
+  "idle_time": null
+}

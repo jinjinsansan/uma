@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-21T22:00:50.294270",
+  "process_running": true,
+  "log_lines": 1000,
+  "total_errors": 470,
+  "new_errors": 1,
+  "progress": {
+    "processed": 471,
+    "total": 810,
+    "progress_rate": 58.14814814814815,
+    "remaining_hours": 8.475
+  },
+  "latest_logs": "2025-08-21 21:58:42,690 - ERROR - 種牡馬別成績取得エラー(平沢健治): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 21:58:43,192 - INFO - 処理中: 平瀬城久\n2025-08-21 22:00:19,571 - ERROR - 種牡馬別成績取得エラー(平瀬城久): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 22:00:21,660 - INFO - 保存完了: data/jockey_knowledge_9races.json (470騎手)\n2025-08-21 22:00:22,161 - INFO - 処理中: 平野優　\n",
+  "idle_time": null
+}

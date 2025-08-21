@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-22T00:00:28.730930",
+  "process_running": true,
+  "log_lines": 1152,
+  "total_errors": 542,
+  "new_errors": 1,
+  "progress": {
+    "processed": 543,
+    "total": 810,
+    "progress_rate": 67.03703703703704,
+    "remaining_hours": 6.675
+  },
+  "latest_logs": "2025-08-21 23:57:04,537 - INFO - 処理中: 林幻　　\n2025-08-21 23:58:35,832 - ERROR - 種牡馬別成績取得エラー(林幻　　): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 23:58:36,333 - INFO - 処理中: 林悠翔　\n2025-08-22 00:00:09,794 - ERROR - 種牡馬別成績取得エラー(林悠翔　): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-22 00:00:10,295 - INFO - 処理中: 林満明　\n",
+  "idle_time": null
+}

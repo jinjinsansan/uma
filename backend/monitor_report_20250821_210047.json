@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-21T21:00:47.829854",
+  "process_running": true,
+  "log_lines": 923,
+  "total_errors": 434,
+  "new_errors": 0,
+  "progress": {
+    "processed": 435,
+    "total": 810,
+    "progress_rate": 53.70370370370371,
+    "remaining_hours": 9.375
+  },
+  "latest_logs": "2025-08-21 20:56:56,017 - INFO - 処理中: 山本聡哉\n2025-08-21 20:58:15,970 - ERROR - 種牡馬別成績取得エラー(山本聡哉): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 20:58:16,471 - INFO - 処理中: 山本聡紀\n2025-08-21 20:59:37,154 - ERROR - 種牡馬別成績取得エラー(山本聡紀): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 20:59:37,656 - INFO - 処理中: 山林堂信\n",
+  "idle_time": "0:01:05.875032"
+}

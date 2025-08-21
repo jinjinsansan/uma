@@ -34,11 +34,43 @@ class SupabaseArchiveHandler:
                 "action": "analyze" if is_analysis else "info"
             }
         
-        # 1. レース名での検索（札幌記念など）
+        # 1. レース名での検索（G1レース、重賞レースなど）
         race_name_patterns = {
+            # 2024年G1レース
+            "フェブラリーステークス": {"venue": "東京", "race_number": 11},
+            "高松宮記念": {"venue": "中京", "race_number": 11},
+            "大阪杯": {"venue": "阪神", "race_number": 11},
+            "桜花賞": {"venue": "阪神", "race_number": 11},
+            "皐月賞": {"venue": "中山", "race_number": 11},
+            "天皇賞春": {"venue": "京都", "race_number": 11},
+            "天皇賞(春)": {"venue": "京都", "race_number": 11},
+            "NHKマイルカップ": {"venue": "東京", "race_number": 11},
+            "NHKマイルC": {"venue": "東京", "race_number": 11},
+            "オークス": {"venue": "東京", "race_number": 11},
+            "東京優駿": {"venue": "東京", "race_number": 11},
+            "日本ダービー": {"venue": "東京", "race_number": 11},
+            "ダービー": {"venue": "東京", "race_number": 11},
+            "安田記念": {"venue": "東京", "race_number": 11},
+            "宝塚記念": {"venue": "阪神", "race_number": 11},
+            "スプリンターズステークス": {"venue": "中山", "race_number": 11},
+            "スプリンターズS": {"venue": "中山", "race_number": 11},
+            "秋華賞": {"venue": "京都", "race_number": 11},
+            "菊花賞": {"venue": "京都", "race_number": 11},
+            "天皇賞秋": {"venue": "東京", "race_number": 11},
+            "天皇賞(秋)": {"venue": "東京", "race_number": 11},
+            "エリザベス女王杯": {"venue": "京都", "race_number": 11},
+            "マイルチャンピオンシップ": {"venue": "京都", "race_number": 11},
+            "マイルCS": {"venue": "京都", "race_number": 11},
+            "ジャパンカップ": {"venue": "東京", "race_number": 11},
+            "ジャパンC": {"venue": "東京", "race_number": 11},
+            "チャンピオンズカップ": {"venue": "中京", "race_number": 11},
+            "チャンピオンズC": {"venue": "中京", "race_number": 11},
+            "朝日杯フューチュリティステークス": {"venue": "阪神", "race_number": 11},
+            "朝日杯FS": {"venue": "阪神", "race_number": 11},
+            "有馬記念": {"venue": "中山", "race_number": 11},
+            # 重賞レース
             "札幌記念": {"venue": "札幌", "race_number": 11},
             "新潟記念": {"venue": "新潟", "race_number": 11},
-            # 必要に応じて追加
         }
         
         for race_name, info in race_name_patterns.items():
@@ -154,7 +186,7 @@ class SupabaseArchiveHandler:
         
         # 特定の日付が指定されている場合
         if specific_date:
-            result = await self._search_from_supabase(venue, race_number, specific_date)
+            result = await self._search_from_supabase(venue, race_number, specific_date, race_name)
             if result['found']:
                 self._update_cache(cache_key, result)
                 return result
@@ -170,8 +202,8 @@ class SupabaseArchiveHandler:
         current_date_obj = datetime.strptime(current_date, "%Y-%m-%d")
         
         # 未来7日間 + 過去7日間を検索
-        future_matches = await self._search_date_range(venue, race_number, current_date_obj, 0, 7)
-        past_matches = await self._search_date_range(venue, race_number, current_date_obj, -7, -1)
+        future_matches = await self._search_date_range(venue, race_number, current_date_obj, 0, 7, race_name)
+        past_matches = await self._search_date_range(venue, race_number, current_date_obj, -7, -1, race_name)
         
         all_matches = future_matches + past_matches
         
@@ -180,7 +212,7 @@ class SupabaseArchiveHandler:
         self._update_cache(cache_key, result)
         return result
     
-    async def _search_date_range(self, venue: str, race_number: int, base_date: datetime, start_offset: int, end_offset: int) -> List[Dict[str, Any]]:
+    async def _search_date_range(self, venue: str, race_number: int, base_date: datetime, start_offset: int, end_offset: int, race_name: Optional[str] = None) -> List[Dict[str, Any]]:
         """指定された日付範囲でレースを検索"""
         if not supabase_client.is_available():
             return []
@@ -194,8 +226,13 @@ class SupabaseArchiveHandler:
                 .eq('venue', venue) \
                 .eq('race_number', race_number) \
                 .gte('race_date', start_date) \
-                .lte('race_date', end_date) \
-                .order('race_date', desc=(start_offset < 0))
+                .lte('race_date', end_date)
+            
+            # レース名が指定されている場合は追加の絞り込み
+            if race_name:
+                query = query.ilike('race_name', f'%{race_name}%')
+            
+            query = query.order('race_date', desc=(start_offset < 0))
             
             response = query.execute()
             
@@ -210,8 +247,8 @@ class SupabaseArchiveHandler:
         
         return []
     
-    async def _search_from_supabase(self, venue: str, race_number: int, specific_date: Optional[str] = None) -> Dict[str, Any]:
-        """Supabaseから検索"""
+    async def _search_from_supabase(self, venue: str, race_number: int, specific_date: Optional[str] = None, race_name: Optional[str] = None) -> Dict[str, Any]:
+        """Supabaseから検索（レース名検索も対応）"""
         if not supabase_client.is_available():
             logger.error("Supabaseクライアントが利用できません。環境変数を確認してください: SUPABASE_URL, SUPABASE_ANON_KEY")
             return {
@@ -221,16 +258,58 @@ class SupabaseArchiveHandler:
             }
         
         try:
-            query = supabase_client.client.table('archive_races') \
-                .select('*') \
-                .eq('venue', venue) \
-                .eq('race_number', race_number)
-            
-            if specific_date:
-                query = query.eq('race_date', specific_date)
+            # レース名が指定されている場合は、レース名で検索
+            if race_name:
+                # G1レース名の正規化（略称対応）
+                normalized_names = []
+                if race_name == "NHKマイルカップ" or race_name == "NHKマイルC":
+                    normalized_names = ["NHKマイルカップ", "NHKマイルC"]
+                elif race_name == "スプリンターズステークス" or race_name == "スプリンターズS":
+                    normalized_names = ["スプリンターズステークス", "スプリンターズS"]
+                elif race_name == "マイルチャンピオンシップ" or race_name == "マイルCS":
+                    normalized_names = ["マイルチャンピオンシップ", "マイルCS"]
+                elif race_name == "ジャパンカップ" or race_name == "ジャパンC":
+                    normalized_names = ["ジャパンカップ", "ジャパンC"]
+                elif race_name == "チャンピオンズカップ" or race_name == "チャンピオンズC":
+                    normalized_names = ["チャンピオンズカップ", "チャンピオンズC"]
+                elif race_name == "朝日杯フューチュリティステークス" or race_name == "朝日杯FS":
+                    normalized_names = ["朝日杯フューチュリティステークス", "朝日杯FS"]
+                else:
+                    normalized_names = [race_name]
+                
+                # レース名で検索（部分一致）
+                query = supabase_client.client.table('archive_races').select('*')
+                
+                # 複数の正規化された名前で検索
+                if len(normalized_names) > 1:
+                    # ORクエリを構築
+                    or_conditions = []
+                    for name in normalized_names:
+                        or_conditions.append(f"race_name.ilike.%{name}%")
+                    query = query.or_(','.join(or_conditions))
+                else:
+                    query = query.ilike('race_name', f'%{race_name}%')
+                
+                # 開催場とレース番号も条件に追加（より正確な絞り込み）
+                query = query.eq('venue', venue).eq('race_number', race_number)
+                
+                if specific_date:
+                    query = query.eq('race_date', specific_date)
+                else:
+                    # 新しい順にソート、最大5件
+                    query = query.order('race_date', desc=True).limit(5)
             else:
-                # 新しい順にソート、最大5件
-                query = query.order('race_date', desc=True).limit(5)
+                # レース名が指定されていない場合は従来通り
+                query = supabase_client.client.table('archive_races') \
+                    .select('*') \
+                    .eq('venue', venue) \
+                    .eq('race_number', race_number)
+                
+                if specific_date:
+                    query = query.eq('race_date', specific_date)
+                else:
+                    # 新しい順にソート、最大5件
+                    query = query.order('race_date', desc=True).limit(5)
             
             response = query.execute()
             

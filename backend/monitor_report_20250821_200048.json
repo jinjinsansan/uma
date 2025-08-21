@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-21T20:00:48.370217",
+  "process_running": true,
+  "log_lines": 844,
+  "total_errors": 397,
+  "new_errors": 1,
+  "progress": {
+    "processed": 398,
+    "total": 810,
+    "progress_rate": 49.135802469135804,
+    "remaining_hours": 10.3
+  },
+  "latest_logs": "2025-08-21 19:56:50,676 - INFO - 処理中: 小崎綾也\n2025-08-21 19:58:28,144 - ERROR - 種牡馬別成績取得エラー(小崎綾也): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 19:58:28,645 - INFO - 処理中: 小杉亮　\n2025-08-21 20:00:05,827 - ERROR - 種牡馬別成績取得エラー(小杉亮　): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 20:00:06,328 - INFO - 処理中: 小松丈二\n",
+  "idle_time": null
+}

@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-22T02:00:28.203644",
+  "process_running": true,
+  "log_lines": 1305,
+  "total_errors": 614,
+  "new_errors": 0,
+  "progress": {
+    "processed": 615,
+    "total": 810,
+    "progress_rate": 75.92592592592592,
+    "remaining_hours": 4.875
+  },
+  "latest_logs": "2025-08-22 01:55:30,456 - INFO - 処理中: 渡瀬和幸\n2025-08-22 01:57:04,374 - ERROR - 種牡馬別成績取得エラー(渡瀬和幸): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-22 01:57:04,876 - INFO - 処理中: 渡辺博文\n2025-08-22 01:58:45,216 - ERROR - 種牡馬別成績取得エラー(渡辺博文): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-22 01:58:45,717 - INFO - 処理中: 渡辺竜也\n",
+  "idle_time": "0:01:05.884329"
+}

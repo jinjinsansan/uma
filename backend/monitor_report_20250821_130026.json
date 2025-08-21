@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-21T13:00:26.642695",
+  "process_running": true,
+  "log_lines": 249,
+  "total_errors": 116,
+  "new_errors": 1,
+  "progress": {
+    "processed": 117,
+    "total": 810,
+    "progress_rate": 14.444444444444443,
+    "remaining_hours": 17.325
+  },
+  "latest_logs": "2025-08-21 12:57:19,201 - INFO - 処理中: ハラ　　\n2025-08-21 12:58:52,549 - ERROR - 種牡馬別成績取得エラー(ハラ　　): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 12:58:53,050 - INFO - 処理中: パリッシ\n2025-08-21 13:00:24,883 - ERROR - 種牡馬別成績取得エラー(パリッシ): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 13:00:25,384 - INFO - 処理中: バルザロ\n",
+  "idle_time": null
+}

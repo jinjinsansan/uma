@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-21T15:00:06.458727",
+  "process_running": true,
+  "log_lines": 414,
+  "total_errors": 194,
+  "new_errors": 1,
+  "progress": {
+    "processed": 195,
+    "total": 810,
+    "progress_rate": 24.074074074074073,
+    "remaining_hours": 15.375
+  },
+  "latest_logs": "2025-08-21 14:56:54,464 - INFO - 処理中: モリス　\n2025-08-21 14:58:26,047 - ERROR - 種牡馬別成績取得エラー(モリス　): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 14:58:26,548 - INFO - 処理中: モレイ　\n2025-08-21 14:59:59,620 - ERROR - 種牡馬別成績取得エラー(モレイ　): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 15:00:00,121 - INFO - 処理中: モレイラ\n",
+  "idle_time": null
+}

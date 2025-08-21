@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-21T18:00:11.032691",
+  "process_running": true,
+  "log_lines": 675,
+  "total_errors": 317,
+  "new_errors": 1,
+  "progress": {
+    "processed": 318,
+    "total": 810,
+    "progress_rate": 39.25925925925926,
+    "remaining_hours": 12.3
+  },
+  "latest_logs": "2025-08-21 17:57:20,159 - INFO - 処理中: 吉村誠之\n2025-08-21 17:58:41,462 - ERROR - 種牡馬別成績取得エラー(吉村誠之): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 17:58:41,963 - INFO - 処理中: 吉田晃浩\n2025-08-21 18:00:06,057 - ERROR - 種牡馬別成績取得エラー(吉田晃浩): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 18:00:06,557 - INFO - 処理中: 吉田豊　\n",
+  "idle_time": null
+}

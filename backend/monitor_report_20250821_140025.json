@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-21T14:00:25.960774",
+  "process_running": true,
+  "log_lines": 330,
+  "total_errors": 154,
+  "new_errors": 1,
+  "progress": {
+    "processed": 155,
+    "total": 810,
+    "progress_rate": 19.1358024691358,
+    "remaining_hours": 16.375
+  },
+  "latest_logs": "2025-08-21 13:56:24,279 - INFO - 処理中: ヘルナン\n2025-08-21 13:58:23,596 - ERROR - 種牡馬別成績取得エラー(ヘルナン): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 13:58:24,097 - INFO - 処理中: ペロヴ　\n2025-08-21 13:59:53,067 - ERROR - 種牡馬別成績取得エラー(ペロヴ　): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 13:59:53,568 - INFO - 処理中: ベントレ\n",
+  "idle_time": null
+}

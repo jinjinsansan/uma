@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-21T12:00:28.570650",
+  "process_running": true,
+  "log_lines": 166,
+  "total_errors": 77,
+  "new_errors": 1,
+  "progress": {
+    "processed": 78,
+    "total": 810,
+    "progress_rate": 9.62962962962963,
+    "remaining_hours": 18.3
+  },
+  "latest_logs": "2025-08-21 11:56:42,547 - INFO - 処理中: スミヨン\n2025-08-21 11:58:18,266 - ERROR - 種牡馬別成績取得エラー(スミヨン): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 11:58:18,767 - INFO - 処理中: ターナー\n2025-08-21 12:00:13,833 - ERROR - 種牡馬別成績取得エラー(ターナー): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-21 12:00:14,333 - INFO - 処理中: ダシルヴ\n",
+  "idle_time": null
+}

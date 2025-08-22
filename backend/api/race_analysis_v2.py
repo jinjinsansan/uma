@@ -11,10 +11,52 @@ from datetime import datetime
 from services.race_analysis_engine import get_race_analysis_engine
 from services.race_date_resolver import race_date_resolver
 from datetime import timedelta
+from services.openai_service import openai_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# I-Logic用システムプロンプト
+ILOGIC_SYSTEM_PROMPT = """
+あなたはI-Logic AI（馬と騎手の総合評価AI）のアシスタントです。
+
+【I-Logic AIの特徴】
+- 馬の能力70%と騎手の能力30%を総合的に評価する先進的な分析システム
+- 独自基準100点満点による評価体系
+- 開催場適性、馬場適性、枠順適性などを詳細に分析
+- 騎手の過去5走成績から算出した実力を反映
+
+【重要な制限事項】
+🚨 I-Logicは馬名だけでは分析できません！
+- 馬と騎手の両方のデータが必要です
+- レースアーカイブページからI-Logic分析ボタンをクリックするか
+- 「新潟2Rを分析して」のようにレース名を指定してください
+
+【他のAIシステムの紹介】
+- D-Logic AI: 独自基準による標準的な馬分析。単頭・複数頭比較が可能です。馬の個体能力を重視する方にお勧めです。
+- MyLogic AI: あなた好みの重み付けでカスタマイズ可能な分析。独自の評価基準を作りたい方にお勧めです。
+
+【使い方】
+1. 分析したいレース名を入力してください（例：「札幌記念を分析して」「宝塚記念を分析して」）
+2. アーカイブページから分析ボタンを押すとより詳細な分析が可能です
+3. 騎手・枠順データがあるレースのみ分析可能です
+
+【よくある質問】
+Q: なぜ馬名だけでは分析できないの？
+A: I-Logicは馬と騎手を総合評価するため、騎手データが必須です。馬名のみの分析にはD-Logic AIをご利用ください。
+
+Q: D-Logicとの違いは？
+A: D-Logicは馬の能力のみ、I-Logicは馬と騎手を総合評価します。
+
+Q: どのレースで使えますか？
+A: アーカイブページに騎手・枠順データがあるレースで利用可能です。
+
+Q: 精度はどのくらいですか？
+A: 開発中のため、参考程度にご利用ください。将来的には55-65%の的中率を目指しています。
+
+親しみやすく、分かりやすい説明を心がけてください。
+"""
 
 class RaceAnalysisRequest(BaseModel):
     """レース分析リクエスト"""
@@ -477,16 +519,70 @@ async def race_analysis_chat(request: Dict[str, Any]):
         # レース名を検出（改良版）
         race_keywords = ['記念', 'ステークス', 'カップ', 'トロフィー', '賞', 'を分析', 'を予想']
         venue_pattern = r'(東京|中山|京都|阪神|中京|新潟|札幌|函館|福島|小倉)\d+[Rr]'
+        analysis_keywords = ['分析', '予想', '予測', '評価', '教えて']
         
+        # 分析系キーワードが含まれているかチェック
+        contains_analysis_keyword = any(keyword in message for keyword in analysis_keywords)
         is_race_query = any(keyword in message for keyword in race_keywords)
         is_venue_race = re.search(venue_pattern, message) is not None
         
-        if not is_race_query and not is_venue_race and not race_info:
+        # 分析キーワードが含まれている場合は、必ずレース検索を試みる
+        if contains_analysis_keyword and not is_race_query and not is_venue_race and not race_info:
+            # 「分析して」が含まれているが、明確なレース情報がない場合
+            # アーカイブ検索を試みる前に、ユーザーにガイダンスを提供
+            guidance_response = """I-Logicで分析を行うには、以下のいずれかの方法でレースを指定してください：
+
+1️⃣ レース名を指定: 「札幌記念を分析して」「宝塚記念を分析して」
+2️⃣ 開催場+レース番号: 「新潟3Rを分析して」「中京11Rを分析して」
+3️⃣ アーカイブページから: レースアーカイブページでI-Logic分析ボタンをクリック
+
+💡 I-Logicは馬と騎手の両方のデータが必要なため、馬名だけでは分析できません。
+馬名のみの分析には、D-Logic AIをご利用ください。"""
+            
             return {
                 "status": "success",
-                "response": "レース名を入力してください。例：「札幌記念を分析して」「新潟3Rを分析して」",
+                "response": guidance_response,
                 "message": message
             }
+        
+        if not is_race_query and not is_venue_race and not race_info and not contains_analysis_keyword:
+            # 一般的な会話の場合（OpenAI統合）
+            try:
+                # チャット履歴をOpenAI形式に変換
+                chat_history = request.get('chat_history', [])
+                messages = [{"role": "system", "content": ILOGIC_SYSTEM_PROMPT}]
+                
+                # 直近5件の履歴を追加
+                for msg in chat_history[-5:]:
+                    if isinstance(msg, dict) and 'content' in msg:
+                        messages.append({
+                            "role": msg.get("role", "user"),
+                            "content": msg.get("content", "")
+                        })
+                
+                # 現在のメッセージを追加
+                messages.append({"role": "user", "content": message})
+                
+                # OpenAI応答を生成
+                response = await openai_service.chat_completion(messages)
+                
+                return {
+                    "status": "success",
+                    "response": response,
+                    "message": message
+                }
+                
+            except Exception as e:
+                logger.error(f"OpenAI chat error: {e}")
+                # フォールバック応答
+                fallback_response = "申し訳ございません。現在I-Logic AIとの会話機能は利用できません。"
+                fallback_response += "\n\nレース名を入力してください。例：「札幌記念を分析して」「新潟3Rを分析して」"
+                
+                return {
+                    "status": "success",
+                    "response": fallback_response,
+                    "message": message
+                }
         
         # 開催場とレース番号の形式の場合、日付解決を試みる
         if is_venue_race and not race_info:

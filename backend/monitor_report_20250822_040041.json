@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-22T04:00:41.202335",
+  "process_running": true,
+  "log_lines": 1463,
+  "total_errors": 689,
+  "new_errors": 1,
+  "progress": {
+    "processed": 690,
+    "total": 810,
+    "progress_rate": 85.18518518518519,
+    "remaining_hours": 3.0
+  },
+  "latest_logs": "2025-08-22 03:56:37,792 - INFO - 処理中: 脇田創　\n2025-08-22 03:58:07,625 - ERROR - 種牡馬別成績取得エラー(脇田創　): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-22 03:58:08,126 - INFO - 処理中: 臼井健太\n2025-08-22 03:59:40,464 - ERROR - 種牡馬別成績取得エラー(臼井健太): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-22 03:59:40,970 - INFO - 処理中: 舟山瑠泉\n",
+  "idle_time": null
+}

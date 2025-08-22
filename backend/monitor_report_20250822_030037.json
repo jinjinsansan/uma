@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-22T03:00:37.703616",
+  "process_running": true,
+  "log_lines": 1382,
+  "total_errors": 650,
+  "new_errors": 1,
+  "progress": {
+    "processed": 651,
+    "total": 810,
+    "progress_rate": 80.37037037037037,
+    "remaining_hours": 3.975
+  },
+  "latest_logs": "2025-08-22 02:58:11,801 - INFO - 処理中: 的場勇人\n2025-08-22 02:59:48,867 - ERROR - 種牡馬別成績取得エラー(的場勇人): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-22 02:59:50,611 - INFO - 保存完了: data/jockey_knowledge_9races.json (650騎手)\n2025-08-22 02:59:50,612 - INFO - 進捗: 650/810 (成功: 650, エラー: 0)\n2025-08-22 02:59:51,113 - INFO - 処理中: 的場文男\n",
+  "idle_time": null
+}

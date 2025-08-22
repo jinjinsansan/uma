@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-22T07:00:41.051135",
+  "process_running": true,
+  "log_lines": 1710,
+  "total_errors": 805,
+  "new_errors": 1,
+  "progress": {
+    "processed": 806,
+    "total": 810,
+    "progress_rate": 99.50617283950616,
+    "remaining_hours": 0.1
+  },
+  "latest_logs": "2025-08-22 06:57:23,300 - INFO - 処理中: 鷲頭虎太\n2025-08-22 06:58:57,055 - ERROR - 種牡馬別成績取得エラー(鷲頭虎太): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-22 06:58:57,556 - INFO - 処理中: 鷹見陸　\n2025-08-22 07:00:28,077 - ERROR - 種牡馬別成績取得エラー(鷹見陸　): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-22 07:00:28,578 - INFO - 処理中: 黒岩悠　\n",
+  "idle_time": null
+}

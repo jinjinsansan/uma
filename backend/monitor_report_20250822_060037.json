@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-22T06:00:37.303868",
+  "process_running": true,
+  "log_lines": 1627,
+  "total_errors": 766,
+  "new_errors": 1,
+  "progress": {
+    "processed": 767,
+    "total": 810,
+    "progress_rate": 94.69135802469137,
+    "remaining_hours": 1.075
+  },
+  "latest_logs": "2025-08-22 05:57:19,680 - INFO - 処理中: 長浜鴻緒\n2025-08-22 05:58:47,698 - ERROR - 種牡馬別成績取得エラー(長浜鴻緒): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-22 05:58:48,199 - INFO - 処理中: 長田進仁\n2025-08-22 06:00:20,205 - ERROR - 種牡馬別成績取得エラー(長田進仁): 1146 (42S02): Table 'mykeibadb.horse_profile' doesn't exist\n2025-08-22 06:00:20,707 - INFO - 処理中: 長谷川蓮\n",
+  "idle_time": null
+}

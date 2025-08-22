@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-22T07:09:35.049897",
+  "process_running": false,
+  "log_lines": 1725,
+  "total_errors": 810,
+  "new_errors": 1,
+  "progress": {
+    "processed": 810,
+    "total": 810,
+    "progress_rate": 100.0,
+    "remaining_hours": 0.0
+  },
+  "latest_logs": "2025-08-22 07:08:40,756 - INFO - === 処理完了 ===\n2025-08-22 07:08:40,757 - INFO - 総騎手数: 810\n2025-08-22 07:08:40,757 - INFO - 処理成功: 810\n2025-08-22 07:08:40,758 - INFO - 処理エラー: 0\n2025-08-22 07:08:40,849 - INFO - 処理が完了しました\n",
+  "idle_time": null
+}

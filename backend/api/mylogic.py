@@ -366,23 +366,20 @@ async def mylogic_chat(request: Dict[str, Any]):
         
         logger.info(f"MyLogic chat request: {message[:100]}...")
         
-        # 馬名分析かどうかを判定
-        # 単純な馬名パターン（カタカナのみ）
-        import re
-        horse_pattern = r'^[ァ-ヶー]+$'
-        is_horse_name = bool(re.match(horse_pattern, message))
+        # D-Logicと同じ馬名抽出ロジックを使用
+        from api.chat import extract_horse_name, extract_multiple_horse_names
         
-        # 複数馬の分析（カンマ区切りまたはスペース区切り）
-        horse_names = []
-        if ',' in message or '、' in message:
-            # カンマ区切り
-            horse_names = [h.strip() for h in re.split('[,、]', message) if h.strip()]
-        elif ' ' in message and all(re.match(horse_pattern, h) for h in message.split()):
-            # スペース区切りで全てがカタカナ
-            horse_names = message.split()
-        elif is_horse_name:
-            # 単頭
-            horse_names = [message]
+        # 複数馬の分析をチェック
+        horse_names, race_info = extract_multiple_horse_names(message)
+        
+        # 複数馬が見つからない場合は単頭をチェック
+        if not horse_names:
+            single_horse = extract_horse_name(message)
+            if single_horse:
+                horse_names = [single_horse]
+        
+        # 最大20頭まで
+        horse_names = horse_names[:20]
         
         # MyLogic分析の場合
         if horse_names:
@@ -431,25 +428,66 @@ async def mylogic_chat(request: Dict[str, Any]):
             # MyLogic分析実行
             results = mylogic_calculator.analyze_multiple_horses(horse_names, weights)
             
+            # エラーチェック - すべての結果がエラーの場合
+            all_errors = all(result.get('error') for result in results)
+            
+            if all_errors:
+                # すべてエラーの場合は一般会話として処理
+                logger.info(f"All horses returned errors, treating as general conversation: {message}")
+                
+                # OpenAI統合へフォールバック
+                try:
+                    messages = [{"role": "system", "content": MYLOGIC_SYSTEM_PROMPT}]
+                    messages.append({"role": "user", "content": message})
+                    response = await openai_service.chat_completion(messages)
+                    
+                    return {
+                        "status": "success",
+                        "response": response,
+                        "message": message
+                    }
+                except Exception as e:
+                    logger.error(f"OpenAI fallback error: {e}")
+                    # デフォルト応答
+                    return {
+                        "status": "success",
+                        "response": f"申し訳ございません。{horse_names[0]}の指数を提供することはできません。他に何かお手伝いできることがあればお知らせください！🏇✨",
+                        "message": message
+                    }
+            
             # 結果を整形
             response_text = f"🎯 MyLogic分析結果\n\n"
             
-            if len(results) == 1:
-                # 単頭分析
-                result = results[0]
+            # エラーではない結果のみ表示
+            valid_results = [r for r in results if not r.get('error')]
+            error_results = [r for r in results if r.get('error')]
+            
+            if len(valid_results) == 0:
+                # すべてエラー（ここには来ないはずだが念のため）
+                response_text = f"申し訳ございません。指定された馬の分析データが見つかりませんでした。"
+            elif len(valid_results) == 1 and len(error_results) == 0:
+                # 単頭分析（エラーなし）
+                result = valid_results[0]
                 response_text += f"【{result['horse_name']}】\n"
                 response_text += f"MyLogicスコア: {result['mylogic_score']:.1f}点\n"
                 response_text += f"標準D-Logicスコア: {result.get('standard_score', 0):.1f}点\n"
                 response_text += f"差分: {result['mylogic_score'] - result.get('standard_score', 0):+.1f}点\n"
             else:
                 # 複数頭分析
-                for i, result in enumerate(results):
+                for i, result in enumerate(valid_results):
                     emoji = ['🥇', '🥈', '🥉'][i] if i < 3 else f"{i+1}位"
                     response_text += f"{emoji} {result['horse_name']}: {result['mylogic_score']:.1f}点 "
                     response_text += f"(標準: {result.get('standard_score', 0):.1f}点)\n"
+                
+                # エラーの馬も表示
+                if error_results:
+                    response_text += "\n❌ 分析データなし:\n"
+                    for result in error_results:
+                        response_text += f"- {result['horse_name']}\n"
             
-            response_text += "\n💡 あなたの重み付けによる独自評価です。"
-            response_text += "設定を変更したい場合は「設定」ボタンから調整してください。"
+            if valid_results:
+                response_text += "\n💡 あなたの重み付けによる独自評価です。"
+                response_text += "設定を変更したい場合は「設定」ボタンから調整してください。"
             
             return {
                 "status": "success",

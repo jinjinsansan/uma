@@ -4,7 +4,7 @@ MyLogicAI API エンドポイント
 """
 
 from fastapi import APIRouter, HTTPException, Header, Depends
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 import logging

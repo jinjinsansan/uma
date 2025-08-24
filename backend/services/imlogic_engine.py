@@ -16,10 +16,6 @@ class IMLogicEngine:
         """初期化"""
         # ILogicと同じナレッジファイルを使用
         try:
-            # 拡張ナレッジマネージャー（馬データ：34,388頭）
-            from services.extended_knowledge_manager import get_extended_knowledge_manager
-            self.extended_manager = get_extended_knowledge_manager()
-            
             # 騎手データマネージャー（騎手データ：843騎手）
             from services.jockey_data_manager import jockey_manager
             self.jockey_manager = jockey_manager
@@ -28,22 +24,28 @@ class IMLogicEngine:
             from services.jockey_name_mapper import normalize_jockey_name
             self.normalize_jockey_name = normalize_jockey_name
             
-            # 標準D-Logicエンジン（12項目計算用）
-            from services.dlogic_raw_data_manager import DLogicRawDataManager
-            self.dlogic_manager = DLogicRawDataManager()
+            # 標準D-Logicマネージャー（12項目計算用）
+            # 注: DLogicRawDataManagerはグローバルインスタンスを使用
+            from services.dlogic_raw_data_manager import dlogic_manager
+            self.dlogic_manager = dlogic_manager
             
-            # FastDLogicエンジン（ModernDLogicEngineの依存）
-            from services.fast_dlogic_engine import FastDLogicEngine
-            fast_engine = FastDLogicEngine()
-            
-            # I-Logicエンジン（ベース計算用）
-            from services.modern_dlogic_engine import ModernDLogicEngine
-            self.modern_engine = ModernDLogicEngine(fast_engine)
+            # I-Logicエンジンは遅延初期化（必要時に作成）
+            self._modern_engine = None
             
             logger.info("IMLogicエンジンを初期化しました（ILogicナレッジ使用）")
         except Exception as e:
             logger.error(f"IMLogicエンジンの初期化エラー: {e}")
             raise RuntimeError(f"IMLogicエンジンの初期化に失敗しました: {e}")
+    
+    @property
+    def modern_engine(self):
+        """ModernDLogicEngineの遅延初期化"""
+        if self._modern_engine is None:
+            from services.fast_dlogic_engine import fast_engine_instance
+            from services.modern_dlogic_engine import ModernDLogicEngine
+            self._modern_engine = ModernDLogicEngine(fast_engine_instance)
+            logger.info("ModernDLogicEngineを遅延初期化しました")
+        return self._modern_engine
     
     def analyze_race(
         self, 
@@ -200,7 +202,8 @@ class IMLogicEngine:
             ilogic_base_score = ilogic_result.get('final_score', 50.0)
             
             # Step 2: 標準D-Logicから12項目の詳細を取得
-            horse_data = self.dlogic_manager.knowledge_data.get(horse_name, {})
+            # 注: get_horse_raw_dataメソッドを使う
+            horse_data = self.dlogic_manager.get_horse_raw_data(horse_name)
             
             if not horse_data:
                 # データがない場合はI-Logicのスコアをそのまま返す

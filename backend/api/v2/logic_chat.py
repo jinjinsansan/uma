@@ -13,11 +13,15 @@ load_dotenv()
 
 router = APIRouter(prefix="/api/v2/logic-chat", tags=["Logic Chat V2"])
 
-# Supabaseクライアント
-supabase: Client = create_client(
-    os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_SERVICE_KEY")
-)
+# Supabaseクライアント（オプショナル）
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
+
+supabase: Optional[Client] = None
+if supabase_url and supabase_key:
+    supabase = create_client(supabase_url, supabase_key)
+else:
+    print("Warning: Supabase credentials not found in logic_chat.py")
 
 class CreateChatRequest(BaseModel):
     race_id: str

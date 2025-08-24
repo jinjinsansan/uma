@@ -11,11 +11,15 @@ load_dotenv()
 
 router = APIRouter(prefix="/api/v2/imlogic-settings", tags=["IMLogic Settings"])
 
-# Supabaseクライアント
-supabase: Client = create_client(
-    os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_SERVICE_KEY")
-)
+# Supabaseクライアント（オプショナル）
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
+
+supabase: Optional[Client] = None
+if supabase_url and supabase_key:
+    supabase = create_client(supabase_url, supabase_key)
+else:
+    print("Warning: Supabase credentials not found in imlogic_settings.py")
 
 class ItemWeights(BaseModel):
     # 12項目の重み（キー名を文字列で定義）

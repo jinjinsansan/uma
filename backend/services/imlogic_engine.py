@@ -218,8 +218,7 @@ class IMLogicEngine:
             }
             
             # デバッグ：各項目のスコアをログ出力
-            logger.info(f"
-{horse_name} の12項目スコア:")
+            logger.info(f"\n{horse_name} の12項目スコア:")
             for key, score in item_scores.items():
                 logger.info(f"  {key}: {score:.1f}点")
             
@@ -227,8 +226,7 @@ class IMLogicEngine:
             weighted_score = 0.0
             total_weight = 0.0
             
-            logger.info(f"
-{horse_name} の重み付け計算:")
+            logger.info(f"\n{horse_name} の重み付け計算:")
             for key, weight in item_weights.items():
                 score = item_scores.get(key, 50.0)
                 # 重みを正規化（合計が100になるように）
@@ -242,8 +240,7 @@ class IMLogicEngine:
             if total_weight > 0 and total_weight != 100:
                 weighted_score = weighted_score * (100.0 / total_weight)
             
-            logger.info(f"
-{horse_name} IMLogic馬スコア（重み付け後）: {weighted_score:.2f}点")
+            logger.info(f"\n{horse_name} IMLogic馬スコア（重み付け後）: {weighted_score:.2f}点")
             
             # スコアを0-100の範囲に収める
             return min(100.0, max(0.0, weighted_score))

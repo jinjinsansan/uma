@@ -28,13 +28,17 @@ class IMLogicEngine:
             from services.jockey_name_mapper import normalize_jockey_name
             self.normalize_jockey_name = normalize_jockey_name
             
-            # I-Logicエンジン（ベース計算用）
-            from services.modern_dlogic_engine import ModernDLogicEngine
-            self.modern_engine = ModernDLogicEngine()
-            
             # 標準D-Logicエンジン（12項目計算用）
             from services.dlogic_raw_data_manager import DLogicRawDataManager
             self.dlogic_manager = DLogicRawDataManager()
+            
+            # FastDLogicエンジン（ModernDLogicEngineの依存）
+            from services.fast_dlogic_engine import FastDLogicEngine
+            fast_engine = FastDLogicEngine()
+            
+            # I-Logicエンジン（ベース計算用）
+            from services.modern_dlogic_engine import ModernDLogicEngine
+            self.modern_engine = ModernDLogicEngine(fast_engine)
             
             logger.info("IMLogicエンジンを初期化しました（ILogicナレッジ使用）")
         except Exception as e:

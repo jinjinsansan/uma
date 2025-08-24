@@ -14,17 +14,26 @@ class IMLogicEngine:
     
     def __init__(self):
         """初期化"""
-        # 既存のレース分析エンジンを取得
+        # ILogicと同じナレッジファイルを使用
         try:
-            from .race_analysis_engine import get_race_analysis_engine
-            from .fast_dlogic_engine import fast_engine_instance
-            self.race_engine = get_race_analysis_engine(fast_engine_instance)
-            logger.info("IMLogicエンジンを初期化しました")
+            # 拡張ナレッジマネージャー（馬データ：34,388頭）
+            from .extended_knowledge_manager import get_extended_knowledge_manager
+            self.extended_manager = get_extended_knowledge_manager()
+            
+            # 騎手データマネージャー（騎手データ：843騎手）
+            from .jockey_data_manager import jockey_manager
+            self.jockey_manager = jockey_manager
+            
+            # 騎手名の正規化用
+            from .jockey_name_mapper import normalize_jockey_name
+            self.normalize_jockey_name = normalize_jockey_name
+            
+            logger.info("IMLogicエンジンを初期化しました（ILogicナレッジ使用）")
         except Exception as e:
             logger.error(f"IMLogicエンジンの初期化エラー: {e}")
             raise RuntimeError(f"IMLogicエンジンの初期化に失敗しました: {e}")
     
-    async def analyze_race(
+    def analyze_race(
         self, 
         race_data: Dict[str, Any],
         horse_weight: int,
@@ -71,39 +80,34 @@ class IMLogicEngine:
             for i in range(len(horses)):
                 try:
                     horse_name = horses[i]
-                    jockey_name = jockeys[i] if i < len(jockeys) else ''
+                    raw_jockey_name = jockeys[i] if i < len(jockeys) else ''
+                    jockey_name = self.normalize_jockey_name(raw_jockey_name)
                     post = posts[i] if i < len(posts) else 1
                     horse_number = horse_numbers[i] if i < len(horse_numbers) else i + 1
                     
-                    # 馬の評価（カスタム重み付けを適用）
-                    horse_analysis = await self._analyze_horse_with_custom_weights(
+                    # 馬の評価（拡張ナレッジから）
+                    horse_score = self._calculate_horse_score(
                         horse_name, 
                         context,
                         item_weights
                     )
                     
-                    # 騎手の評価（既存のエンジンを使用）
+                    # 騎手の評価
                     jockey_context = {
                         'venue': context['venue'],
                         'post': post,
-                        'sire': ''  # 現在は未実装
+                        'sire': None  # 種牡馬情報（将来的に実装）
                     }
-                    jockey_analysis = self.race_engine.jockey_manager.calculate_jockey_score(
+                    jockey_analysis = self.jockey_manager.calculate_jockey_score(
                         jockey_name,
                         jockey_context
                     )
-                    
-                    # IMLogicスコア計算（ユーザー設定の比率で）
-                    horse_score = horse_analysis.get('final_score', 50.0)
                     jockey_score = jockey_analysis.get('total_score', 0)
                     
-                    # パーセンテージに変換
-                    horse_weight_ratio = horse_weight / 100.0
-                    jockey_weight_ratio = jockey_weight / 100.0
-                    
+                    # 総合評価（カスタム比率）
                     total_score = (
-                        horse_score * horse_weight_ratio +
-                        jockey_score * jockey_weight_ratio
+                        horse_score * (horse_weight / 100.0) +
+                        jockey_score * (jockey_weight / 100.0)
                     )
                     
                     results.append({
@@ -112,231 +116,167 @@ class IMLogicEngine:
                         'post': post,
                         'horse': horse_name,
                         'jockey': jockey_name,
-                        'total_score': round(total_score, 1),
-                        'horse_score': round(horse_score, 1),
-                        'jockey_score': round(jockey_score, 1),
-                        'horse_contribution': round(horse_score * horse_weight_ratio, 1),
-                        'jockey_contribution': round(jockey_score * jockey_weight_ratio, 1),
-                        'custom_item_scores': horse_analysis.get('custom_item_scores', {}),
-                        'horse_details': {
-                            'base': round(horse_analysis.get('base_score', 50.0), 1),
-                            'venue_distance_bonus': horse_analysis.get('venue_distance_bonus', 0),
-                            'class_factor': horse_analysis.get('class_factor', 1.0),
-                            'track_bonus': horse_analysis.get('track_bonus', 0)
-                        },
-                        'jockey_details': {
-                            'venue': jockey_analysis.get('venue_score', 0),
-                            'post': jockey_analysis.get('post_score', 0),
-                            'sire': jockey_analysis.get('sire_score', 0)
-                        }
+                        'total_score': round(total_score, 2),
+                        'horse_score': round(horse_score, 2),
+                        'jockey_score': round(jockey_score, 2),
+                        'horse_weight_pct': horse_weight,
+                        'jockey_weight_pct': jockey_weight
                     })
                     
                 except Exception as e:
-                    logger.error(f"馬の分析エラー（{horses[i]}）: {e}")
-                    results.append({
-                        'rank': 999,
-                        'horse_number': horse_numbers[i] if i < len(horse_numbers) else i + 1,
-                        'post': posts[i] if i < len(posts) else 1,
-                        'horse': horses[i],
-                        'jockey': jockeys[i] if i < len(jockeys) else '',
-                        'total_score': 0,
-                        'horse_score': 0,
-                        'jockey_score': 0,
-                        'error': str(e)
-                    })
+                    logger.warning(f"馬 {horses[i]} の分析中にエラー: {e}")
+                    # エラーが発生した馬はスキップ
+                    continue
             
-            # スコア順にソート
+            # スコアで降順ソート
             results.sort(key=lambda x: x['total_score'], reverse=True)
             
-            # 順位付け
-            for i, result in enumerate(results):
-                result['rank'] = i + 1
-            
-            # 分析サマリーの作成
-            summary = self._create_analysis_summary(results, context)
+            # ランク付け
+            for idx, result in enumerate(results):
+                result['rank'] = idx + 1
             
             return {
+                'type': 'imlogic',
+                'analysis_type': 'imlogic',
                 'race_info': {
-                    'venue': race_data.get('venue', ''),
-                    'race_number': race_data.get('race_number', ''),
-                    'race_name': race_data.get('race_name', ''),
-                    'distance': race_data.get('distance', ''),
-                    'track_condition': race_data.get('track_condition', '良')
+                    'venue': race_data.get('venue'),
+                    'race_number': race_data.get('race_number'),
+                    'race_name': race_data.get('race_name'),
+                    'horses_count': len(horses)
+                },
+                'settings': {
+                    'horse_weight': horse_weight,
+                    'jockey_weight': jockey_weight,
+                    'item_weights': item_weights
                 },
                 'results': results,
-                'summary': summary,
-                'analysis_type': 'imlogic',
-                'base_horse': 'IMLogic（カスタマイズ版）',
-                'weights': {
-                    'horse': horse_weight,
-                    'jockey': jockey_weight,
-                    'items': item_weights
-                },
-                'timestamp': datetime.now().isoformat()
+                'analyzed_at': datetime.now().isoformat()
             }
             
         except Exception as e:
             logger.error(f"IMLogic分析エラー: {e}")
-            return {
-                'error': f'分析中にエラーが発生しました: {str(e)}',
-                'analysis_type': 'imlogic'
-            }
+            import traceback
+            traceback.print_exc()
+            raise RuntimeError(f"IMLogic分析に失敗しました: {e}")
     
-    async def _analyze_horse_with_custom_weights(
-        self,
-        horse_name: str,
+    def _calculate_horse_score(
+        self, 
+        horse_name: str, 
         context: Dict[str, Any],
         item_weights: Dict[str, float]
-    ) -> Dict[str, Any]:
-        """カスタム重み付けで馬を分析"""
+    ) -> float:
+        """
+        馬のスコアを計算（拡張ナレッジ使用）
+        
+        Args:
+            horse_name: 馬名
+            context: レースコンテキスト
+            item_weights: 12項目の重み付け
+        
+        Returns:
+            馬のスコア（0-100）
+        """
         try:
-            # まず通常のイクイノックス基準で計算
-            horse_analysis = self.race_engine.modern_engine.calculate_horse_score(
-                horse_name, 
-                context,
-                enable_bayesian=True
-            )
+            # 拡張ナレッジから馬データを取得（リスト形式）
+            races = self.extended_manager.get_horse_data(horse_name)
             
-            # D-Logic項目スコアを取得
-            d_logic_scores = horse_analysis.get('d_logic_scores', {})
-            if not d_logic_scores:
-                # スコアがない場合はデフォルト値を使用
-                d_logic_scores = self._get_default_scores()
+            if not races:
+                logger.warning(f"馬データが見つかりません: {horse_name}")
+                return 50.0  # デフォルトスコア
             
-            # カスタム重み付けを適用して基本スコアを再計算
-            custom_base_score = self._calculate_custom_base_score(
-                d_logic_scores,
-                item_weights
-            )
+            # レースデータがリスト形式であることを確認
+            if not isinstance(races, list) or len(races) == 0:
+                return 50.0
             
-            # 開催場・クラス・馬場ボーナスは元のまま使用
-            venue_distance_bonus = horse_analysis.get('venue_distance_bonus', 0)
-            class_factor = horse_analysis.get('class_factor', 1.0)
-            track_bonus = horse_analysis.get('track_bonus', 0)
+            # 最新レースデータから各項目のスコアを計算
+            recent_races = races[:5]  # 直近5走
             
-            # 最終スコア計算
-            final_score = (
-                custom_base_score * class_factor +
-                venue_distance_bonus +
-                track_bonus
-            )
-            
-            # スコアを0-150の範囲に制限
-            final_score = max(0, min(150, final_score))
-            
-            return {
-                'base_score': custom_base_score,
-                'venue_distance_bonus': venue_distance_bonus,
-                'class_factor': class_factor,
-                'track_bonus': track_bonus,
-                'final_score': final_score,
-                'd_logic_scores': d_logic_scores,
-                'custom_item_scores': self._calculate_item_contributions(
-                    d_logic_scores,
-                    item_weights
-                )
+            # デフォルトスコア
+            base_scores = {
+                '1_distance_aptitude': 70.0,
+                '2_bloodline_evaluation': 75.0,  # 血統データなし
+                '3_jockey_compatibility': 70.0,
+                '4_trainer_evaluation': 70.0,
+                '5_track_aptitude': 70.0,
+                '6_weather_aptitude': 70.0,
+                '7_popularity_factor': 70.0,
+                '8_weight_impact': 70.0,
+                '9_horse_weight_impact': 70.0,
+                '10_corner_specialist': 70.0,
+                '11_margin_analysis': 70.0,
+                '12_time_index': 70.0
             }
+            
+            # 実際のレースデータから計算
+            if recent_races:
+                # 着順による基本評価
+                avg_chakujun = sum(int(r.get('KAKUTEI_CHAKUJUN', '10')) for r in recent_races) / len(recent_races)
+                if avg_chakujun <= 3:
+                    base_adjustment = 85.0
+                elif avg_chakujun <= 5:
+                    base_adjustment = 75.0
+                else:
+                    base_adjustment = 65.0
+                
+                # 各項目をベース値から調整
+                item_scores = {}
+                for key in base_scores:
+                    item_scores[key] = base_adjustment
+            else:
+                item_scores = base_scores
+            
+            # 重み付けを適用して総合スコアを計算
+            total_score = 0.0
+            for key, weight in item_weights.items():
+                score = item_scores.get(key, 75.0)
+                contribution = score * (weight / 100.0)
+                total_score += contribution
+            
+            return min(100.0, max(0.0, total_score))
             
         except Exception as e:
-            logger.error(f"カスタム馬分析エラー（{horse_name}）: {e}")
-            return {
-                'base_score': 50.0,
-                'venue_distance_bonus': 0,
-                'class_factor': 1.0,
-                'track_bonus': 0,
-                'final_score': 50.0,
-                'error': str(e)
-            }
+            logger.error(f"馬スコア計算エラー: {e}")
+            return 50.0
     
-    def _calculate_custom_base_score(
-        self,
-        d_logic_scores: Dict[str, float],
-        item_weights: Dict[str, float]
-    ) -> float:
-        """カスタム重み付けで基本スコアを計算"""
-        # フィールド名のマッピング（DBフィールド名 → D-Logicスコア名）
-        field_mapping = {
-            '1_distance_aptitude': '1_distance_aptitude',
-            '2_bloodline_evaluation': '2_bloodline_evaluation',
-            '3_jockey_compatibility': '3_jockey_compatibility',
-            '4_trainer_evaluation': '4_trainer_evaluation',
-            '5_track_aptitude': '5_track_aptitude',
-            '6_weather_aptitude': '6_weather_aptitude',
-            '7_popularity_factor': '7_popularity_factor',
-            '8_weight_impact': '8_weight_impact',
-            '9_horse_weight_impact': '9_horse_weight_impact',
-            '10_corner_specialist': '10_corner_specialist_degree',
-            '11_margin_analysis': '11_margin_analysis',
-            '12_time_index': '12_time_index'
-        }
-        
-        total_score = 0
-        
-        for db_field, d_logic_field in field_mapping.items():
-            # 重みを取得（%）
-            weight = item_weights.get(db_field, 8.33)
-            
-            # D-Logicスコアを取得（デフォルト50点）
-            score = d_logic_scores.get(d_logic_field, 50.0)
-            
-            # 重み付けして加算（重みは%なので100で割る）
-            contribution = score * (weight / 100.0)
-            total_score += contribution
-        
-        return total_score
+    def _calc_distance_score(self, races: List[Dict], distance: str) -> float:
+        """距離適性スコア計算"""
+        # 簡易実装
+        return 75.0
     
-    def _calculate_item_contributions(
-        self,
-        d_logic_scores: Dict[str, float],
-        item_weights: Dict[str, float]
-    ) -> Dict[str, Dict[str, float]]:
-        """各項目の貢献度を計算"""
-        field_mapping = {
-            '1_distance_aptitude': ('1_distance_aptitude', '距離適性'),
-            '2_bloodline_evaluation': ('2_bloodline_evaluation', '血統評価'),
-            '3_jockey_compatibility': ('3_jockey_compatibility', '騎手相性'),
-            '4_trainer_evaluation': ('4_trainer_evaluation', '調教師評価'),
-            '5_track_aptitude': ('5_track_aptitude', 'トラック適性'),
-            '6_weather_aptitude': ('6_weather_aptitude', '天候適性'),
-            '7_popularity_factor': ('7_popularity_factor', '人気度要因'),
-            '8_weight_impact': ('8_weight_impact', '重量影響'),
-            '9_horse_weight_impact': ('9_horse_weight_impact', '馬体重影響'),
-            '10_corner_specialist': ('10_corner_specialist_degree', 'コーナー適性'),
-            '11_margin_analysis': ('11_margin_analysis', 'マージン分析'),
-            '12_time_index': ('12_time_index', 'タイムインデックス')
-        }
-        
-        contributions = {}
-        
-        for db_field, (d_logic_field, display_name) in field_mapping.items():
-            weight = item_weights.get(db_field, 8.33)
-            score = d_logic_scores.get(d_logic_field, 50.0)
-            contribution = score * (weight / 100.0)
-            
-            contributions[display_name] = {
-                'original_score': round(score, 1),
-                'weight': round(weight, 1),
-                'contribution': round(contribution, 1)
-            }
-        
-        return contributions
+    def _calc_bloodline_score(self, races: List[Dict]) -> float:
+        """血統評価スコア計算"""
+        # 簡易実装
+        return 75.0
     
-    def _get_default_scores(self) -> Dict[str, float]:
-        """デフォルトのD-Logicスコア"""
-        return {
-            '1_distance_aptitude': 50.0,
-            '2_bloodline_evaluation': 50.0,
-            '3_jockey_compatibility': 50.0,
-            '4_trainer_evaluation': 50.0,
-            '5_track_aptitude': 50.0,
-            '6_weather_aptitude': 50.0,
-            '7_popularity_factor': 50.0,
-            '8_weight_impact': 50.0,
-            '9_horse_weight_impact': 50.0,
-            '10_corner_specialist_degree': 50.0,
-            '11_margin_analysis': 50.0,
-            '12_time_index': 50.0
-        }
+    def _calc_track_score(self, races: List[Dict], venue: str) -> float:
+        """トラック適性スコア計算"""
+        # 簡易実装
+        return 75.0
+    
+    def _calc_weather_score(self, races: List[Dict], track_condition: str) -> float:
+        """天候適性スコア計算"""
+        # 簡易実装
+        return 75.0
+    
+    def _calc_popularity_score(self, races: List[Dict]) -> float:
+        """人気要因スコア計算"""
+        # 簡易実装
+        return 75.0
+    
+    def _calc_corner_score(self, races: List[Dict]) -> float:
+        """コーナースペシャリスト度計算"""
+        # 簡易実装
+        return 75.0
+    
+    def _calc_margin_score(self, races: List[Dict]) -> float:
+        """着差分析スコア計算"""
+        # 簡易実装
+        return 75.0
+    
+    def _calc_time_score(self, races: List[Dict]) -> float:
+        """タイムインデックススコア計算"""
+        # 簡易実装
+        return 75.0
     
     def _extract_grade(self, race_name: str) -> str:
         """レース名からグレードを抽出"""
@@ -346,65 +286,5 @@ class IMLogicEngine:
             return 'G2'
         elif 'G3' in race_name or 'GⅢ' in race_name:
             return 'G3'
-        elif 'オープン' in race_name:
-            return 'オープン'
-        elif 'L' in race_name or 'リステッド' in race_name:
-            return 'L'
-        elif '3勝' in race_name:
-            return '3勝'
-        elif '2勝' in race_name:
-            return '2勝'
-        elif '1勝' in race_name:
-            return '1勝'
-        elif '未勝利' in race_name:
-            return '未勝利'
-        elif '新馬' in race_name:
-            return '新馬'
         else:
             return ''
-    
-    def _create_analysis_summary(
-        self, 
-        results: List[Dict[str, Any]], 
-        context: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """分析結果のサマリーを作成"""
-        if not results:
-            return {}
-        
-        top3 = results[:3]
-        
-        summary = {
-            'top_horse': {
-                'name': top3[0]['horse'],
-                'jockey': top3[0]['jockey'],
-                'score': top3[0]['total_score'],
-                'key_factors': []
-            },
-            'score_distribution': {
-                'highest': top3[0]['total_score'],
-                'lowest': results[-1]['total_score'] if results else 0,
-                'average': round(sum(r['total_score'] for r in results) / len(results), 1) if results else 0
-            },
-            'custom_weights_impact': []
-        }
-        
-        # カスタム重み付けの影響を分析
-        top_horse_items = top3[0].get('custom_item_scores', {})
-        if top_horse_items:
-            # 貢献度が高い項目トップ3
-            sorted_items = sorted(
-                top_horse_items.items(),
-                key=lambda x: x[1]['contribution'],
-                reverse=True
-            )[:3]
-            
-            for item_name, item_data in sorted_items:
-                if item_data['weight'] > 10:  # 10%以上の重みがある項目
-                    summary['custom_weights_impact'].append({
-                        'item': item_name,
-                        'weight': item_data['weight'],
-                        'contribution': item_data['contribution']
-                    })
-        
-        return summary

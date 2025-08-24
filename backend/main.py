@@ -146,9 +146,10 @@ app.include_router(jockey_data_router, prefix="/api", tags=["Jockey Data"])
 app.include_router(archive_races_router, tags=["Archive Races"])
 
 # Logic Chat V2の新しいルーターを追加（既存システムに影響なし）
-from api.v2 import logic_chat, imlogic_settings
+from api.v2 import logic_chat, imlogic_settings, logic_chat_test
 app.include_router(logic_chat.router)
 app.include_router(imlogic_settings.router)
+app.include_router(logic_chat_test.router)
 
 # 本日レース情報（Phase C用固定データ）
 TODAY_RACES = {
@@ -424,6 +425,14 @@ async def d_logic_status():
     }
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
+    try:
+        import uvicorn
+        print("🚀 Uvicornでサーバーを起動します...")
+        uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
+    except ImportError:
+        print("⚠️ Uvicornが見つかりません。")
+        print("以下のコマンドでインストールしてください：")
+        print("pip install uvicorn==0.35.0")
+        print("\nまたは、以下のコマンドで直接起動してください：")
+        print("python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload")
 

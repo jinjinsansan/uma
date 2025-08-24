@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/v2/logic-chat", tags=["Logic Chat V2"])
 # Supabaseクライアント
 supabase: Client = create_client(
     os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    os.getenv("SUPABASE_SERVICE_KEY")
 )
 
 class CreateChatRequest(BaseModel):
@@ -39,7 +39,7 @@ async def create_chat(request: CreateChatRequest):
     """新規チャット作成（レース固定）"""
     try:
         # TODO: 認証実装後にuser_idを取得
-        user_id = "00000000-0000-0000-0000-000000000000"  # 仮のユーザーID
+        user_id = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # 仮のユーザーID（goldbenchan@gmail.com）
         
         # レースデータを固定
         locked_race_data = {
@@ -78,7 +78,7 @@ async def analyze(request: AnalyzeRequest):
     """分析実行（IMLogic/ViewLogic）"""
     try:
         # TODO: 認証実装後にuser_idを取得
-        user_id = "00000000-0000-0000-0000-000000000000"  # 仮のユーザーID
+        user_id = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # 仮のユーザーID（goldbenchan@gmail.com）
         
         # チャットの存在確認とレースデータ取得
         chat_result = supabase.table("logic_chats_v2").select("*").eq(
@@ -186,7 +186,7 @@ async def _analyze_imlogic(
         from ...services.imlogic_engine import IMLogicEngine
         engine = IMLogicEngine()
         
-        result = await engine.analyze_race(
+        result = engine.analyze_race(
             race_data=race_data,
             horse_weight=settings["horse_weight"],
             jockey_weight=settings["jockey_weight"],
@@ -251,7 +251,7 @@ async def get_chat(chat_id: str):
     """チャット情報を取得"""
     try:
         # TODO: 認証実装後にuser_idを取得
-        user_id = "00000000-0000-0000-0000-000000000000"  # 仮のユーザーID
+        user_id = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # 仮のユーザーID（goldbenchan@gmail.com）
         
         chat_result = supabase.table("logic_chats_v2").select("*").eq(
             "id", chat_id

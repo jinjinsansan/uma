@@ -12,11 +12,15 @@ load_dotenv()
 # Clerk公開鍵取得用のURL
 CLERK_JWKS_URL = "https://api.clerk.com/v1/jwks"
 
-# Supabaseクライアント
-supabase: Client = create_client(
-    os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_SERVICE_KEY")
-)
+# Supabaseクライアント（オプショナル）
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
+
+supabase: Optional[Client] = None
+if supabase_url and supabase_key:
+    supabase = create_client(supabase_url, supabase_key)
+else:
+    print("Warning: Supabase credentials not found. Using simplified authentication.")
 
 security = HTTPBearer()
 
@@ -43,37 +47,47 @@ async def verify_email_token(credentials: HTTPAuthorizationCredentials = Securit
         if not email or '@' not in email:
             raise HTTPException(status_code=401, detail="Invalid email format")
         
-        # Supabaseでユーザーを検索または作成
-        user_result = supabase.table("users").select("*").eq("email", email).execute()
-        
-        if user_result.data:
-            user = user_result.data[0]
-        else:
-            # 新規ユーザーの場合は作成
-            create_result = supabase.table("users").insert({
-                "email": email,
-                "name": decoded.get("name", email.split("@")[0]),
-                "google_id": decoded.get("sub", ""),
-                "avatar_url": decoded.get("image_url", "")
-            }).execute()
+        # Supabaseが利用可能な場合のみユーザー検索・作成を実行
+        if supabase:
+            # Supabaseでユーザーを検索または作成
+            user_result = supabase.table("users").select("*").eq("email", email).execute()
             
-            if create_result.data:
-                user = create_result.data[0]
-                
-                # user_quotasも作成
-                supabase.table("user_quotas").insert({
-                    "user_id": user["id"],
-                    "subscription_type": "free_trial",
-                    "daily_uses": 0
-                }).execute()
+            if user_result.data:
+                user = user_result.data[0]
             else:
-                raise HTTPException(status_code=500, detail="Failed to create user")
-        
-        return {
-            "user_id": user["id"],
-            "email": user["email"],
-            "name": user["name"]
-        }
+                # 新規ユーザーの場合は作成
+                create_result = supabase.table("users").insert({
+                    "email": email,
+                    "name": email.split("@")[0],
+                    "google_id": "",
+                    "avatar_url": ""
+                }).execute()
+                
+                if create_result.data:
+                    user = create_result.data[0]
+                    
+                    # user_quotasも作成
+                    supabase.table("user_quotas").insert({
+                        "user_id": user["id"],
+                        "subscription_type": "free_trial",
+                        "daily_uses": 0
+                    }).execute()
+                else:
+                    raise HTTPException(status_code=500, detail="Failed to create user")
+            
+            return {
+                "user_id": user["id"],
+                "email": user["email"],
+                "name": user["name"]
+            }
+        else:
+            # Supabaseが利用できない場合は簡易的なユーザー情報を返す
+            print(f"Using simplified auth for user: {email}")
+            return {
+                "user_id": email,  # メールアドレスをIDとして使用
+                "email": email,
+                "name": email.split("@")[0]
+            }
         
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")

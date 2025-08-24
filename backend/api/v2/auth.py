@@ -12,15 +12,14 @@ load_dotenv()
 # Clerk公開鍵取得用のURL
 CLERK_JWKS_URL = "https://api.clerk.com/v1/jwks"
 
-# Supabaseクライアント（オプショナル）
+# Supabaseクライアント
 supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
+supabase_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
 
-supabase: Optional[Client] = None
-if supabase_url and supabase_key:
-    supabase = create_client(supabase_url, supabase_key)
-else:
-    print("Warning: Supabase credentials not found. Using simplified authentication.")
+if not supabase_url or not supabase_key:
+    raise ValueError("Supabase環境変数が設定されていません。SUPABASE_URLとSUPABASE_SERVICE_ROLE_KEYを確認してください。")
+
+supabase: Client = create_client(supabase_url, supabase_key)
 
 security = HTTPBearer()
 

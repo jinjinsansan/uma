@@ -58,9 +58,28 @@ async def create_chat(request: CreateChatRequest, user_id: str = Depends(get_cur
         # Supabaseに保存
         chat_id = str(uuid.uuid4())
         
+        # user_idがUUID形式でない場合（メールアドレスの場合）、usersテーブルから実際のIDを取得
+        actual_user_id = user_id
+        if '@' in str(user_id):
+            user_result = supabase.table("users").select("id").eq("email", user_id).execute()
+            if user_result.data and len(user_result.data) > 0:
+                actual_user_id = user_result.data[0]["id"]
+            else:
+                # ユーザーが存在しない場合は作成
+                new_user_result = supabase.table("users").insert({
+                    "email": user_id,
+                    "name": user_id.split("@")[0],
+                    "google_id": "",
+                    "avatar_url": ""
+                }).execute()
+                if new_user_result.data:
+                    actual_user_id = new_user_result.data[0]["id"]
+                else:
+                    raise HTTPException(status_code=500, detail="ユーザー作成に失敗しました")
+        
         result = supabase.table("logic_chats_v2").insert({
             "id": chat_id,
-            "user_id": user_id,
+            "user_id": actual_user_id,
             "race_id": request.race_id,
             "locked_race_data": locked_race_data,
             "points_consumed": 1
@@ -80,10 +99,17 @@ async def analyze(request: AnalyzeRequest, user_id: str = Depends(get_current_us
     """分析実行（IMLogic/ViewLogic）"""
     try:
         
+        # user_idがメールアドレスの場合、実際のUUIDを取得
+        actual_user_id = user_id
+        if '@' in str(user_id):
+            user_result = supabase.table("users").select("id").eq("email", user_id).execute()
+            if user_result.data and len(user_result.data) > 0:
+                actual_user_id = user_result.data[0]["id"]
+        
         # チャットの存在確認とレースデータ取得
         chat_result = supabase.table("logic_chats_v2").select("*").eq(
             "id", request.chat_id
-        ).eq("user_id", user_id).execute()
+        ).eq("user_id", actual_user_id).execute()
         
         if not chat_result.data:
             raise HTTPException(status_code=404, detail="チャットが見つかりません")
@@ -152,10 +178,17 @@ async def _analyze_imlogic(
     try:
         # 設定を取得
         if settings_id and settings_id != "default":
+            # user_idの形式を確認
+            settings_user_id = user_id
+            if '@' in str(user_id):
+                user_result = supabase.table("users").select("id").eq("email", user_id).execute()
+                if user_result.data and len(user_result.data) > 0:
+                    settings_user_id = user_result.data[0]["id"]
+            
             # ユーザーのカスタム設定を取得
             settings_result = supabase.table("user_imlogic_settings").select("*").eq(
                 "id", settings_id
-            ).eq("user_id", user_id).execute()
+            ).eq("user_id", settings_user_id).execute()
             
             if not settings_result.data:
                 raise HTTPException(status_code=404, detail="指定された設定が見つかりません")
@@ -250,10 +283,16 @@ async def _add_to_chat_history(
 async def get_chat(chat_id: str, user_id: str = Depends(get_current_user)):
     """チャット情報を取得"""
     try:
+        # user_idがメールアドレスの場合、実際のUUIDを取得
+        actual_user_id = user_id
+        if '@' in str(user_id):
+            user_result = supabase.table("users").select("id").eq("email", user_id).execute()
+            if user_result.data and len(user_result.data) > 0:
+                actual_user_id = user_result.data[0]["id"]
         
         chat_result = supabase.table("logic_chats_v2").select("*").eq(
             "id", chat_id
-        ).eq("user_id", user_id).execute()
+        ).eq("user_id", actual_user_id).execute()
         
         if not chat_result.data:
             raise HTTPException(status_code=404, detail="チャットが見つかりません")

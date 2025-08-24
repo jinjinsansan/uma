@@ -17,15 +17,15 @@ class IMLogicEngine:
         # ILogicと同じナレッジファイルを使用
         try:
             # 拡張ナレッジマネージャー（馬データ：34,388頭）
-            from .extended_knowledge_manager import get_extended_knowledge_manager
+            from services.extended_knowledge_manager import get_extended_knowledge_manager
             self.extended_manager = get_extended_knowledge_manager()
             
             # 騎手データマネージャー（騎手データ：843騎手）
-            from .jockey_data_manager import jockey_manager
+            from services.jockey_data_manager import jockey_manager
             self.jockey_manager = jockey_manager
             
             # 騎手名の正規化用
-            from .jockey_name_mapper import normalize_jockey_name
+            from services.jockey_name_mapper import normalize_jockey_name
             self.normalize_jockey_name = normalize_jockey_name
             
             logger.info("IMLogicエンジンを初期化しました（ILogicナレッジ使用）")

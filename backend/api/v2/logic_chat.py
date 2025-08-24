@@ -216,7 +216,7 @@ async def _analyze_imlogic(
             }
         
         # IMLogicエンジンを使用して分析
-        from ...services.imlogic_engine import IMLogicEngine
+        from services.imlogic_engine import IMLogicEngine
         engine = IMLogicEngine()
         
         result = engine.analyze_race(

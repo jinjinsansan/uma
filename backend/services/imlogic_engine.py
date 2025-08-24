@@ -248,30 +248,21 @@ class IMLogicEngine:
                 weighted_12_score += contribution
                 logger.info(f"{key}: {score:.1f}点 × {weight:.1f}% = {contribution:.2f}")
             
-            # Step 5: I-Logicの要素とユーザーカスタマイズの融合
-            # I-Logicのベース要素（クラス補正、開催適性など）は維持しつつ、
-            # 12項目の評価はユーザーの重み付けで調整
-            
-            # 標準D-Logicの総合スコアに対する、ユーザーカスタマイズ後のスコアの比率
-            original_total = dlogic_details.get('total_score', 75.0)
-            if original_total > 0:
-                custom_ratio = weighted_12_score / original_total
-            else:
-                custom_ratio = 1.0
-            
-            # I-Logicベーススコアにカスタマイズ比率を適用
-            final_score = ilogic_result.get('base_score', 75.0) * custom_ratio
+            # Step 5: IMLogicの最終スコア計算
+            # weighted_12_scoreは既にユーザーの重み付けを反映した12項目の合計スコア
+            # これをそのまま馬のスコアとして使用
+            horse_score = weighted_12_score
             
             # I-Logic固有のボーナスを加算（開催適性、馬場適性）
-            final_score += ilogic_result.get('venue_distance_bonus', 0)
-            final_score += ilogic_result.get('track_bonus', 0)
+            horse_score += ilogic_result.get('venue_distance_bonus', 0)
+            horse_score += ilogic_result.get('track_bonus', 0)
             
             # クラス補正を適用
-            final_score *= ilogic_result.get('class_factor', 1.0)
+            horse_score *= ilogic_result.get('class_factor', 1.0)
             
-            logger.info(f"{horse_name} IMLogicスコア: {final_score:.2f}点 (ベース:{ilogic_base_score:.1f}, カスタマイズ比率:{custom_ratio:.2f})")
+            logger.info(f"{horse_name} IMLogic馬スコア: {horse_score:.2f}点")
             
-            return min(150.0, max(0.0, final_score))  # I-Logic同様150点まで可能
+            return min(150.0, max(0.0, horse_score))  # I-Logic同様150点まで可能
             
         except Exception as e:
             logger.error(f"馬スコア計算エラー: {e}")

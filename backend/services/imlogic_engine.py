@@ -106,9 +106,22 @@ class IMLogicEngine:
                         item_weights
                     )
                     
-                    # データがない馬はスキップ
+                    # データがない馬も結果に含める
                     if not has_data:
                         logger.info(f"{horse_name}: ナレッジファイルにデータなし")
+                        results.append({
+                            'rank': 999,  # 最下位扱い
+                            'horse_number': horse_number,
+                            'post': post,
+                            'horse': horse_name,
+                            'jockey': jockey_name,
+                            'total_score': None,  # スコアなし
+                            'horse_score': None,
+                            'jockey_score': None,
+                            'horse_weight_pct': horse_weight,
+                            'jockey_weight_pct': jockey_weight,
+                            'data_status': 'no_data'  # データなしフラグ
+                        })
                         continue
                     
                     # 騎手の評価
@@ -139,7 +152,8 @@ class IMLogicEngine:
                         'horse_score': round(horse_score, 2),
                         'jockey_score': round(jockey_score, 2),
                         'horse_weight_pct': horse_weight,
-                        'jockey_weight_pct': jockey_weight
+                        'jockey_weight_pct': jockey_weight,
+                        'data_status': 'ok'  # データありフラグ
                     })
                     
                 except Exception as e:
@@ -147,12 +161,19 @@ class IMLogicEngine:
                     # エラーが発生した馬はスキップ
                     continue
             
-            # スコアで降順ソート
-            results.sort(key=lambda x: x['total_score'], reverse=True)
+            # データがある馬とない馬を分離
+            data_available = [r for r in results if r.get('data_status') == 'ok']
+            data_not_available = [r for r in results if r.get('data_status') == 'no_data']
             
-            # ランク付け
-            for idx, result in enumerate(results):
+            # データがある馬をスコアで降順ソート
+            data_available.sort(key=lambda x: x['total_score'], reverse=True)
+            
+            # ランク付け（データがある馬のみ）
+            for idx, result in enumerate(data_available):
                 result['rank'] = idx + 1
+            
+            # 結果を結合（データある馬 → データなし馬の順）
+            results = data_available + data_not_available
             
             return {
                 'type': 'imlogic',

@@ -145,6 +145,11 @@ app.include_router(race_analysis_v2_router, prefix="/api/race-analysis-v2", tags
 app.include_router(jockey_data_router, prefix="/api", tags=["Jockey Data"])
 app.include_router(archive_races_router, tags=["Archive Races"])
 
+# Logic Chat V2の新しいルーターを追加（既存システムに影響なし）
+from api.v2 import logic_chat, imlogic_settings
+app.include_router(logic_chat.router)
+app.include_router(imlogic_settings.router)
+
 # 本日レース情報（Phase C用固定データ）
 TODAY_RACES = {
     "tokyo": [

@@ -15,6 +15,8 @@ from datetime import datetime
 import mysql.connector
 from dotenv import load_dotenv
 import logging
+import time
+from collections import defaultdict
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO)
@@ -23,6 +25,9 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 router = APIRouter()
+
+# レート制限のためのグローバル変数
+rate_limiter = defaultdict(list)
 
 # LINE設定
 LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET', 'your-channel-secret')
@@ -558,6 +563,18 @@ async def complete_referral(request: Request):
         
         if not user_email:
             raise HTTPException(status_code=400, detail="user_email is required")
+        
+        # レート制限チェック（1分間に3回まで）
+        now = time.time()
+        recent_calls = rate_limiter[user_email]
+        recent_calls = [t for t in recent_calls if now - t < 60]
+        
+        if len(recent_calls) >= 3:
+            logger.warning(f"Rate limit exceeded for user: {user_email}")
+            return {"status": "rate_limited", "message": "Too many requests, please wait"}
+        
+        recent_calls.append(now)
+        rate_limiter[user_email] = recent_calls
         
         logger.info(f"Complete referral called for: {user_email}")
         result = await update_referral_status(user_email)

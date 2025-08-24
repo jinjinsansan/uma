@@ -7,6 +7,7 @@ import json
 from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
+from .auth import get_current_user
 
 load_dotenv()
 
@@ -35,11 +36,9 @@ class AnalyzeRequest(BaseModel):
     message: str
 
 @router.post("/create")
-async def create_chat(request: CreateChatRequest):
+async def create_chat(request: CreateChatRequest, user_id: str = Depends(get_current_user)):
     """新規チャット作成（レース固定）"""
     try:
-        # TODO: 認証実装後にuser_idを取得
-        user_id = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # 仮のユーザーID（goldbenchan@gmail.com）
         
         # レースデータを固定
         locked_race_data = {
@@ -74,11 +73,9 @@ async def create_chat(request: CreateChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/analyze")
-async def analyze(request: AnalyzeRequest):
+async def analyze(request: AnalyzeRequest, user_id: str = Depends(get_current_user)):
     """分析実行（IMLogic/ViewLogic）"""
     try:
-        # TODO: 認証実装後にuser_idを取得
-        user_id = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # 仮のユーザーID（goldbenchan@gmail.com）
         
         # チャットの存在確認とレースデータ取得
         chat_result = supabase.table("logic_chats_v2").select("*").eq(
@@ -247,11 +244,9 @@ async def _add_to_chat_history(
     }).eq("id", chat_id).execute()
 
 @router.get("/chat/{chat_id}")
-async def get_chat(chat_id: str):
+async def get_chat(chat_id: str, user_id: str = Depends(get_current_user)):
     """チャット情報を取得"""
     try:
-        # TODO: 認証実装後にuser_idを取得
-        user_id = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # 仮のユーザーID（goldbenchan@gmail.com）
         
         chat_result = supabase.table("logic_chats_v2").select("*").eq(
             "id", chat_id

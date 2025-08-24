@@ -12,6 +12,9 @@ BASE_URL = "http://127.0.0.1:8001"
 # テスト用のユーザーID（フロントエンドのSupabaseに存在するユーザーIDを使用）
 TEST_USER_ID = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # goldbenchan@gmail.comのID
 
+# テスト用の認証トークン（実際のClerkトークンではなくモック）
+TEST_AUTH_TOKEN = "test-auth-token-for-development"
+
 print("🚀 Logic Chat V2 API統合テスト")
 print("=" * 50)
 
@@ -34,7 +37,9 @@ except Exception as e:
 print("\n2. プリセット一覧の取得")
 print("-" * 30)
 try:
-    response = requests.get(f"{BASE_URL}/api/v2/imlogic-settings/presets/list")
+    # 認証が必要なエンドポイントの場合はヘッダーを追加
+    headers = {"Authorization": f"Bearer {TEST_AUTH_TOKEN}"}
+    response = requests.get(f"{BASE_URL}/api/v2/imlogic-settings/presets/list", headers=headers)
     if response.status_code == 200:
         data = response.json()
         presets = data.get('presets', [])

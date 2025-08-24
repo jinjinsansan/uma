@@ -100,11 +100,16 @@ class IMLogicEngine:
                     horse_number = horse_numbers[i] if i < len(horse_numbers) else i + 1
                     
                     # 馬の評価（拡張ナレッジから）
-                    horse_score = self._calculate_horse_score(
+                    horse_score, has_data = self._calculate_horse_score(
                         horse_name, 
                         context,
                         item_weights
                     )
+                    
+                    # データがない馬はスキップ
+                    if not has_data:
+                        logger.info(f"{horse_name}: ナレッジファイルにデータなし")
+                        continue
                     
                     # 騎手の評価
                     jockey_context = {
@@ -178,7 +183,7 @@ class IMLogicEngine:
         horse_name: str, 
         context: Dict[str, Any],
         item_weights: Dict[str, float]
-    ) -> float:
+    ) -> tuple[float, bool]:
         """
         馬のスコアを計算（I-Logicベース + 12項目カスタマイズ）
         
@@ -188,7 +193,7 @@ class IMLogicEngine:
             item_weights: 12項目の重み付け
         
         Returns:
-            馬のスコア（0-150）I-Logic同様150点まで可能
+            (馬のスコア, データ有無) - スコアは0-150、データなしの場合は(0, False)
         """
         try:
             # Step 1: I-Logicエンジンで計算（拡張ナレッジ使用）
@@ -199,6 +204,17 @@ class IMLogicEngine:
             )
             
             # I-Logicの計算結果から各種情報を取得
+            estimation_method = ilogic_result.get('estimation_method', 'unknown')
+            data_confidence = ilogic_result.get('data_confidence', 'none')
+            
+            # データなしの馬はFalseを返す
+            if estimation_method == 'default' and data_confidence == 'none':
+                # 拡張ナレッジにデータがない場合、標準ナレッジも確認
+                standard_knowledge = self.dlogic_manager.knowledge_data.get('horses', {})
+                if horse_name not in standard_knowledge:
+                    logger.info(f"{horse_name}: ナレッジファイルにデータが存在しません")
+                    return 0, False
+            
             base_score = ilogic_result.get('base_score', 50.0)  # イクイノックス基準
             venue_distance_bonus = ilogic_result.get('venue_distance_bonus', 0)
             track_bonus = ilogic_result.get('track_bonus', 0)
@@ -262,13 +278,13 @@ class IMLogicEngine:
             logger.info(f"  (内訳: 重み付け{weighted_score:.1f} + 開催場{venue_distance_bonus:.1f} + 馬場{track_bonus:.1f}) × クラス{class_factor:.2f}")
             
             # I-Logic同様150点まで可能
-            return min(150.0, max(0.0, final_score))
+            return min(150.0, max(0.0, final_score)), True
             
         except Exception as e:
             logger.error(f"馬スコア計算エラー ({horse_name}): {e}")
             import traceback
             traceback.print_exc()
-            return 50.0
+            return 50.0, True
     
     def _estimate_12_items_from_races(self, races: List[Dict]) -> Dict[str, float]:
         """レースデータから12項目を推定"""

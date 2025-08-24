@@ -211,34 +211,42 @@ class IMLogicEngine:
                 return ilogic_base_score
             
             # 12項目の詳細スコアを計算
-            dlogic_details = self.dlogic_manager.calculate_dlogic_score(horse_data)
+            dlogic_details = self.dlogic_manager.calculate_dlogic_realtime(horse_name)
             
             if 'error' in dlogic_details:
                 return ilogic_base_score
             
             # Step 3: 12項目の個別スコアを取得
+            # dlogic_detailsはd_logic_scoresフィールドを持つ
+            d_logic_scores = dlogic_details.get('d_logic_scores', {})
             item_scores = {
-                '1_distance_aptitude': dlogic_details.get('1_distance_aptitude', 50.0),
-                '2_bloodline_evaluation': dlogic_details.get('2_bloodline_evaluation', 50.0),
-                '3_jockey_compatibility': dlogic_details.get('3_jockey_compatibility', 50.0),
-                '4_trainer_evaluation': dlogic_details.get('4_trainer_evaluation', 50.0),
-                '5_track_aptitude': dlogic_details.get('5_track_aptitude', 50.0),
-                '6_weather_aptitude': dlogic_details.get('6_weather_aptitude', 50.0),
-                '7_popularity_factor': dlogic_details.get('7_popularity_factor', 50.0),
-                '8_weight_impact': dlogic_details.get('8_weight_impact', 50.0),
-                '9_horse_weight_impact': dlogic_details.get('9_horse_weight_impact', 50.0),
-                '10_corner_specialist': dlogic_details.get('10_corner_specialist_degree', 50.0),
-                '11_margin_analysis': dlogic_details.get('11_margin_analysis', 50.0),
-                '12_time_index': dlogic_details.get('12_time_index', 50.0)
+                '1_distance_aptitude': d_logic_scores.get('1_distance_aptitude', 50.0),
+                '2_bloodline_evaluation': d_logic_scores.get('2_bloodline_evaluation', 50.0),
+                '3_jockey_compatibility': d_logic_scores.get('3_jockey_compatibility', 50.0),
+                '4_trainer_evaluation': d_logic_scores.get('4_trainer_evaluation', 50.0),
+                '5_track_aptitude': d_logic_scores.get('5_track_aptitude', 50.0),
+                '6_weather_aptitude': d_logic_scores.get('6_weather_aptitude', 50.0),
+                '7_popularity_factor': d_logic_scores.get('7_popularity_factor', 50.0),
+                '8_weight_impact': d_logic_scores.get('8_weight_impact', 50.0),
+                '9_horse_weight_impact': d_logic_scores.get('9_horse_weight_impact', 50.0),
+                '10_corner_specialist': d_logic_scores.get('10_corner_specialist_degree', 50.0),
+                '11_margin_analysis': d_logic_scores.get('11_margin_analysis', 50.0),
+                '12_time_index': d_logic_scores.get('12_time_index', 50.0)
             }
             
             # Step 4: ユーザーの重み付けで12項目を再計算
+            # キーのマッピング（フロントエンドは番号付き、item_scoresも番号付きなのでそのまま使用）
+            # デバッグ：実際のキーを確認
+            logger.info(f"item_weights keys: {list(item_weights.keys())}")
+            logger.info(f"item_scores keys: {list(item_scores.keys())}")
+            
             weighted_12_score = 0.0
             for key, weight in item_weights.items():
+                # フロントエンドのキーがそのままitem_scoresのキーと一致するはず
                 score = item_scores.get(key, 50.0)
                 contribution = score * (weight / 100.0)
                 weighted_12_score += contribution
-                logger.debug(f"{key}: {score:.1f}点 × {weight:.1f}% = {contribution:.2f}")
+                logger.info(f"{key}: {score:.1f}点 × {weight:.1f}% = {contribution:.2f}")
             
             # Step 5: I-Logicの要素とユーザーカスタマイズの融合
             # I-Logicのベース要素（クラス補正、開催適性など）は維持しつつ、

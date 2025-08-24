@@ -194,8 +194,12 @@ async def _analyze_imlogic(
                 raise HTTPException(status_code=404, detail="指定された設定が見つかりません")
             
             settings = settings_result.data[0]
+            # デバッグ：Supabaseから取得した設定を確認
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Supabaseから取得した設定: {settings}")
         else:
-            # デフォルト設定を使用
+            # デフォルト設定を使用（フロントエンドと同じ番号付きキー）
             settings = {
                 "horse_weight": 70,
                 "jockey_weight": 30,

@@ -180,7 +180,7 @@ class IMLogicEngine:
         item_weights: Dict[str, float]
     ) -> float:
         """
-        馬のスコアを計算（I-Logicベース + 12項目カスタマイズ）
+        馬のスコアを計算（12項目をユーザーの重み付けで計算）
         
         Args:
             horse_name: 馬名
@@ -191,34 +191,17 @@ class IMLogicEngine:
             馬のスコア（0-100）
         """
         try:
-            # Step 1: I-Logicのベース計算（イクイノックス基準、開催適性、クラス補正など）
-            ilogic_result = self.modern_engine.calculate_horse_score(
-                horse_name=horse_name,
-                context=context,
-                enable_bayesian=True
-            )
-            
-            # I-Logicのベーススコア（開催適性、クラス補正込み）
-            ilogic_base_score = ilogic_result.get('final_score', 50.0)
-            
-            # Step 2: 標準D-Logicから12項目の詳細を取得
-            # 注: get_horse_raw_dataメソッドを使う
-            horse_data = self.dlogic_manager.get_horse_raw_data(horse_name)
-            
-            if not horse_data:
-                # データがない場合はI-Logicのスコアをそのまま返す
-                logger.warning(f"12項目データが見つかりません: {horse_name}")
-                return ilogic_base_score
-            
-            # 12項目の詳細スコアを計算
+            # 標準D-Logicから12項目の詳細を取得
             dlogic_details = self.dlogic_manager.calculate_dlogic_realtime(horse_name)
             
             if 'error' in dlogic_details:
-                return ilogic_base_score
+                logger.warning(f"12項目データが見つかりません: {horse_name}")
+                return 50.0  # デフォルトスコア
             
-            # Step 3: 12項目の個別スコアを取得
-            # dlogic_detailsはd_logic_scoresフィールドを持つ
+            # 12項目の個別スコアを取得
             d_logic_scores = dlogic_details.get('d_logic_scores', {})
+            
+            # キーのマッピング（corner_specialistのキー名が異なる）
             item_scores = {
                 '1_distance_aptitude': d_logic_scores.get('1_distance_aptitude', 50.0),
                 '2_bloodline_evaluation': d_logic_scores.get('2_bloodline_evaluation', 50.0),
@@ -229,43 +212,44 @@ class IMLogicEngine:
                 '7_popularity_factor': d_logic_scores.get('7_popularity_factor', 50.0),
                 '8_weight_impact': d_logic_scores.get('8_weight_impact', 50.0),
                 '9_horse_weight_impact': d_logic_scores.get('9_horse_weight_impact', 50.0),
-                '10_corner_specialist': d_logic_scores.get('10_corner_specialist_degree', 50.0),
+                '10_corner_specialist': d_logic_scores.get('10_corner_specialist_degree', 50.0),  # キー名修正
                 '11_margin_analysis': d_logic_scores.get('11_margin_analysis', 50.0),
                 '12_time_index': d_logic_scores.get('12_time_index', 50.0)
             }
             
-            # Step 4: ユーザーの重み付けで12項目を再計算
-            # キーのマッピング（フロントエンドは番号付き、item_scoresも番号付きなのでそのまま使用）
-            # デバッグ：実際のキーを確認
-            logger.info(f"item_weights keys: {list(item_weights.keys())}")
-            logger.info(f"item_scores keys: {list(item_scores.keys())}")
+            # デバッグ：各項目のスコアをログ出力
+            logger.info(f"
+{horse_name} の12項目スコア:")
+            for key, score in item_scores.items():
+                logger.info(f"  {key}: {score:.1f}点")
             
-            weighted_12_score = 0.0
+            # ユーザーの重み付けで12項目を再計算
+            weighted_score = 0.0
+            total_weight = 0.0
+            
+            logger.info(f"
+{horse_name} の重み付け計算:")
             for key, weight in item_weights.items():
-                # フロントエンドのキーがそのままitem_scoresのキーと一致するはず
                 score = item_scores.get(key, 50.0)
-                contribution = score * (weight / 100.0)
-                weighted_12_score += contribution
-                logger.info(f"{key}: {score:.1f}点 × {weight:.1f}% = {contribution:.2f}")
+                # 重みを正規化（合計が100になるように）
+                normalized_weight = weight / 100.0
+                contribution = score * normalized_weight
+                weighted_score += contribution
+                total_weight += weight
+                logger.info(f"  {key}: {score:.1f}点 × {weight:.1f}% = {contribution:.2f}点")
             
-            # Step 5: IMLogicの最終スコア計算
-            # weighted_12_scoreは既にユーザーの重み付けを反映した12項目の合計スコア
-            # これをそのまま馬のスコアとして使用
-            horse_score = weighted_12_score
+            # 最終スコア（重み付けの合計が100%でない場合の補正）
+            if total_weight > 0 and total_weight != 100:
+                weighted_score = weighted_score * (100.0 / total_weight)
             
-            # I-Logic固有のボーナスを加算（開催適性、馬場適性）
-            horse_score += ilogic_result.get('venue_distance_bonus', 0)
-            horse_score += ilogic_result.get('track_bonus', 0)
+            logger.info(f"
+{horse_name} IMLogic馬スコア（重み付け後）: {weighted_score:.2f}点")
             
-            # クラス補正を適用
-            horse_score *= ilogic_result.get('class_factor', 1.0)
-            
-            logger.info(f"{horse_name} IMLogic馬スコア: {horse_score:.2f}点")
-            
-            return min(150.0, max(0.0, horse_score))  # I-Logic同様150点まで可能
+            # スコアを0-100の範囲に収める
+            return min(100.0, max(0.0, weighted_score))
             
         except Exception as e:
-            logger.error(f"馬スコア計算エラー: {e}")
+            logger.error(f"馬スコア計算エラー ({horse_name}): {e}")
             import traceback
             traceback.print_exc()
             return 50.0

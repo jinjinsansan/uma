@@ -28,6 +28,14 @@ class IMLogicEngine:
             from services.jockey_name_mapper import normalize_jockey_name
             self.normalize_jockey_name = normalize_jockey_name
             
+            # I-Logicエンジン（ベース計算用）
+            from services.modern_dlogic_engine import ModernDLogicEngine
+            self.modern_engine = ModernDLogicEngine()
+            
+            # 標準D-Logicエンジン（12項目計算用）
+            from services.dlogic_raw_data_manager import DLogicRawDataManager
+            self.dlogic_manager = DLogicRawDataManager()
+            
             logger.info("IMLogicエンジンを初期化しました（ILogicナレッジ使用）")
         except Exception as e:
             logger.error(f"IMLogicエンジンの初期化エラー: {e}")
@@ -166,7 +174,7 @@ class IMLogicEngine:
         item_weights: Dict[str, float]
     ) -> float:
         """
-        馬のスコアを計算（拡張ナレッジ使用）
+        馬のスコアを計算（I-Logicベース + 12項目カスタマイズ）
         
         Args:
             horse_name: 馬名
@@ -177,65 +185,83 @@ class IMLogicEngine:
             馬のスコア（0-100）
         """
         try:
-            # 拡張ナレッジから馬データを取得（リスト形式）
-            races = self.extended_manager.get_horse_data(horse_name)
+            # Step 1: I-Logicのベース計算（イクイノックス基準、開催適性、クラス補正など）
+            ilogic_result = self.modern_engine.calculate_horse_score(
+                horse_name=horse_name,
+                context=context,
+                enable_bayesian=True
+            )
             
-            if not races:
-                logger.warning(f"馬データが見つかりません: {horse_name}")
-                return 50.0  # デフォルトスコア
+            # I-Logicのベーススコア（開催適性、クラス補正込み）
+            ilogic_base_score = ilogic_result.get('final_score', 50.0)
             
-            # レースデータがリスト形式であることを確認
-            if not isinstance(races, list) or len(races) == 0:
-                return 50.0
+            # Step 2: 標準D-Logicから12項目の詳細を取得
+            horse_data = self.dlogic_manager.knowledge_data.get(horse_name, {})
             
-            # 最新レースデータから各項目のスコアを計算
-            recent_races = races[:5]  # 直近5走
+            if not horse_data:
+                # データがない場合はI-Logicのスコアをそのまま返す
+                logger.warning(f"12項目データが見つかりません: {horse_name}")
+                return ilogic_base_score
             
-            # デフォルトスコア
-            base_scores = {
-                '1_distance_aptitude': 70.0,
-                '2_bloodline_evaluation': 75.0,  # 血統データなし
-                '3_jockey_compatibility': 70.0,
-                '4_trainer_evaluation': 70.0,
-                '5_track_aptitude': 70.0,
-                '6_weather_aptitude': 70.0,
-                '7_popularity_factor': 70.0,
-                '8_weight_impact': 70.0,
-                '9_horse_weight_impact': 70.0,
-                '10_corner_specialist': 70.0,
-                '11_margin_analysis': 70.0,
-                '12_time_index': 70.0
+            # 12項目の詳細スコアを計算
+            dlogic_details = self.dlogic_manager.calculate_dlogic_score(horse_data)
+            
+            if 'error' in dlogic_details:
+                return ilogic_base_score
+            
+            # Step 3: 12項目の個別スコアを取得
+            item_scores = {
+                '1_distance_aptitude': dlogic_details.get('1_distance_aptitude', 50.0),
+                '2_bloodline_evaluation': dlogic_details.get('2_bloodline_evaluation', 50.0),
+                '3_jockey_compatibility': dlogic_details.get('3_jockey_compatibility', 50.0),
+                '4_trainer_evaluation': dlogic_details.get('4_trainer_evaluation', 50.0),
+                '5_track_aptitude': dlogic_details.get('5_track_aptitude', 50.0),
+                '6_weather_aptitude': dlogic_details.get('6_weather_aptitude', 50.0),
+                '7_popularity_factor': dlogic_details.get('7_popularity_factor', 50.0),
+                '8_weight_impact': dlogic_details.get('8_weight_impact', 50.0),
+                '9_horse_weight_impact': dlogic_details.get('9_horse_weight_impact', 50.0),
+                '10_corner_specialist': dlogic_details.get('10_corner_specialist_degree', 50.0),
+                '11_margin_analysis': dlogic_details.get('11_margin_analysis', 50.0),
+                '12_time_index': dlogic_details.get('12_time_index', 50.0)
             }
             
-            # 実際のレースデータから計算
-            if recent_races:
-                # 着順による基本評価
-                avg_chakujun = sum(int(r.get('KAKUTEI_CHAKUJUN', '10')) for r in recent_races) / len(recent_races)
-                if avg_chakujun <= 3:
-                    base_adjustment = 85.0
-                elif avg_chakujun <= 5:
-                    base_adjustment = 75.0
-                else:
-                    base_adjustment = 65.0
-                
-                # 各項目をベース値から調整
-                item_scores = {}
-                for key in base_scores:
-                    item_scores[key] = base_adjustment
-            else:
-                item_scores = base_scores
-            
-            # 重み付けを適用して総合スコアを計算
-            total_score = 0.0
+            # Step 4: ユーザーの重み付けで12項目を再計算
+            weighted_12_score = 0.0
             for key, weight in item_weights.items():
-                score = item_scores.get(key, 75.0)
+                score = item_scores.get(key, 50.0)
                 contribution = score * (weight / 100.0)
-                total_score += contribution
+                weighted_12_score += contribution
+                logger.debug(f"{key}: {score:.1f}点 × {weight:.1f}% = {contribution:.2f}")
             
-            return min(100.0, max(0.0, total_score))
+            # Step 5: I-Logicの要素とユーザーカスタマイズの融合
+            # I-Logicのベース要素（クラス補正、開催適性など）は維持しつつ、
+            # 12項目の評価はユーザーの重み付けで調整
+            
+            # 標準D-Logicの総合スコアに対する、ユーザーカスタマイズ後のスコアの比率
+            original_total = dlogic_details.get('total_score', 75.0)
+            if original_total > 0:
+                custom_ratio = weighted_12_score / original_total
+            else:
+                custom_ratio = 1.0
+            
+            # I-Logicベーススコアにカスタマイズ比率を適用
+            final_score = ilogic_result.get('base_score', 75.0) * custom_ratio
+            
+            # I-Logic固有のボーナスを加算（開催適性、馬場適性）
+            final_score += ilogic_result.get('venue_distance_bonus', 0)
+            final_score += ilogic_result.get('track_bonus', 0)
+            
+            # クラス補正を適用
+            final_score *= ilogic_result.get('class_factor', 1.0)
+            
+            logger.info(f"{horse_name} IMLogicスコア: {final_score:.2f}点 (ベース:{ilogic_base_score:.1f}, カスタマイズ比率:{custom_ratio:.2f})")
+            
+            return min(150.0, max(0.0, final_score))  # I-Logic同様150点まで可能
             
         except Exception as e:
             logger.error(f"馬スコア計算エラー: {e}")
+            import traceback
+            traceback.print_exc()
             return 50.0
     
     def _calc_distance_score(self, races: List[Dict], distance: str) -> float:

@@ -48,29 +48,23 @@ async def verify_email_token(credentials: HTTPAuthorizationCredentials = Securit
         
         # Supabaseが利用可能な場合のみユーザー検索・作成を実行
         if supabase:
-            # Supabaseでユーザーを検索または作成
-            user_result = supabase.table("users").select("*").eq("email", email).execute()
+            # V2専用テーブルでユーザーを検索または作成
+            user_result = supabase.table("v2_users").select("*").eq("email", email).execute()
             
             if user_result.data:
                 user = user_result.data[0]
             else:
                 # 新規ユーザーの場合は作成
-                create_result = supabase.table("users").insert({
+                # google_idをemailベースで生成（ユニーク制約対応）
+                create_result = supabase.table("v2_users").insert({
                     "email": email,
                     "name": email.split("@")[0],
-                    "google_id": "",
+                    "google_id": f"v2-{email}",  # V2用の一意なID
                     "avatar_url": ""
                 }).execute()
                 
                 if create_result.data:
                     user = create_result.data[0]
-                    
-                    # user_quotasも作成
-                    supabase.table("user_quotas").insert({
-                        "user_id": user["id"],
-                        "subscription_type": "free_trial",
-                        "daily_uses": 0
-                    }).execute()
                 else:
                     raise HTTPException(status_code=500, detail="Failed to create user")
             

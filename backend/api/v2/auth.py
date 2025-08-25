@@ -6,6 +6,7 @@ from typing import Optional, Dict, Any
 import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from api.v2.config import v2_config
 
 load_dotenv()
 
@@ -65,6 +66,32 @@ async def verify_email_token(credentials: HTTPAuthorizationCredentials = Securit
                 
                 if create_result.data:
                     user = create_result.data[0]
+                    
+                    # 新規ユーザーに初期ポイントを付与（環境変数から読み込み）
+                    try:
+                        initial_points = v2_config.POINTS_GOOGLE_AUTH
+                        
+                        # v2_user_pointsテーブルに初期ポイントを追加
+                        points_result = supabase.table("v2_user_points").insert({
+                            "user_id": user["id"],
+                            "current_points": initial_points,
+                            "total_earned": initial_points,
+                            "total_spent": 0
+                        }).execute()
+                        
+                        # v2_point_transactionsに初期付与の履歴を記録
+                        transaction_result = supabase.table("v2_point_transactions").insert({
+                            "user_id": user["id"],
+                            "amount": initial_points,
+                            "transaction_type": "initial_grant",
+                            "description": f"Google認証による初期ポイント付与（{initial_points}ポイント）",
+                            "balance_after": initial_points
+                        }).execute()
+                        
+                        print(f"Initial points ({initial_points}) granted to new user: {email}")
+                    except Exception as e:
+                        print(f"Failed to grant initial points: {e}")
+                        # ポイント付与に失敗してもユーザー作成は成功させる
                 else:
                     raise HTTPException(status_code=500, detail="Failed to create user")
             

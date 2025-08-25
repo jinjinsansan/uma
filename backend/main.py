@@ -162,9 +162,11 @@ try:
     from api.v2 import points as v2_points_router
     from api.v2 import chat as v2_chat_router
     from api.v2 import health as v2_health_router
+    from api.v2 import line_referral as v2_line_referral_router
     app.include_router(v2_points_router.router)
     app.include_router(v2_chat_router.router)
     app.include_router(v2_health_router.router)
+    app.include_router(v2_line_referral_router.router)
     print("✅ V2ポイント制システムAPI登録完了")
 except ImportError as e:
     print(f"⚠️ V2ポイント制システムAPIが見つかりません（開発中）: {e}")

@@ -40,7 +40,6 @@ from services.knowledge_base import KnowledgeBase
 
 # V2 API imports
 from api.v2.health import router as v2_health_router
-from api.v2.auth import router as v2_auth_router
 from api.v2.points import router as v2_points_router
 from api.v2.chat import router as v2_chat_router
 from api.v2.imlogic_settings import router as v2_imlogic_settings_router

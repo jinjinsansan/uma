@@ -266,6 +266,50 @@ interface ArchiveRace {
 - **モーダル方式**: レースアナリシスはURLパラメータを使わない
 - **バックエンド独立性**: FastDLogicEngineインスタンスを共有（メモリ効率化）
 
+## 🚀 V2 LINE連携・友達紹介・デイリーボーナス実装完了 (2025-08-25)
+
+### 実装内容
+V2ポイント制システムの初期ポイント付与機能を柔軟に実装完了。
+
+#### バックエンドAPI
+- **`/api/v2/config.py`**: 環境変数からポイント設定を読み込む中央設定
+- **`/api/v2/line_referral.py`**: 6つのエンドポイント実装
+  - `POST /api/v2/line/connect` - LINE連携（環境変数のポイント付与）
+  - `POST /api/v2/line/referral` - 友達紹介コード適用（環境変数のポイント付与）
+  - `POST /api/v2/line/daily-login` - デイリーログインボーナス（1日1回）
+  - `GET /api/v2/line/referral/code` - 紹介コード取得・生成
+  - `GET /api/v2/line/status` - LINE連携・紹介状態確認
+  - `GET /api/v2/line/config` - 現在のポイント設定（公開情報）
+- **`main.py`**: 新しいルーターを追加済み
+
+#### フロントエンド
+- **Supabaseマイグレーション**: v2_usersテーブルに必要フィールド追加
+  - LINE連携: `line_user_id`, `line_connected_at`
+  - 友達紹介: `referral_code`, `referral_count`, `referred_by`, `referred_at`
+  - デイリーボーナス: `last_login_at`
+- **`v2_referral_history`テーブル**: 紹介履歴管理
+
+#### 環境変数設定
+```bash
+# .envファイルに追加済み
+V2_POINTS_GOOGLE_AUTH=2      # Google認証時の付与ポイント
+V2_POINTS_LINE_CONNECT=12    # LINE連携時の付与ポイント
+V2_POINTS_REFERRAL=22        # 友達紹介適用時の付与ポイント
+V2_POINTS_DAILY_LOGIN=1      # デイリーログインボーナス
+V2_POINTS_PER_CHAT=1         # チャット作成時の消費ポイント
+```
+
+### セキュリティ対策
+- 自己紹介防止
+- 紹介コードの大文字統一（6文字英数字）
+- 1人1回のみ紹介を受けられる制限
+- すべてのAPIで認証必須
+
+### 今後の実装予定
+- フロントエンドのV2マイページ（ポイント表示・LINE連携・紹介URL表示）
+- チャット作成時のポイント消費機能
+- ポイント購入機能（プレミアムプラン）
+
 ## 🚀 現在進行中の開発 (2025-01-11)
 
 ### 天候適性D-Logic実装

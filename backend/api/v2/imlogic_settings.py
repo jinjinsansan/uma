@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-router = APIRouter(prefix="/api/v2/imlogic-settings", tags=["IMLogic Settings"])
+router = APIRouter(prefix="/api/v2/imlogic", tags=["IMLogic Settings"])
 
 # Supabaseクライアント
 supabase_url = os.getenv("SUPABASE_URL")
@@ -63,6 +63,48 @@ class UpdateSettingsRequest(BaseModel):
     horse_weight: Optional[int] = None
     jockey_weight: Optional[int] = None
     item_weights: Optional[Dict[str, float]] = None
+
+@router.get("/settings")
+async def get_user_settings(email: str = None):
+    """ユーザーの現在のIMLogic設定を取得"""
+    try:
+        # TODO: 認証実装後にemailから user_idを取得
+        user_id = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # 仮のユーザーID（goldbenchan@gmail.com）
+        
+        # アクティブな設定を取得
+        result = supabase.table("v2_imlogic_settings") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .eq("is_active", True) \
+            .single() \
+            .execute()
+        
+        if result.data:
+            return {
+                "settings": {
+                    "id": result.data["id"],
+                    "name": result.data["name"],
+                    "weights": result.data["item_weights"],
+                    "horse_ratio": result.data["horse_weight"],
+                    "jockey_ratio": result.data["jockey_weight"],
+                    "updated_at": result.data["updated_at"]
+                }
+            }
+        else:
+            # デフォルト設定を返す
+            return {
+                "settings": None
+            }
+            
+    except Exception as e:
+        print(f"設定取得エラー: {str(e)}")
+        return {"settings": None}
+
+@router.post("/settings")
+async def save_user_settings(request: CreateSettingsRequest):
+    """ユーザーのIMLogic設定を保存（POST /settings エンドポイント）"""
+    # 既存のcreate_settingsロジックを使用
+    return await create_settings(request)
 
 @router.post("/create")
 async def create_settings(request: CreateSettingsRequest):

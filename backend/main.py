@@ -38,6 +38,13 @@ from api.archive_races import router as archive_races_router
 from models.d_logic_models import ChatDLogicRequest, ChatDLogicResponse
 from services.knowledge_base import KnowledgeBase
 
+# V2 API imports
+from api.v2.health import router as v2_health_router
+from api.v2.auth import router as v2_auth_router
+from api.v2.points import router as v2_points_router
+from api.v2.chat import router as v2_chat_router
+from api.v2.imlogic_settings import router as v2_imlogic_settings_router
+
 app = FastAPI(title="Dロジック競馬予想AI", version="2.0.0")
 
 # CORS設定（環境変数で動的に設定可能）

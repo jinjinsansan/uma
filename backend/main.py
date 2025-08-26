@@ -43,6 +43,7 @@ from api.v2.health import router as v2_health_router
 from api.v2.points import router as v2_points_router
 from api.v2.chat import router as v2_chat_router
 from api.v2.imlogic_settings import router as v2_imlogic_settings_router
+from api.v2.cleanup_settings import router as v2_cleanup_router
 
 app = FastAPI(title="Dロジック競馬予想AI", version="2.0.0")
 
@@ -171,6 +172,7 @@ if os.getenv("ENABLE_V2_FEATURES", "true").lower() == "true":
         app.include_router(v2_health_router.router)
         app.include_router(v2_line_referral_router.router)
         app.include_router(v2_dlogic_router.router)
+        app.include_router(v2_cleanup_router)
         print("✅ V2ポイント制システムAPI登録完了")
         print("✅ V2 D-Logic バッチ計算API登録完了")
     except ImportError as e:

@@ -270,6 +270,17 @@ async def send_message(
     チャットにメッセージを送信
     """
     try:
+        # レート制限チェック
+        from api.v2.rate_limiter import check_rate_limit
+        user_id = user_info["user_id"]
+        is_allowed, retry_after = check_rate_limit(user_id, 'chat_message')
+        
+        if not is_allowed:
+            raise HTTPException(
+                status_code=429,
+                detail=f"リクエスト制限を超えました。{retry_after}秒後に再試行してください。",
+                headers={"Retry-After": str(retry_after)}
+            )
         logger.info(f"=== send_message開始 ===")
         logger.info(f"session_id: {session_id}")
         logger.info(f"user_info: {user_info}")

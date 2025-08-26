@@ -138,31 +138,15 @@ async def create_settings(
         # 設定を保存
         settings_id = str(uuid.uuid4())
         
-        # 既存の設定があるか確認
-        existing = supabase.table("v2_imlogic_settings")\
-            .select("id")\
-            .eq("user_id", user_id)\
-            .execute()
-        
-        if existing.data:
-            # 既存の設定がある場合は更新
-            result = supabase.table("v2_imlogic_settings").update({
-                "settings_name": request.name,
-                "horse_weight": request.horse_weight,
-                "jockey_weight": request.jockey_weight,
-                "item_weights": request.item_weights,
-                "updated_at": datetime.now().isoformat()
-            }).eq("user_id", user_id).execute()
-        else:
-            # 新規作成
-            result = supabase.table("v2_imlogic_settings").insert({
-                "id": settings_id,
-                "user_id": user_id,
-                "settings_name": request.name,
-                "horse_weight": request.horse_weight,
-                "jockey_weight": request.jockey_weight,
-                "item_weights": request.item_weights
-            }).execute()
+        # 常に新規作成（履歴を残すため）
+        result = supabase.table("v2_imlogic_settings").insert({
+            "id": settings_id,
+            "user_id": user_id,
+            "settings_name": request.name,
+            "horse_weight": request.horse_weight,
+            "jockey_weight": request.jockey_weight,
+            "item_weights": request.item_weights
+        }).execute()
         
         return {
             "id": settings_id,

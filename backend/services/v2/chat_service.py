@@ -311,7 +311,7 @@ class V2ChatService:
         
         # 上位5頭を表示
         for i, result in enumerate(data_available[:5]):
-            rank_emoji = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"][i]
+            rank_emoji = ["🥇", "🥈", "🥉", "4位:", "5位:"][i]
             response += f"{rank_emoji} **{result['horse']}** - {result['total_score']:.1f}点\n"
             response += f"   馬: {result['horse_score']:.1f}点 / 騎手: {result['jockey_score']:.1f}点 ({result['jockey']})\n"
         

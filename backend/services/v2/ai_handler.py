@@ -248,7 +248,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             lines.append("")
             
             # 上位5頭を表示（スコアがある馬のみ）
-            emojis = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣']
+            emojis = ['🥇', '🥈', '🥉', '4位:', '5位:']
             valid_scores = [s for s in scores if s.get('total_score') is not None]
             
             for i, score_data in enumerate(valid_scores[:5]):

@@ -158,6 +158,44 @@ class V2ChatService:
     ) -> Dict:
         """メッセージを処理してAI応答を生成"""
         try:
+            # レースに出走する馬のチェック
+            race_horses = session_data.get("race_snapshot", {}).get("horses", [])
+            if race_horses:
+                # メッセージ内に馬名が含まれているか確認
+                mentioned_horses = []
+                for horse in race_horses:
+                    if horse in message:
+                        mentioned_horses.append(horse)
+                
+                # レースに出走しない馬名が含まれているかチェック
+                import re
+                # 「〜の」「〜を」「〜と」などの助詞で区切って馬名候補を抽出
+                potential_horses = re.findall(r'[ァ-ヴー]+(?:の|を|と|、|。|\s|$)', message)
+                invalid_horses = []
+                for potential in potential_horses:
+                    # 助詞を除去
+                    cleaned = re.sub(r'[のをと、。\s]+$', '', potential)
+                    # 3文字以上のカタカナのみの文字列を馬名候補として扱う
+                    if len(cleaned) >= 3 and cleaned not in race_horses and re.match(r'^[ァ-ヴー]+$', cleaned):
+                        invalid_horses.append(cleaned)
+                
+                # 無効な馬名が含まれている場合はエラーメッセージを返す
+                if invalid_horses:
+                    error_content = f"申し訳ございません。以下の馬は{session_data['venue']}{session_data['race_number']}Rに出走していません：\n"
+                    error_content += "、".join(invalid_horses) + "\n\n"
+                    error_content += f"このレースに出走する馬は以下の{len(race_horses)}頭です：\n"
+                    error_content += "、".join(race_horses)
+                    
+                    # エラーメッセージを保存して返す
+                    error_message_data = {
+                        "session_id": session_id,
+                        "role": "assistant",
+                        "content": error_content,
+                        "ai_type": ai_type
+                    }
+                    error_response = self.supabase.table("v2_chat_messages").insert(error_message_data).execute()
+                    return {"message": error_response.data[0]}
+            
             # ユーザーメッセージを保存
             user_message_data = {
                 "session_id": session_id,

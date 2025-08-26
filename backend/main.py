@@ -8,12 +8,12 @@ from datetime import datetime
 import json
 import gc
 
-# ガベージコレクションの最適化（保守的な設定）
+# ガベージコレクションの最適化（メモリ優先設定）
 # デフォルト値は (700, 10, 10)
-# この設定により、GC頻度を適度に減らしつつ安定性を保つ
-# 効果：大きなファイル読み込み時のパフォーマンス向上（5-10%）
-# リスク：メモリ使用量が若干増加（5-10%）
-gc.set_threshold(1000, 15, 15)
+# Renderの2GB制限に対応するため、より頻繁にGCを実行
+# 効果：メモリ使用量を低く保つ
+# リスク：パフォーマンスが若干低下（3-5%）
+gc.set_threshold(500, 10, 10)
 print(f"[GC設定] 閾値を変更しました: {gc.get_threshold()}")
 
 # Dロジック関連のインポート
@@ -127,6 +127,20 @@ async def startup_event():
         print(f"⚠️  拡張ナレッジファイル初期化エラー: {e}")
         import traceback
         traceback.print_exc()
+    
+    # メモリ使用量を確認・最適化
+    gc.collect()  # 強制的にガベージコレクション実行
+    
+    import psutil
+    import os
+    try:
+        process = psutil.Process(os.getpid())
+        memory_mb = process.memory_info().rss / 1024 / 1024
+        print(f"📊 現在のメモリ使用量: {memory_mb:.1f}MB / 2048MB")
+        if memory_mb > 1500:
+            print("⚠️  警告: メモリ使用量が高い状態です。")
+    except:
+        pass  # psutilがない場合はスキップ
     
     print("=" * 80)
     print("✅ 起動時初期化完了")

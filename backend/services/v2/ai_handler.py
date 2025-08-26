@@ -230,8 +230,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             if not scores:
                 return "分析結果が取得できませんでした。"
             
-            # スコア順にソート
-            scores.sort(key=lambda x: x.get('total_score', 0), reverse=True)
+            # スコア順にソート（Noneの場合は-1として扱う）
+            scores.sort(key=lambda x: x.get('total_score') if x.get('total_score') is not None else -1, reverse=True)
             
             # 結果のフォーマット
             lines = []
@@ -239,9 +239,11 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             lines.append(f"{race_data.get('venue', '')} {race_data.get('race_number', '')}R")
             lines.append("")
             
-            # 上位5頭を表示
+            # 上位5頭を表示（スコアがある馬のみ）
             emojis = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣']
-            for i, score_data in enumerate(scores[:5]):
+            valid_scores = [s for s in scores if s.get('total_score') is not None]
+            
+            for i, score_data in enumerate(valid_scores[:5]):
                 emoji = emojis[i] if i < 5 else f"{i+1}."
                 # 'horse_name'と'horse'の両方に対応
                 horse_name = score_data.get('horse_name') or score_data.get('horse', '不明')
@@ -252,15 +254,23 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 lines.append(f"{emoji} {horse_name}: {total_score:.1f}点")
                 lines.append(f"   馬: {horse_score:.1f}点 | 騎手: {jockey_score:.1f}点")
             
-            # 6位以下も簡潔に表示
-            if len(scores) > 5:
+            # 6位以下も簡潔に表示（スコアがある馬のみ）
+            if len(valid_scores) > 5:
                 lines.append("")
                 lines.append("【6位以下】")
-                for score_data in scores[5:]:
+                for score_data in valid_scores[5:]:
                     # 'horse_name'と'horse'の両方に対応
                     horse_name = score_data.get('horse_name') or score_data.get('horse', '不明')
                     total_score = score_data.get('total_score', 0)
                     lines.append(f"{horse_name}: {total_score:.1f}点")
+            
+            # データがない馬がいる場合の注記
+            no_data_horses = [s.get('horse_name') or s.get('horse', '不明') 
+                            for s in scores if s.get('total_score') is None]
+            if no_data_horses:
+                lines.append("")
+                lines.append("【データ不足】")
+                lines.append(f"以下の馬はデータ不足のため分析できませんでした: {', '.join(no_data_horses)}")
             
             return "\n".join(lines)
             

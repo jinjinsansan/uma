@@ -8,8 +8,11 @@ from datetime import datetime
 import logging
 from pydantic import BaseModel
 import uuid
+import os
+from supabase import create_client, Client
 
 from api.v2.auth import get_current_user, verify_email_token
+from api.v2.config import v2_config
 from services.v2.points_service import V2PointsService
 from services.v2.chat_service import V2ChatService
 from services.v2.ai_handler import V2AIHandler
@@ -35,9 +38,6 @@ async def get_user_from_email_header(
         raise HTTPException(status_code=403, detail="Not authenticated")
     
     # verify_email_tokenと同じようにユーザー情報を取得
-    from supabase import create_client, Client
-    import os
-    
     supabase_url = os.getenv("SUPABASE_URL")
     supabase_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     supabase: Client = create_client(supabase_url, supabase_key)
@@ -54,8 +54,6 @@ async def get_user_from_email_header(
         }
     else:
         # ユーザーが見つからない場合は作成
-        from api.v2.config import v2_config
-        
         create_result = supabase.table("v2_users").insert({
             "email": email,
             "name": email.split("@")[0],

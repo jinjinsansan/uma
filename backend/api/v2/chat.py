@@ -2,7 +2,7 @@
 V2チャット管理API
 IMLogicとViewLogic（将来）を統合
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Header
 from typing import Dict, List, Optional
 from datetime import datetime
 import logging
@@ -10,8 +10,6 @@ from pydantic import BaseModel
 import uuid
 
 from api.v2.auth import get_current_user, verify_email_token
-from fastapi import Header
-from typing import Optional
 from services.v2.points_service import V2PointsService
 from services.v2.chat_service import V2ChatService
 from services.v2.ai_handler import V2AIHandler
@@ -19,9 +17,21 @@ from services.v2.ai_handler import V2AIHandler
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v2/chat", tags=["v2-chat"])
 
-async def get_user_from_email_header(x_user_email: Optional[str] = Header(None)) -> dict:
-    """X-User-Emailヘッダーから簡易的にユーザー情報を取得"""
-    if not x_user_email:
+async def get_user_from_email_header(
+    x_user_email: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None)
+) -> dict:
+    """X-User-EmailヘッダーまたはAuthorizationヘッダーから簡易的にユーザー情報を取得"""
+    # X-User-Emailヘッダーがあればそれを使用
+    email = x_user_email
+    
+    # なければAuthorizationヘッダーから取得
+    if not email and authorization:
+        # "Bearer email@example.com" 形式から email を抽出
+        if authorization.startswith("Bearer "):
+            email = authorization[7:]  # "Bearer " の7文字をスキップ
+    
+    if not email:
         raise HTTPException(status_code=403, detail="Not authenticated")
     
     # verify_email_tokenと同じようにユーザー情報を取得
@@ -33,7 +43,7 @@ async def get_user_from_email_header(x_user_email: Optional[str] = Header(None))
     supabase: Client = create_client(supabase_url, supabase_key)
     
     # V2専用テーブルでユーザーを検索
-    user_result = supabase.table("v2_users").select("*").eq("email", x_user_email).execute()
+    user_result = supabase.table("v2_users").select("*").eq("email", email).execute()
     
     if user_result.data:
         user = user_result.data[0]
@@ -47,9 +57,9 @@ async def get_user_from_email_header(x_user_email: Optional[str] = Header(None))
         from api.v2.config import v2_config
         
         create_result = supabase.table("v2_users").insert({
-            "email": x_user_email,
-            "name": x_user_email.split("@")[0],
-            "google_id": f"v2-{x_user_email}",
+            "email": email,
+            "name": email.split("@")[0],
+            "google_id": f"v2-{email}",
             "avatar_url": ""
         }).execute()
         

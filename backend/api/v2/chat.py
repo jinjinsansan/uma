@@ -12,6 +12,7 @@ import uuid
 from api.v2.auth import get_current_user
 from services.v2.points_service import V2PointsService
 from services.v2.chat_service import V2ChatService
+from services.v2.ai_handler import V2AIHandler
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v2/chat", tags=["v2-chat"])
@@ -171,25 +172,50 @@ async def send_message(
         if request.ai_type not in ["imlogic", "viewlogic"]:
             raise HTTPException(status_code=400, detail="無効なAIタイプです")
         
-        # ViewLogicは未実装
-        if request.ai_type == "viewlogic":
-            # Phase 5完了後に実装
-            return {
-                "message": {
-                    "id": str(uuid.uuid4()),
-                    "role": "assistant",
-                    "content": "ViewLogicは現在開発中です。2025年春頃の公開を予定しています。",
-                    "ai_type": "viewlogic",
-                    "timestamp": datetime.now().isoformat()
-                }
-            }
+        # V2 AIハンドラーで処理
+        ai_handler = V2AIHandler()
         
-        # IMLogicメッセージ処理
-        response = await chat_service.process_message(
-            session_id=session_id,
+        # レースデータを構築
+        race_data = {
+            "race_id": session.get("race_id"),
+            "race_date": session.get("race_date"),
+            "venue": session.get("venue"),
+            "race_number": session.get("race_number"),
+            "race_name": session.get("race_name"),
+            "horses": session.get("horses", []),
+            "jockeys": session.get("jockeys"),
+            "distance": session.get("distance"),
+            "track_condition": session.get("track_condition")
+        }
+        
+        # IMLogic設定を取得（あれば）
+        imlogic_settings = None
+        if request.ai_type == "imlogic" and session.get("imlogic_settings_id"):
+            # TODO: Supabaseから設定を取得
+            pass
+        
+        # AIハンドラーで処理
+        ai_response = await ai_handler.process_message(
             message=request.message,
+            race_data=race_data,
             ai_type=request.ai_type,
-            session_data=session
+            settings=imlogic_settings
+        )
+        
+        # チャットサービスに保存
+        response = await chat_service.save_message(
+            session_id=session_id,
+            role="user",
+            content=request.message,
+            ai_type=request.ai_type
+        )
+        
+        assistant_response = await chat_service.save_message(
+            session_id=session_id,
+            role="assistant",
+            content=ai_response["content"],
+            ai_type=ai_response["ai_type"],
+            analysis_data=ai_response.get("analysis_data")
         )
         
         return response

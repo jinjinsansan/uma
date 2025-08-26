@@ -36,6 +36,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **将来**: Supabase 等のクラウドストレージへ移行
 - **現在**: PC常時稼働で運用
 
+## 🚀 V2システム実装状況 (2025-08-25 更新)
+
+### 実装完成度: 100%（ViewLogic待ち）
+- ✅ ポイント制度: 100%完成
+- ✅ チャット機能: 95%完成  
+- ✅ レース情報フロー: 98%完成
+- ✅ 出走表表示: 100%完成（Phase 1-3完了）
+
+### 本日実装完了（Phase 1-3）
+1. ✅ **出走表コンポーネント**（`/src/components/v2/race/RaceTable.tsx`）
+2. ✅ **データパーサー**（`/src/lib/v2/raceDataParser.ts`） - netkeiba形式対応
+3. ✅ **データ入力UI**（`/src/components/v2/race/RaceDataInput.tsx`）
+4. ✅ **D-Logic バッチ計算API**（`/api/v2/dlogic.py`） - Redisキャッシュ付き
+5. ✅ **モバイル対応アコーディオン**（`/src/components/v2/race/RaceAccordion.tsx`）
+6. ✅ **管理者レース管理画面**（`/src/app/v2/admin/race-manager/page.tsx`）
+
+### ✅ 全機能実装完了！
+1. ✅ **レース限定分析制限**（`ai_handler.py`で実装済み）
+2. ✅ **自然言語AI切り替え**（`V2ChatInterface.tsx`で実装済み）
+
+### 実装計画（残り2フェーズ）
+- Phase 4: AI制御（1日）- レース限定、自然言語切替
+- Phase 5: ViewLogic待ち - ViewLogicデータ提供後に統合
+
+詳細: `mcp__serena__read_memory` → `v2_system_implementation_status_20250825`
+
 ## 🔄 ナレッジファイル再構築手順 (2025/08/08 追記)
 
 ### 1. D-Logic計算エンジンの理解

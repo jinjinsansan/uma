@@ -88,7 +88,7 @@ class V2AIHandler:
         message: str,
         race_data: Dict[str, Any],
         settings: Optional[Dict[str, Any]] = None
-    ) -> str:
+    ) -> Tuple[str, Optional[Dict]]:
         """
         IMLogicメッセージ処理（既存のIMLogicEngineを使用）
         """
@@ -103,7 +103,44 @@ class V2AIHandler:
                 # フロントエンドからのデータ構造に対応
                 horse_weight = settings.get('horse_weight') or settings.get('horse_ratio', 70)
                 jockey_weight = settings.get('jockey_weight') or settings.get('jockey_ratio', 30)
-                item_weights = settings.get('item_weights') or settings.get('weights', self._get_default_weights())
+                raw_weights = settings.get('item_weights') or settings.get('weights', {})
+                
+                # フロントエンドのキー形式が番号付きか番号なしかを判定
+                if '1_distance_aptitude' in raw_weights:
+                    # すでに番号付き形式
+                    item_weights = raw_weights
+                elif 'distance_aptitude' in raw_weights:
+                    # 番号なし形式から番号付き形式に変換
+                    item_weights = {
+                        '1_distance_aptitude': raw_weights.get('distance_aptitude', 8.33),
+                        '2_bloodline_evaluation': raw_weights.get('bloodline_evaluation', 8.33),
+                        '3_jockey_compatibility': raw_weights.get('jockey_compatibility', 8.33),
+                        '4_trainer_evaluation': raw_weights.get('trainer_evaluation', 8.33),
+                        '5_track_aptitude': raw_weights.get('track_aptitude', 8.33),
+                        '6_weather_aptitude': raw_weights.get('weather_aptitude', 8.33),
+                        '7_popularity_factor': raw_weights.get('popularity_factor', 8.33),
+                        '8_weight_impact': raw_weights.get('weight_impact', 8.33),
+                        '9_horse_weight_impact': raw_weights.get('horse_weight_impact', 8.33),
+                        '10_corner_specialist': raw_weights.get('corner_specialist', 8.33),
+                        '11_margin_analysis': raw_weights.get('margin_analysis', 8.33),
+                        '12_time_index': raw_weights.get('time_index', 8.37)
+                    }
+                else:
+                    # デフォルト値を使用
+                    item_weights = {
+                        '1_distance_aptitude': 8.33,
+                        '2_bloodline_evaluation': 8.33,
+                        '3_jockey_compatibility': 8.33,
+                        '4_trainer_evaluation': 8.33,
+                        '5_track_aptitude': 8.33,
+                        '6_weather_aptitude': 8.33,
+                        '7_popularity_factor': 8.33,
+                        '8_weight_impact': 8.33,
+                        '9_horse_weight_impact': 8.33,
+                        '10_corner_specialist': 8.33,
+                        '11_margin_analysis': 8.33,
+                        '12_time_index': 8.37
+                    }
                 
                 analysis_result = self.imlogic_engine.analyze_race(
                     race_data=race_data,
@@ -112,8 +149,14 @@ class V2AIHandler:
                     item_weights=item_weights
                 )
                 
+                # 結果が空の場合のチェック（'scores'と'results'の両方をチェック）
+                if not analysis_result or (not analysis_result.get('scores') and not analysis_result.get('results')):
+                    logger.error(f"IMLogic分析結果が空: {analysis_result}")
+                    return ("分析に失敗しました。馬名が正しいか確認してください。", None)
+                
                 # 結果のフォーマット
-                return self._format_imlogic_result(analysis_result, race_data)
+                formatted_content = self._format_imlogic_result(analysis_result, race_data)
+                return (formatted_content, analysis_result)
             
             # 通常の会話の場合
             else:
@@ -140,13 +183,13 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                             {"role": "user", "content": full_prompt}
                         ]
                     )
-                    return response.content[0].text
+                    return (response.content[0].text, None)
                 else:
-                    return "会話機能は現在利用できません"
+                    return ("会話機能は現在利用できません", None)
             
         except Exception as e:
             logger.error(f"IMLogic処理エラー: {e}")
-            return f"申し訳ございません。IMLogic分析中にエラーが発生しました: {str(e)}"
+            return (f"申し訳ございません。IMLogic分析中にエラーが発生しました: {str(e)}", None)
     
     def _should_analyze(self, message: str) -> bool:
         """メッセージが分析要求かどうかを判定"""
@@ -182,7 +225,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
     def _format_imlogic_result(self, analysis_result: Dict[str, Any], race_data: Dict[str, Any]) -> str:
         """IMLogic分析結果をフォーマット"""
         try:
-            scores = analysis_result.get('scores', [])
+            # 'scores'と'results'の両方に対応
+            scores = analysis_result.get('scores') or analysis_result.get('results', [])
             if not scores:
                 return "分析結果が取得できませんでした。"
             
@@ -199,7 +243,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             emojis = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣']
             for i, score_data in enumerate(scores[:5]):
                 emoji = emojis[i] if i < 5 else f"{i+1}."
-                horse_name = score_data.get('horse_name', '不明')
+                # 'horse_name'と'horse'の両方に対応
+                horse_name = score_data.get('horse_name') or score_data.get('horse', '不明')
                 total_score = score_data.get('total_score', 0)
                 horse_score = score_data.get('horse_score', 0)
                 jockey_score = score_data.get('jockey_score', 0)
@@ -212,7 +257,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 lines.append("")
                 lines.append("【6位以下】")
                 for score_data in scores[5:]:
-                    horse_name = score_data.get('horse_name', '不明')
+                    # 'horse_name'と'horse'の両方に対応
+                    horse_name = score_data.get('horse_name') or score_data.get('horse', '不明')
                     total_score = score_data.get('total_score', 0)
                     lines.append(f"{horse_name}: {total_score:.1f}点")
             
@@ -342,8 +388,17 @@ ViewLogic見解（開発中）
             }
         
         # AI種別に応じて処理
+        analysis_data = None
         if determined_ai == 'imlogic':
-            content = await self.process_imlogic_message(message, race_data, settings)
+            result = await self.process_imlogic_message(message, race_data, settings)
+            # タプルまたは辞書の場合は分解
+            if isinstance(result, tuple):
+                content, analysis_data = result
+            elif isinstance(result, dict):
+                content = result.get('content', '')
+                analysis_data = result.get('analysis_data')
+            else:
+                content = result
         else:  # viewlogic
             content = await self.process_viewlogic_message(message, race_data, sub_type)
         
@@ -351,7 +406,7 @@ ViewLogic見解（開発中）
             'content': content,
             'ai_type': determined_ai,
             'sub_type': sub_type,
-            'analysis_data': None  # 必要に応じて分析データを追加
+            'analysis_data': analysis_data
         }
     
     def _is_out_of_scope(self, message: str, race_data: Dict[str, Any]) -> bool:

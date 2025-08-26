@@ -242,5 +242,7 @@ async def send_message(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"メッセージ送信エラー: {e}")
-        raise HTTPException(status_code=500, detail="メッセージの送信に失敗しました")
+        import traceback
+        error_detail = f"エラー: {str(e)}\n\nトレース: {traceback.format_exc()}"
+        logger.error(f"メッセージ送信エラー: {error_detail}")
+        raise HTTPException(status_code=500, detail=f"メッセージの送信に失敗しました: {str(e)}")

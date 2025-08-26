@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/v2/line", tags=["v2-line-referral"])
 
 # Supabaseクライアント
 supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
 supabase: Client = create_client(supabase_url, supabase_key)
 
 class LineConnectRequest(BaseModel):

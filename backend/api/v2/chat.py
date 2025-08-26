@@ -39,11 +39,20 @@ async def get_user_from_email_header(
     
     # verify_email_tokenと同じようにユーザー情報を取得
     supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-    supabase: Client = create_client(supabase_url, supabase_key)
+    supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
     
-    # V2専用テーブルでユーザーを検索
-    user_result = supabase.table("v2_users").select("*").eq("email", email).execute()
+    if not supabase_url or not supabase_key:
+        logger.error(f"Supabase設定エラー: URL={bool(supabase_url)}, KEY={bool(supabase_key)}")
+        raise HTTPException(status_code=500, detail="サーバー設定エラー")
+    
+    try:
+        supabase: Client = create_client(supabase_url, supabase_key)
+        
+        # V2専用テーブルでユーザーを検索
+        user_result = supabase.table("v2_users").select("*").eq("email", email).execute()
+    except Exception as e:
+        logger.error(f"Supabase接続エラー: {e}")
+        raise HTTPException(status_code=500, detail=f"データベース接続エラー: {str(e)}")
     
     if user_result.data:
         user = user_result.data[0]
@@ -54,12 +63,16 @@ async def get_user_from_email_header(
         }
     else:
         # ユーザーが見つからない場合は作成
-        create_result = supabase.table("v2_users").insert({
-            "email": email,
-            "name": email.split("@")[0],
-            "google_id": f"v2-{email}",
-            "avatar_url": ""
-        }).execute()
+        try:
+            create_result = supabase.table("v2_users").insert({
+                "email": email,
+                "name": email.split("@")[0],
+                "google_id": f"v2-{email}",
+                "avatar_url": ""
+            }).execute()
+        except Exception as e:
+            logger.error(f"V2ユーザー作成エラー: {e}")
+            raise HTTPException(status_code=500, detail=f"ユーザー作成エラー: {str(e)}")
         
         if create_result.data:
             user = create_result.data[0]
@@ -256,6 +269,11 @@ async def send_message(
     チャットにメッセージを送信
     """
     try:
+        logger.info(f"=== send_message開始 ===")
+        logger.info(f"session_id: {session_id}")
+        logger.info(f"user_info: {user_info}")
+        logger.info(f"request: {request}")
+        
         user_id = user_info["user_id"]
         chat_service = V2ChatService()
         
@@ -269,7 +287,9 @@ async def send_message(
             raise HTTPException(status_code=400, detail="無効なAIタイプです")
         
         # V2 AIハンドラーで処理
+        logger.info(f"AIハンドラー初期化開始")
         ai_handler = V2AIHandler()
+        logger.info(f"AIハンドラー初期化完了")
         
         # レースデータを構築
         race_data = {
@@ -291,12 +311,18 @@ async def send_message(
             pass
         
         # AIハンドラーで処理
+        logger.info(f"process_message開始")
+        logger.info(f"race_data: {race_data}")
+        logger.info(f"imlogic_settings: {imlogic_settings}")
+        
         ai_response = await ai_handler.process_message(
             message=request.message,
             race_data=race_data,
             ai_type=request.ai_type,
             settings=imlogic_settings
         )
+        
+        logger.info(f"process_message完了: {ai_response}")
         
         # チャットサービスに保存
         response = await chat_service.save_message(

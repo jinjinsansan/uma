@@ -87,3 +87,39 @@ async def readiness_check() -> Dict:
                 "services": health["services"]
             }
         )
+
+@router.get("/stats")
+async def system_stats() -> Dict:
+    """システム統計情報を取得"""
+    stats = {
+        "timestamp": datetime.now().isoformat(),
+        "rate_limiter": {},
+        "cache": {},
+        "cleanup": {}
+    }
+    
+    # レート制限統計
+    try:
+        from api.v2.rate_limiter import rate_limiter
+        stats["rate_limiter"] = {
+            "active_users": len(rate_limiter.request_history),
+            "limits": rate_limiter.limits
+        }
+    except Exception as e:
+        stats["rate_limiter"]["error"] = str(e)
+    
+    # キャッシュ統計
+    try:
+        from services.v2.cache_manager import cache_manager
+        stats["cache"] = cache_manager.get_stats()
+    except Exception as e:
+        stats["cache"]["error"] = str(e)
+    
+    # クリーンアップ統計（Supabase経由）
+    try:
+        from api.v2.cleanup_settings import get_cleanup_stats
+        stats["cleanup"] = await get_cleanup_stats()
+    except Exception as e:
+        stats["cleanup"]["error"] = str(e)
+    
+    return stats

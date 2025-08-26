@@ -25,7 +25,10 @@ class V2ChatService:
             raise ValueError("Supabase環境変数が設定されていません")
             
         self.supabase: Client = create_client(supabase_url, supabase_key)
-        # self.imlogic_engine = IMLogicEngine()  # メモリ削減のため削除（V2AIHandlerで初期化）
+        
+        # IMLogicEngineを初期化
+        from services.imlogic_engine import IMLogicEngine
+        self.imlogic_engine = IMLogicEngine()
     
     async def create_session(
         self,

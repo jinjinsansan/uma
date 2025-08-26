@@ -136,9 +136,11 @@ async def startup_event():
     try:
         process = psutil.Process(os.getpid())
         memory_mb = process.memory_info().rss / 1024 / 1024
-        print(f"📊 現在のメモリ使用量: {memory_mb:.1f}MB / 2048MB")
-        if memory_mb > 1500:
-            print("⚠️  警告: メモリ使用量が高い状態です。")
+        print(f"📊 現在のメモリ使用量: {memory_mb:.1f}MB / 4096MB")
+        if memory_mb > 3000:
+            print("⚠️  警告: メモリ使用量が高い状態です（3GB超）。")
+        elif memory_mb > 2000:
+            print("ℹ️  メモリ使用量: 正常範囲内（2-3GB）")
     except:
         pass  # psutilがない場合はスキップ
     
@@ -173,7 +175,7 @@ app.include_router(imlogic_settings.router)
 app.include_router(logic_chat_test.router)
 
 # V2システムの新しいAPI（ポイント制）
-# 環境変数でV2機能の有効/無効を制御
+# 環境変数でV2機能の有効/無効を制御（4GBメモリで全機能有効）
 if os.getenv("ENABLE_V2_FEATURES", "true").lower() == "true":
     try:
         from api.v2 import points as v2_points_router

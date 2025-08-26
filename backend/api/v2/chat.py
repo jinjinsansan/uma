@@ -286,10 +286,11 @@ async def send_message(
         if request.ai_type not in ["imlogic", "viewlogic"]:
             raise HTTPException(status_code=400, detail="無効なAIタイプです")
         
-        # V2 AIハンドラーで処理
-        logger.info(f"AIハンドラー初期化開始")
-        ai_handler = V2AIHandler()
-        logger.info(f"AIハンドラー初期化完了")
+        # V2 AIハンドラーで処理（グローバルインスタンスを使用してメモリ節約）
+        logger.info(f"AIハンドラー取得開始")
+        from services.v2.ai_handler_singleton import get_ai_handler
+        ai_handler = get_ai_handler()
+        logger.info(f"AIハンドラー取得完了")
         
         # レースデータを構築
         race_data = {

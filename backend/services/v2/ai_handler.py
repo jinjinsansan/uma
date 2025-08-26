@@ -21,8 +21,10 @@ class V2AIHandler:
     """V2システム用のAIハンドラー"""
     
     def __init__(self):
-        self.imlogic_engine = IMLogicEngine()
-        self.dlogic_manager = DLogicRawDataManager()
+        # IMLogicEngineを遅延初期化にする（使用時に初期化）
+        self._imlogic_engine = None
+        # DLogicRawDataManagerは削除（IMLogicEngine内で既に初期化される）
+        # self.dlogic_manager = DLogicRawDataManager()  # メモリ重複を避ける
         self.anthropic_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY")) if Anthropic else None
         
         # AI選択キーワード
@@ -31,6 +33,15 @@ class V2AIHandler:
             'viewlogic_trend': ['傾向', 'トレンド', '統計', 'データ', '過去'],
             'viewlogic_opinion': ['見解', '意見', '予想', '推奨', 'おすすめ']
         }
+    
+    @property
+    def imlogic_engine(self):
+        """IMLogicEngineの遅延初期化"""
+        if self._imlogic_engine is None:
+            logger.info("IMLogicEngineを初期化します...")
+            self._imlogic_engine = IMLogicEngine()
+            logger.info("IMLogicEngineの初期化完了")
+        return self._imlogic_engine
         
     def determine_ai_type(self, message: str) -> Tuple[str, str]:
         """

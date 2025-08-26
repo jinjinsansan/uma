@@ -10,7 +10,7 @@ import uuid
 from supabase import create_client, Client
 import json
 
-from services.imlogic_engine import IMLogicEngine  # 既存のIMLogicエンジンを使用
+# from services.imlogic_engine import IMLogicEngine  # V2AIHandlerで初期化するため削除
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class V2ChatService:
             raise ValueError("Supabase環境変数が設定されていません")
             
         self.supabase: Client = create_client(supabase_url, supabase_key)
-        self.imlogic_engine = IMLogicEngine()  # 既存のエンジンを使用
+        # self.imlogic_engine = IMLogicEngine()  # メモリ削減のため削除（V2AIHandlerで初期化）
     
     async def create_session(
         self,

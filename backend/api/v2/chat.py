@@ -10,12 +10,41 @@ from pydantic import BaseModel
 import uuid
 
 from api.v2.auth import get_current_user, verify_email_token
+from fastapi import Header
+from typing import Optional
 from services.v2.points_service import V2PointsService
 from services.v2.chat_service import V2ChatService
 from services.v2.ai_handler import V2AIHandler
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v2/chat", tags=["v2-chat"])
+
+async def get_user_from_email_header(x_user_email: Optional[str] = Header(None)) -> dict:
+    """X-User-Emailヘッダーから簡易的にユーザー情報を取得"""
+    if not x_user_email:
+        raise HTTPException(status_code=403, detail="Not authenticated")
+    
+    # verify_email_tokenと同じようにユーザー情報を取得
+    from supabase import create_client, Client
+    import os
+    
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    supabase: Client = create_client(supabase_url, supabase_key)
+    
+    # V2専用テーブルでユーザーを検索
+    user_result = supabase.table("v2_users").select("*").eq("email", x_user_email).execute()
+    
+    if user_result.data:
+        user = user_result.data[0]
+        return {
+            "user_id": user["id"],
+            "email": user["email"],
+            "name": user.get("name", "")
+        }
+    else:
+        # ユーザーが見つからない場合はエラー
+        raise HTTPException(status_code=403, detail="User not found")
 
 class CreateChatRequest(BaseModel):
     """チャット作成リクエスト"""
@@ -173,12 +202,13 @@ async def get_chat_session(
 async def send_message(
     session_id: str,
     request: ChatMessageRequest,
-    user_id: str = Depends(get_current_user)
+    user_info: dict = Depends(get_user_from_email_header)
 ):
     """
     チャットにメッセージを送信
     """
     try:
+        user_id = user_info["user_id"]
         chat_service = V2ChatService()
         
         # セッション確認

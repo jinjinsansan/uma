@@ -6,6 +6,7 @@ import uuid
 from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
+from api.v2.auth import verify_email_token
 
 load_dotenv()
 
@@ -65,29 +66,29 @@ class UpdateSettingsRequest(BaseModel):
     item_weights: Optional[Dict[str, float]] = None
 
 @router.get("/settings")
-async def get_user_settings(email: str = None):
+async def get_user_settings(user_info: dict = Depends(verify_email_token)):
     """ユーザーの現在のIMLogic設定を取得"""
     try:
-        # TODO: 認証実装後にemailから user_idを取得
-        user_id = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # 仮のユーザーID（goldbenchan@gmail.com）
+        # V2認証システムからuser_idを取得
+        user_id = user_info.get("user_id")
         
         # アクティブな設定を取得
         result = supabase.table("v2_imlogic_settings") \
             .select("*") \
             .eq("user_id", user_id) \
             .eq("is_active", True) \
-            .single() \
             .execute()
         
-        if result.data:
+        if result.data and len(result.data) > 0:
+            data = result.data[0]
             return {
                 "settings": {
-                    "id": result.data["id"],
-                    "name": result.data["name"],
-                    "weights": result.data["item_weights"],
-                    "horse_ratio": result.data["horse_weight"],
-                    "jockey_ratio": result.data["jockey_weight"],
-                    "updated_at": result.data["updated_at"]
+                    "id": data["id"],
+                    "name": data["name"],
+                    "weights": data["item_weights"],
+                    "horse_ratio": data["horse_weight"],
+                    "jockey_ratio": data["jockey_weight"],
+                    "updated_at": data["updated_at"]
                 }
             }
         else:
@@ -101,17 +102,23 @@ async def get_user_settings(email: str = None):
         return {"settings": None}
 
 @router.post("/settings")
-async def save_user_settings(request: CreateSettingsRequest):
+async def save_user_settings(
+    request: CreateSettingsRequest,
+    user_info: dict = Depends(verify_email_token)
+):
     """ユーザーのIMLogic設定を保存（POST /settings エンドポイント）"""
-    # 既存のcreate_settingsロジックを使用
-    return await create_settings(request)
+    # user_infoを渡してcreate_settingsを呼び出す
+    return await create_settings(request, user_info)
 
 @router.post("/create")
-async def create_settings(request: CreateSettingsRequest):
+async def create_settings(
+    request: CreateSettingsRequest,
+    user_info: dict = Depends(verify_email_token)
+):
     """新規IMLogic設定を作成"""
     try:
-        # TODO: 認証実装後にuser_idを取得
-        user_id = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # 仮のユーザーID（goldbenchan@gmail.com）
+        # V2認証システムからuser_idを取得
+        user_id = user_info.get("user_id")
         
         # バリデーション
         if request.horse_weight + request.jockey_weight != 100:

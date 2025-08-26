@@ -82,7 +82,7 @@ class V2ChatService:
             sessions_response = self.supabase.table("v2_chat_sessions")\
                 .select("*")\
                 .eq("user_id", user_id)\
-                .order("created_at", desc=True)\
+                .order("created_at.desc")\
                 .limit(limit)\
                 .offset(offset)\
                 .execute()
@@ -107,13 +107,12 @@ class V2ChatService:
                 .select("*")\
                 .eq("id", session_id)\
                 .eq("user_id", user_id)\
-                .single()\
                 .execute()
             
-            if not session_response.data:
+            if not session_response.data or len(session_response.data) == 0:
                 return None
             
-            session = session_response.data
+            session = session_response.data[0]
             
             # race_snapshotをパース
             if session.get("race_snapshot"):
@@ -174,13 +173,12 @@ class V2ChatService:
             if ai_type == "imlogic":
                 # IMLogic設定を使用（パラメータから取得、またはデータベースから取得）
                 if not imlogic_settings and session_data.get("imlogic_settings_id"):
-                    settings_response = self.supabase.table("imlogic_user_settings")\
+                    settings_response = self.supabase.table("user_imlogic_settings")\
                         .select("*")\
                         .eq("id", session_data["imlogic_settings_id"])\
-                        .single()\
                         .execute()
-                    if settings_response.data:
-                        imlogic_settings = settings_response.data
+                    if settings_response.data and len(settings_response.data) > 0:
+                        imlogic_settings = settings_response.data[0]
                 
                 # IMLogicで分析実行
                 race_snapshot = session_data["race_snapshot"]

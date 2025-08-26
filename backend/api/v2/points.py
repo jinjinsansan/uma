@@ -28,6 +28,11 @@ class TransactionRequest(BaseModel):
     description: Optional[str] = None
     related_entity_id: Optional[str] = None
 
+class GrantPointsRequest(BaseModel):
+    """ポイント付与リクエスト（管理者用）"""
+    amount: int = 10
+    description: Optional[str] = None
+
 @router.get("/status", response_model=PointsResponse)
 async def get_points_status(user_id: str = Depends(get_current_user)):
     """

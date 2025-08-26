@@ -114,6 +114,82 @@ async def grant_points(
         logger.error(f"ポイント付与エラー: {e}")
         raise HTTPException(status_code=500, detail="ポイントの付与に失敗しました")
 
+@router.post("/grant")
+async def grant_test_points(
+    request: GrantPointsRequest,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    管理者用テストポイント付与
+    """
+    try:
+        # 管理者チェック
+        if user_id != "goldbenchan@gmail.com":
+            raise HTTPException(status_code=403, detail="管理者権限が必要です")
+        
+        service = V2PointsService()
+        
+        # ポイント付与
+        transaction = await service.add_points(
+            user_id=user_id,
+            amount=request.amount,
+            transaction_type="admin_grant",
+            description=request.description or "管理者テスト用ポイント付与"
+        )
+        
+        # 現在のポイント取得
+        points_data = await service.get_user_points(user_id)
+        
+        return {
+            "success": True,
+            "current_points": points_data["current_points"],
+            "added_points": request.amount
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"管理者ポイント付与エラー: {e}")
+        raise HTTPException(status_code=500, detail="ポイント付与に失敗しました")
+
+@router.post("/reset")
+async def reset_points(
+    user_id: str = Depends(get_current_user)
+):
+    """
+    管理者用ポイントリセット（0に戻す）
+    """
+    try:
+        # 管理者チェック
+        if user_id != "goldbenchan@gmail.com":
+            raise HTTPException(status_code=403, detail="管理者権限が必要です")
+        
+        service = V2PointsService()
+        
+        # 現在のポイントを取得
+        points_data = await service.get_user_points(user_id)
+        current_points = points_data["current_points"]
+        
+        # 現在のポイントを全て消費
+        if current_points > 0:
+            await service.use_points(
+                user_id=user_id,
+                amount=current_points,
+                transaction_type="admin_reset",
+                description="管理者によるポイントリセット"
+            )
+        
+        return {
+            "success": True,
+            "message": "ポイントを0にリセットしました"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"ポイントリセットエラー: {e}")
+        raise HTTPException(status_code=500, detail="ポイントリセットに失敗しました")
+
 @router.get("/transactions")
 async def get_transactions(
     limit: int = 20,

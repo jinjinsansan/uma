@@ -33,6 +33,7 @@ class CreateChatRequest(BaseModel):
     weather: Optional[str] = None
     track_condition: Optional[str] = None
     imlogic_settings_id: Optional[str] = None
+    is_test_mode: Optional[bool] = False  # 管理者テストモード
 
 class ChatMessageRequest(BaseModel):
     """チャットメッセージリクエスト"""
@@ -46,14 +47,19 @@ async def create_chat(
 ):
     """
     新しいチャットセッションを作成（1ポイント消費）
+    管理者テストモードの場合はポイント消費なし
     """
     try:
-        # ポイント確認
-        points_service = V2PointsService()
-        points_data = await points_service.get_user_points(user_id)
+        # 管理者チェック（テストモードの場合はポイントチェックをスキップ）
+        is_admin_test = request.is_test_mode and user_id == "goldbenchan@gmail.com"
         
-        if points_data["current_points"] < 1:
-            raise HTTPException(status_code=400, detail="チャット作成にはポイントが必要です")
+        # ポイント確認（管理者テストモード以外）
+        if not is_admin_test:
+            points_service = V2PointsService()
+            points_data = await points_service.get_user_points(user_id)
+            
+            if points_data["current_points"] < 1:
+                raise HTTPException(status_code=400, detail="チャット作成にはポイントが必要です")
         
         # チャット作成
         chat_service = V2ChatService()
@@ -77,19 +83,27 @@ async def create_chat(
             imlogic_settings_id=request.imlogic_settings_id
         )
         
-        # ポイント消費
-        await points_service.use_points(
-            user_id=user_id,
-            amount=1,
-            transaction_type="chat_create",
-            description=f"{request.venue}{request.race_number}Rのチャット作成",
-            related_entity_id=chat_session["id"]
-        )
+        # ポイント消費（管理者テストモード以外）
+        if not is_admin_test:
+            await points_service.use_points(
+                user_id=user_id,
+                amount=1,
+                transaction_type="chat_create",
+                description=f"{request.venue}{request.race_number}Rのチャット作成",
+                related_entity_id=chat_session["id"]
+            )
+            remaining_points = points_data["current_points"] - 1
+        else:
+            # 管理者テストモードの場合はポイント変更なし
+            points_service = V2PointsService()
+            points_data = await points_service.get_user_points(user_id)
+            remaining_points = points_data["current_points"]
         
         return {
             "success": True,
             "chat_id": chat_session["id"],
-            "remaining_points": points_data["current_points"] - 1
+            "remaining_points": remaining_points,
+            "test_mode": is_admin_test
         }
         
     except HTTPException:

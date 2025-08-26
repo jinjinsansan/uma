@@ -9,7 +9,7 @@ import logging
 from pydantic import BaseModel
 import uuid
 
-from api.v2.auth import get_current_user
+from api.v2.auth import get_current_user, verify_email_token
 from services.v2.points_service import V2PointsService
 from services.v2.chat_service import V2ChatService
 from services.v2.ai_handler import V2AIHandler
@@ -43,15 +43,18 @@ class ChatMessageRequest(BaseModel):
 @router.post("/create")
 async def create_chat(
     request: CreateChatRequest,
-    user_id: str = Depends(get_current_user)
+    user_info: dict = Depends(verify_email_token)
 ):
     """
     新しいチャットセッションを作成（1ポイント消費）
     管理者テストモードの場合はポイント消費なし
     """
     try:
+        user_id = user_info["user_id"]
+        user_email = user_info.get("email", "")
+        
         # 管理者チェック（テストモードの場合はポイントチェックをスキップ）
-        is_admin_test = request.is_test_mode and user_id == "goldbenchan@gmail.com"
+        is_admin_test = request.is_test_mode and user_email == "goldbenchan@gmail.com"
         
         # ポイント確認（管理者テストモード以外）
         if not is_admin_test:

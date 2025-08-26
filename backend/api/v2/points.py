@@ -8,7 +8,7 @@ from datetime import datetime
 import logging
 from pydantic import BaseModel
 
-from api.v2.auth import get_current_user
+from api.v2.auth import get_current_user, verify_email_token
 from services.v2.points_service import V2PointsService
 
 logger = logging.getLogger(__name__)
@@ -122,14 +122,17 @@ async def grant_points(
 @router.post("/grant")
 async def grant_test_points(
     request: GrantPointsRequest,
-    user_id: str = Depends(get_current_user)
+    user_info: dict = Depends(verify_email_token)
 ):
     """
     管理者用テストポイント付与
     """
     try:
+        user_id = user_info["user_id"]
+        user_email = user_info.get("email", "")
+        
         # 管理者チェック
-        if user_id != "goldbenchan@gmail.com":
+        if user_email != "goldbenchan@gmail.com":
             raise HTTPException(status_code=403, detail="管理者権限が必要です")
         
         service = V2PointsService()
@@ -159,14 +162,17 @@ async def grant_test_points(
 
 @router.post("/reset")
 async def reset_points(
-    user_id: str = Depends(get_current_user)
+    user_info: dict = Depends(verify_email_token)
 ):
     """
     管理者用ポイントリセット（0に戻す）
     """
     try:
+        user_id = user_info["user_id"]
+        user_email = user_info.get("email", "")
+        
         # 管理者チェック
-        if user_id != "goldbenchan@gmail.com":
+        if user_email != "goldbenchan@gmail.com":
             raise HTTPException(status_code=403, detail="管理者権限が必要です")
         
         service = V2PointsService()

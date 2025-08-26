@@ -21,8 +21,8 @@ class V2AIHandler:
     """V2システム用のAIハンドラー"""
     
     def __init__(self):
-        # IMLogicEngineを遅延初期化にする（使用時に初期化）
-        self._imlogic_engine = None
+        # IMLogicEngineは毎回新規作成するため、ここでは初期化しない
+        # /logic-chatと同じ動作を保証
         # DLogicRawDataManagerは削除（IMLogicEngine内で既に初期化される）
         # self.dlogic_manager = DLogicRawDataManager()  # メモリ重複を避ける
         self.anthropic_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY")) if Anthropic else None
@@ -34,27 +34,6 @@ class V2AIHandler:
             'viewlogic_opinion': ['見解', '意見', '予想', '推奨', 'おすすめ']
         }
     
-    @property
-    def imlogic_engine(self):
-        """IMLogicEngineの遅延初期化"""
-        if self._imlogic_engine is None:
-            logger.info("IMLogicEngineを初期化します...")
-            try:
-                self._imlogic_engine = IMLogicEngine()
-                logger.info("IMLogicEngineの初期化完了")
-                # 拡張ナレッジの状態確認
-                if hasattr(self._imlogic_engine, 'modern_engine'):
-                    try:
-                        # modern_engineを初期化してみる
-                        engine = self._imlogic_engine.modern_engine
-                        if hasattr(engine, 'knowledge'):
-                            logger.info(f"拡張ナレッジ読み込み成功: {len(engine.knowledge)}頭")
-                    except Exception as e:
-                        logger.error(f"拡張ナレッジ読み込み失敗: {e}")
-            except Exception as e:
-                logger.error(f"IMLogicEngine初期化エラー: {e}")
-                raise
-        return self._imlogic_engine
         
     def determine_ai_type(self, message: str) -> Tuple[str, str]:
         """
@@ -119,6 +98,10 @@ class V2AIHandler:
         try:
             # 分析を実行する場合
             if self._should_analyze(message):
+                # 重要: /logic-chatと同じように毎回新しいエンジンを作成
+                # メモリよりも正確性を優先
+                from services.imlogic_engine import IMLogicEngine
+                imlogic_engine_temp = IMLogicEngine()
                 # デフォルトの設定を使用（設定が無い場合）
                 if not settings:
                     settings = self._get_default_imlogic_settings()
@@ -166,7 +149,8 @@ class V2AIHandler:
                         '12_time_index': 8.37
                     }
                 
-                analysis_result = self.imlogic_engine.analyze_race(
+                # 一時的なエンジンインスタンスで分析
+                analysis_result = imlogic_engine_temp.analyze_race(
                     race_data=race_data,
                     horse_weight=horse_weight,
                     jockey_weight=jockey_weight,

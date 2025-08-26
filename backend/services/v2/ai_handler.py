@@ -39,8 +39,21 @@ class V2AIHandler:
         """IMLogicEngineの遅延初期化"""
         if self._imlogic_engine is None:
             logger.info("IMLogicEngineを初期化します...")
-            self._imlogic_engine = IMLogicEngine()
-            logger.info("IMLogicEngineの初期化完了")
+            try:
+                self._imlogic_engine = IMLogicEngine()
+                logger.info("IMLogicEngineの初期化完了")
+                # 拡張ナレッジの状態確認
+                if hasattr(self._imlogic_engine, 'modern_engine'):
+                    try:
+                        # modern_engineを初期化してみる
+                        engine = self._imlogic_engine.modern_engine
+                        if hasattr(engine, 'knowledge'):
+                            logger.info(f"拡張ナレッジ読み込み成功: {len(engine.knowledge)}頭")
+                    except Exception as e:
+                        logger.error(f"拡張ナレッジ読み込み失敗: {e}")
+            except Exception as e:
+                logger.error(f"IMLogicEngine初期化エラー: {e}")
+                raise
         return self._imlogic_engine
         
     def determine_ai_type(self, message: str) -> Tuple[str, str]:

@@ -9,6 +9,7 @@ import logging
 from pydantic import BaseModel
 import uuid
 import os
+import json
 from supabase import create_client, Client
 
 from api.v2.auth import get_current_user, verify_email_token
@@ -293,17 +294,38 @@ async def send_message(
         logger.info(f"AIハンドラー取得完了")
         
         # レースデータを構築
+        # race_snapshotからデータを優先的に取得
+        race_snapshot = session.get("race_snapshot", {})
+        if isinstance(race_snapshot, str):
+            try:
+                race_snapshot = json.loads(race_snapshot)
+            except:
+                race_snapshot = {}
+        
+        # デバッグ: セッションデータの構造を確認
+        logger.info(f"=== セッションデータ確認 ===")
+        logger.info(f"session keys: {session.keys()}")
+        logger.info(f"race_snapshot type: {type(race_snapshot)}")
+        if isinstance(race_snapshot, dict):
+            logger.info(f"race_snapshot horses: {race_snapshot.get('horses', [])}")
+            logger.info(f"race_snapshot jockeys: {race_snapshot.get('jockeys', [])}")
+        
         race_data = {
             "race_id": session.get("race_id"),
             "race_date": session.get("race_date"),
             "venue": session.get("venue"),
             "race_number": session.get("race_number"),
             "race_name": session.get("race_name"),
-            "horses": session.get("horses", []),
-            "jockeys": session.get("jockeys"),
-            "distance": session.get("distance"),
-            "track_condition": session.get("track_condition")
+            "horses": race_snapshot.get("horses") or session.get("horses", []),
+            "jockeys": race_snapshot.get("jockeys") or session.get("jockeys"),
+            "posts": race_snapshot.get("posts") or session.get("posts"),
+            "horse_numbers": race_snapshot.get("horse_numbers") or session.get("horse_numbers"),
+            "distance": race_snapshot.get("distance") or session.get("distance"),
+            "track_condition": race_snapshot.get("track_condition") or session.get("track_condition")
         }
+        
+        logger.info(f"=== 最終的なrace_data ===")
+        logger.info(f"horses: {race_data.get('horses', [])}")
         
         # IMLogic設定を取得（リクエストから渡されるか、セッションから取得）
         imlogic_settings = request.imlogic_settings

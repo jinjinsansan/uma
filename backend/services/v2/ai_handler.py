@@ -90,49 +90,137 @@ class V2AIHandler:
         settings: Optional[Dict[str, Any]] = None
     ) -> str:
         """
-        IMLogicメッセージ処理
+        IMLogicメッセージ処理（既存のIMLogicEngineを使用）
         """
         try:
-            # レースコンテキストを設定
-            race_context = self.create_race_context_prompt(race_data)
-            
-            # IMLogicの設定を適用
-            if settings:
-                # ユーザーのIMLogic設定を反映
-                imlogic_prompt = self._create_imlogic_prompt(settings)
-            else:
-                # デフォルトのIMLogic設定
-                imlogic_prompt = """
-IMLogicは、イクイノックスを基準とした独自の評価システムです。
-以下の要素を重視して分析します：
-- 血統的な素質（30%）
-- 近走のパフォーマンス（25%）
-- コース適性（20%）
-- 騎手との相性（15%）
-- 調教師の手腕（10%）
-"""
-            
-            # 全体のプロンプトを構築
-            full_prompt = f"{race_context}\n\n{imlogic_prompt}\n\nユーザーの質問: {message}"
-            
-            # Claude APIを呼び出し
-            if self.anthropic_client:
-                response = self.anthropic_client.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=2000,
-                temperature=0.7,
-                messages=[
-                    {"role": "user", "content": full_prompt}
-                ]
+            # 分析を実行する場合
+            if self._should_analyze(message):
+                # デフォルトの設定を使用（設定が無い場合）
+                if not settings:
+                    settings = self._get_default_imlogic_settings()
+                
+                # IMLogicEngineで分析
+                # フロントエンドからのデータ構造に対応
+                horse_weight = settings.get('horse_weight') or settings.get('horse_ratio', 70)
+                jockey_weight = settings.get('jockey_weight') or settings.get('jockey_ratio', 30)
+                item_weights = settings.get('item_weights') or settings.get('weights', self._get_default_weights())
+                
+                analysis_result = self.imlogic_engine.analyze_race(
+                    race_data=race_data,
+                    horse_weight=horse_weight,
+                    jockey_weight=jockey_weight,
+                    item_weights=item_weights
                 )
                 
-                return response.content[0].text
+                # 結果のフォーマット
+                return self._format_imlogic_result(analysis_result, race_data)
+            
+            # 通常の会話の場合
             else:
-                return f"IMLogic分析機能は現在利用できません（Anthropic APIが設定されていません）"
+                # レースコンテキストを設定
+                race_context = self.create_race_context_prompt(race_data)
+                
+                # IMLogicの設定説明
+                if settings:
+                    imlogic_prompt = self._create_imlogic_prompt(settings)
+                else:
+                    imlogic_prompt = """
+IMLogicは、ユーザーがカスタマイズ可能な分析システムです。
+馬と騎手の比率、12項目の重み付けを自由に設定できます。
+"""
+                
+                # Claude APIを呼び出し（会話用）
+                if self.anthropic_client:
+                    full_prompt = f"{race_context}\n\n{imlogic_prompt}\n\nユーザーの質問: {message}"
+                    response = self.anthropic_client.messages.create(
+                        model="claude-3-haiku-20240307",
+                        max_tokens=2000,
+                        temperature=0.7,
+                        messages=[
+                            {"role": "user", "content": full_prompt}
+                        ]
+                    )
+                    return response.content[0].text
+                else:
+                    return "会話機能は現在利用できません"
             
         except Exception as e:
             logger.error(f"IMLogic処理エラー: {e}")
-            return f"申し訳ございません。IMLogic分析中にエラーが発生しました。"
+            return f"申し訳ございません。IMLogic分析中にエラーが発生しました: {str(e)}"
+    
+    def _should_analyze(self, message: str) -> bool:
+        """メッセージが分析要求かどうかを判定"""
+        analyze_keywords = ['分析', '評価', '順位', '上位', '予想', 'ランキング', 'スコア']
+        message_lower = message.lower()
+        return any(keyword in message_lower for keyword in analyze_keywords)
+    
+    def _get_default_imlogic_settings(self) -> Dict[str, Any]:
+        """デフォルトのIMLogic設定を返す"""
+        return {
+            'horse_ratio': 70,
+            'jockey_ratio': 30,
+            'weights': self._get_default_weights()
+        }
+    
+    def _get_default_weights(self) -> Dict[str, float]:
+        """デフォルトの12項目重み付けを返す"""
+        return {
+            'distance_aptitude': 10,
+            'track_aptitude': 8,
+            'growth_potential': 7,
+            'trainer_skill': 6,
+            'breakthrough_potential': 8,
+            'strength_score': 10,
+            'winning_percentage': 9,
+            'recent_performance': 10,
+            'course_experience': 8,
+            'distance_experience': 8,
+            'stability': 8,
+            'jockey_compatibility': 8
+        }
+    
+    def _format_imlogic_result(self, analysis_result: Dict[str, Any], race_data: Dict[str, Any]) -> str:
+        """IMLogic分析結果をフォーマット"""
+        try:
+            scores = analysis_result.get('scores', [])
+            if not scores:
+                return "分析結果が取得できませんでした。"
+            
+            # スコア順にソート
+            scores.sort(key=lambda x: x.get('total_score', 0), reverse=True)
+            
+            # 結果のフォーマット
+            lines = []
+            lines.append(f"🎯 IMLogic分析結果")
+            lines.append(f"{race_data.get('venue', '')} {race_data.get('race_number', '')}R")
+            lines.append("")
+            
+            # 上位5頭を表示
+            emojis = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣']
+            for i, score_data in enumerate(scores[:5]):
+                emoji = emojis[i] if i < 5 else f"{i+1}."
+                horse_name = score_data.get('horse_name', '不明')
+                total_score = score_data.get('total_score', 0)
+                horse_score = score_data.get('horse_score', 0)
+                jockey_score = score_data.get('jockey_score', 0)
+                
+                lines.append(f"{emoji} {horse_name}: {total_score:.1f}点")
+                lines.append(f"   馬: {horse_score:.1f}点 | 騎手: {jockey_score:.1f}点")
+            
+            # 6位以下も簡潔に表示
+            if len(scores) > 5:
+                lines.append("")
+                lines.append("【6位以下】")
+                for score_data in scores[5:]:
+                    horse_name = score_data.get('horse_name', '不明')
+                    total_score = score_data.get('total_score', 0)
+                    lines.append(f"{horse_name}: {total_score:.1f}点")
+            
+            return "\n".join(lines)
+            
+        except Exception as e:
+            logger.error(f"結果フォーマットエラー: {e}")
+            return "分析結果の表示中にエラーが発生しました。"
     
     async def process_viewlogic_message(
         self,

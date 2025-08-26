@@ -154,7 +154,8 @@ class V2ChatService:
         session_id: str,
         message: str,
         ai_type: str,
-        session_data: Dict
+        session_data: Dict,
+        imlogic_settings: Optional[Dict] = None
     ) -> Dict:
         """メッセージを処理してAI応答を生成"""
         try:
@@ -171,9 +172,8 @@ class V2ChatService:
             
             # IMLogic処理
             if ai_type == "imlogic":
-                # IMLogic設定を取得
-                imlogic_settings = None
-                if session_data.get("imlogic_settings_id"):
+                # IMLogic設定を使用（パラメータから取得、またはデータベースから取得）
+                if not imlogic_settings and session_data.get("imlogic_settings_id"):
                     settings_response = self.supabase.table("imlogic_user_settings")\
                         .select("*")\
                         .eq("id", session_data["imlogic_settings_id"])\
@@ -264,6 +264,33 @@ class V2ChatService:
             
         except Exception as e:
             logger.error(f"メッセージ処理エラー: {e}")
+            raise
+    
+    async def save_message(
+        self,
+        session_id: str,
+        role: str,
+        content: str,
+        ai_type: str,
+        analysis_data: Optional[Dict] = None
+    ) -> Dict:
+        """メッセージを保存"""
+        try:
+            message_data = {
+                "id": str(uuid.uuid4()),
+                "session_id": session_id,
+                "role": role,
+                "content": content,
+                "ai_type": ai_type,
+                "analysis_data": json.dumps(analysis_data) if analysis_data else None,
+                "created_at": datetime.now().isoformat()
+            }
+            
+            response = self.supabase.table("v2_chat_messages").insert(message_data).execute()
+            return response.data[0]
+            
+        except Exception as e:
+            logger.error(f"メッセージ保存エラー: {e}")
             raise
     
     def _format_imlogic_response(self, analysis_result: Dict, session_data: Dict) -> str:

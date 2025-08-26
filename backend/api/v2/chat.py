@@ -39,6 +39,7 @@ class ChatMessageRequest(BaseModel):
     """チャットメッセージリクエスト"""
     message: str
     ai_type: str  # 'imlogic' or 'viewlogic'
+    imlogic_settings: Optional[Dict] = None  # IMLogic設定（オプション）
 
 @router.post("/create")
 async def create_chat(
@@ -205,9 +206,9 @@ async def send_message(
             "track_condition": session.get("track_condition")
         }
         
-        # IMLogic設定を取得（あれば）
-        imlogic_settings = None
-        if request.ai_type == "imlogic" and session.get("imlogic_settings_id"):
+        # IMLogic設定を取得（リクエストから渡されるか、セッションから取得）
+        imlogic_settings = request.imlogic_settings
+        if not imlogic_settings and request.ai_type == "imlogic" and session.get("imlogic_settings_id"):
             # TODO: Supabaseから設定を取得
             pass
         
@@ -230,12 +231,13 @@ async def send_message(
         assistant_response = await chat_service.save_message(
             session_id=session_id,
             role="assistant",
-            content=ai_response["content"],
-            ai_type=ai_response["ai_type"],
+            content=ai_response.get("content", ""),  # 辞書からcontentを取得
+            ai_type=ai_response.get("ai_type", request.ai_type),
             analysis_data=ai_response.get("analysis_data")
         )
         
-        return response
+        # アシスタントの応答を返す
+        return {"message": assistant_response}
         
     except HTTPException:
         raise

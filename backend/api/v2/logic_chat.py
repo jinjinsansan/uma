@@ -186,7 +186,7 @@ async def _analyze_imlogic(
                     settings_user_id = user_result.data[0]["id"]
             
             # ユーザーのカスタム設定を取得
-            settings_result = supabase.table("user_imlogic_settings").select("*").eq(
+            settings_result = supabase.table("v2_imlogic_settings").select("*").eq(
                 "id", settings_id
             ).eq("user_id", settings_user_id).execute()
             

@@ -4,7 +4,12 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel
 import asyncio
 import json
-import redis
+try:
+    import redis
+    REDIS_MODULE_AVAILABLE = True
+except ImportError:
+    redis = None
+    REDIS_MODULE_AVAILABLE = False
 from services.dlogic_raw_data_manager import DLogicRawDataManager
 from services.modern_dlogic_engine import ModernDLogicEngine
 import hashlib
@@ -15,15 +20,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v2/dlogic", tags=["v2_dlogic"])
 
 # Redis接続（キャッシュ用）
-try:
-    redis_client = redis.Redis(host='localhost', port=6379, db=1, decode_responses=True)
-    redis_client.ping()
-    REDIS_AVAILABLE = True
-    logger.info("Redis connected for D-Logic cache")
-except:
+if REDIS_MODULE_AVAILABLE:
+    try:
+        redis_client = redis.Redis(host='localhost', port=6379, db=1, decode_responses=True)
+        redis_client.ping()
+        REDIS_AVAILABLE = True
+        logger.info("Redis connected for D-Logic cache")
+    except:
+        redis_client = None
+        REDIS_AVAILABLE = False
+        logger.warning("Redis server not available, D-Logic will run without cache")
+else:
     redis_client = None
     REDIS_AVAILABLE = False
-    logger.warning("Redis not available, D-Logic will run without cache")
+    logger.warning("Redis module not installed, D-Logic will run without cache")
 
 # D-Logicマネージャーのシングルトンインスタンス
 dlogic_manager = None

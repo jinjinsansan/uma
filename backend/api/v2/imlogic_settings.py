@@ -72,8 +72,8 @@ async def get_user_settings(user_info: dict = Depends(verify_email_token)):
         # V2認証システムからuser_idを取得
         user_id = user_info.get("user_id")
         
-        # アクティブな設定を取得（user_imlogic_settingsテーブルから）
-        result = supabase.table("user_imlogic_settings") \
+        # アクティブな設定を取得（v2_imlogic_settingsテーブルから）
+        result = supabase.table("v2_imlogic_settings") \
             .select("*") \
             .eq("user_id", user_id) \
             .execute()
@@ -139,14 +139,14 @@ async def create_settings(
         settings_id = str(uuid.uuid4())
         
         # 既存の設定があるか確認
-        existing = supabase.table("user_imlogic_settings")\
+        existing = supabase.table("v2_imlogic_settings")\
             .select("id")\
             .eq("user_id", user_id)\
             .execute()
         
         if existing.data:
             # 既存の設定がある場合は更新
-            result = supabase.table("user_imlogic_settings").update({
+            result = supabase.table("v2_imlogic_settings").update({
                 "settings_name": request.name,
                 "horse_weight": request.horse_weight,
                 "jockey_weight": request.jockey_weight,
@@ -155,7 +155,7 @@ async def create_settings(
             }).eq("user_id", user_id).execute()
         else:
             # 新規作成
-            result = supabase.table("user_imlogic_settings").insert({
+            result = supabase.table("v2_imlogic_settings").insert({
                 "id": settings_id,
                 "user_id": user_id,
                 "settings_name": request.name,
@@ -180,7 +180,7 @@ async def list_settings():
         # TODO: 認証実装後にuser_idを取得
         user_id = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # 仮のユーザーID（goldbenchan@gmail.com）
         
-        result = supabase.table("user_imlogic_settings").select("*").eq(
+        result = supabase.table("v2_imlogic_settings").select("*").eq(
             "user_id", user_id
         ).order("created_at", desc=True).execute()
         
@@ -223,7 +223,7 @@ async def get_settings(settings_id: str):
                 "is_default": True
             }
         
-        result = supabase.table("user_imlogic_settings").select("*").eq(
+        result = supabase.table("v2_imlogic_settings").select("*").eq(
             "id", settings_id
         ).eq("user_id", user_id).execute()
         
@@ -243,7 +243,7 @@ async def update_settings(settings_id: str, request: UpdateSettingsRequest):
         user_id = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # 仮のユーザーID（goldbenchan@gmail.com）
         
         # 既存設定の確認
-        existing = supabase.table("user_imlogic_settings").select("*").eq(
+        existing = supabase.table("v2_imlogic_settings").select("*").eq(
             "id", settings_id
         ).eq("user_id", user_id).execute()
         
@@ -277,7 +277,7 @@ async def update_settings(settings_id: str, request: UpdateSettingsRequest):
             update_data["item_weights"] = request.item_weights
         
         # 更新実行
-        result = supabase.table("user_imlogic_settings").update(update_data).eq(
+        result = supabase.table("v2_imlogic_settings").update(update_data).eq(
             "id", settings_id
         ).execute()
         
@@ -297,7 +297,7 @@ async def delete_settings(settings_id: str):
         user_id = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # 仮のユーザーID（goldbenchan@gmail.com）
         
         # 削除実行
-        result = supabase.table("user_imlogic_settings").delete().eq(
+        result = supabase.table("v2_imlogic_settings").delete().eq(
             "id", settings_id
         ).eq("user_id", user_id).execute()
         
@@ -320,12 +320,12 @@ async def activate_settings(settings_id: str):
         user_id = "c73c78b2-c074-402e-be6e-8c9faa46d29a"  # 仮のユーザーID（goldbenchan@gmail.com）
         
         # 全ての設定を非アクティブに
-        supabase.table("user_imlogic_settings").update({
+        supabase.table("v2_imlogic_settings").update({
             "is_active": False
         }).eq("user_id", user_id).execute()
         
         # 指定された設定をアクティブに
-        result = supabase.table("user_imlogic_settings").update({
+        result = supabase.table("v2_imlogic_settings").update({
             "is_active": True,
             "updated_at": datetime.now().isoformat()
         }).eq("id", settings_id).eq("user_id", user_id).execute()

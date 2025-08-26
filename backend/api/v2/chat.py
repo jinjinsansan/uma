@@ -43,8 +43,48 @@ async def get_user_from_email_header(x_user_email: Optional[str] = Header(None))
             "name": user.get("name", "")
         }
     else:
-        # ユーザーが見つからない場合はエラー
-        raise HTTPException(status_code=403, detail="User not found")
+        # ユーザーが見つからない場合は作成
+        from api.v2.config import v2_config
+        
+        create_result = supabase.table("v2_users").insert({
+            "email": x_user_email,
+            "name": x_user_email.split("@")[0],
+            "google_id": f"v2-{x_user_email}",
+            "avatar_url": ""
+        }).execute()
+        
+        if create_result.data:
+            user = create_result.data[0]
+            
+            # 初期ポイント付与
+            try:
+                initial_points = v2_config.POINTS_GOOGLE_AUTH
+                
+                supabase.table("v2_user_points").insert({
+                    "user_id": user["id"],
+                    "current_points": initial_points,
+                    "total_earned": initial_points,
+                    "total_spent": 0
+                }).execute()
+                
+                supabase.table("v2_point_transactions").insert({
+                    "user_id": user["id"],
+                    "amount": initial_points,
+                    "transaction_type": "initial_grant",
+                    "description": f"初期ポイント付与（{initial_points}ポイント）",
+                    "balance_after": initial_points
+                }).execute()
+                
+            except Exception as e:
+                logger.warning(f"Failed to grant initial points: {e}")
+            
+            return {
+                "user_id": user["id"],
+                "email": user["email"],
+                "name": user.get("name", "")
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to create user")
 
 class CreateChatRequest(BaseModel):
     """チャット作成リクエスト"""

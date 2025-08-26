@@ -17,7 +17,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v2/dlogic", tags=["v2_dlogic"])
+router = APIRouter(tags=["v2_dlogic"])
 
 # Redis接続（キャッシュ用）
 if REDIS_MODULE_AVAILABLE:

@@ -185,7 +185,7 @@ if os.getenv("ENABLE_V2_FEATURES", "true").lower() == "true":
         app.include_router(v2_chat_router.router)
         app.include_router(v2_health_router.router)
         app.include_router(v2_line_referral_router.router)
-        app.include_router(v2_dlogic_router.router)
+        app.include_router(v2_dlogic_router.router, prefix="/api/v2/dlogic")
         app.include_router(v2_cleanup_router)
         print("✅ V2ポイント制システムAPI登録完了")
         print("✅ V2 D-Logic バッチ計算API登録完了")

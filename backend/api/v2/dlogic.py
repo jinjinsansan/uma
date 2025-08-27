@@ -74,6 +74,7 @@ class BatchDLogicResponse(BaseModel):
     scores: List[HorseScore]
     cached: bool
     calculation_time: float
+    error: Optional[str] = None
 
 # キャッシュキーの生成
 def generate_cache_key(race_id: str, horses: List[str]) -> str:
@@ -145,50 +146,70 @@ async def calculate_batch_dlogic(request: BatchDLogicRequest):
                 # 基本的なD-Logicスコア計算
                 dlogic_scores = manager.calculate_dlogic_realtime(horse_name)
                 
-                if dlogic_scores:
-                    # 12項目の平均スコア
-                    total_score = sum([
-                        dlogic_scores.get('distance_aptitude', 50.0),
-                        dlogic_scores.get('track_aptitude', 50.0),
-                        dlogic_scores.get('growth_potential', 50.0),
-                        dlogic_scores.get('trainer_skill', 50.0),
-                        dlogic_scores.get('breakthrough_potential', 50.0),
-                        dlogic_scores.get('strength_score', 50.0),
-                        dlogic_scores.get('winning_percentage', 50.0),
-                        dlogic_scores.get('recent_performance', 50.0),
-                        dlogic_scores.get('course_experience', 50.0),
-                        dlogic_scores.get('distance_experience', 50.0),
-                        dlogic_scores.get('stability', 50.0),
-                        dlogic_scores.get('jockey_compatibility', 50.0)
-                    ]) / 12.0
+                # エラーチェック：馬データが存在しない場合
+                if "error" in dlogic_scores:
+                    # データが存在しない馬の場合
+                    scores_list.append({
+                        "horse_name": horse_name,
+                        "score": None,  # スコアをNullにして「データなし」を示す
+                        "details": None,
+                        "data_available": False
+                    })
+                    continue
+                
+                if dlogic_scores and "total_score" in dlogic_scores:
+                    # ナレッジベースから正常に計算された場合
+                    total_score = dlogic_scores.get('total_score', 50.0)
+                    
+                    # 12項目詳細スコア
+                    details = dlogic_scores.get('d_logic_scores', {})
                 else:
+                    # データが不完全な場合のフォールバック
                     total_score = 50.0
+                    details = None
                 
                 scores_list.append({
                     "horse_name": horse_name,
                     "score": round(total_score, 1),
-                    "details": dlogic_scores
+                    "details": details,
+                    "data_available": True
                 })
                 
             except Exception as e:
                 logger.error(f"Error calculating D-Logic for {horse_name}: {e}")
                 scores_list.append({
                     "horse_name": horse_name,
-                    "score": 50.0,
-                    "details": None
+                    "score": None,
+                    "details": None,
+                    "data_available": False
                 })
         
-        # ランキング計算
-        scores_list.sort(key=lambda x: x["score"], reverse=True)
+        # データが利用可能な馬のみでランキング計算
+        valid_scores = [s for s in scores_list if s.get("data_available", False) and s.get("score") is not None]
+        valid_scores.sort(key=lambda x: x["score"], reverse=True)
         
         horse_scores = []
-        for rank, score_data in enumerate(scores_list, 1):
+        rank = 1
+        
+        # データありの馬（ランキング付き）
+        for score_data in valid_scores:
             horse_scores.append(HorseScore(
                 horse_name=score_data["horse_name"],
                 score=score_data["score"],
                 rank=rank,
                 details=score_data["details"]
             ))
+            rank += 1
+        
+        # データなしの馬（ランク0で「データなし」を示す）
+        for score_data in scores_list:
+            if not score_data.get("data_available", False):
+                horse_scores.append(HorseScore(
+                    horse_name=score_data["horse_name"],
+                    score=0.0,  # フロントエンド用に0.0を設定
+                    rank=0,      # ランク0で「データなし」を示す
+                    details=None
+                ))
         
         # キャッシュに保存
         save_to_cache(cache_key, horse_scores)
@@ -204,6 +225,18 @@ async def calculate_batch_dlogic(request: BatchDLogicRequest):
         
     except Exception as e:
         logger.error(f"Batch D-Logic calculation error: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        
+        # エラーでも部分的な結果を返す
+        if 'horse_scores' in locals() and horse_scores:
+            return BatchDLogicResponse(
+                race_id=request.race_id,
+                scores=horse_scores,
+                cached=False,
+                calculation_time=(datetime.now() - start_time).total_seconds(),
+                error=str(e)
+            )
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/precalculate")

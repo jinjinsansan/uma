@@ -36,13 +36,23 @@ else:
     logger.warning("Redis module not installed, D-Logic will run without cache")
 
 # D-Logicマネージャーのシングルトンインスタンス
+# main.pyで初期化されたインスタンスを再利用して初回ロード時間を削減
 dlogic_manager = None
 dlogic_engine = None
 
 def get_dlogic_manager():
     global dlogic_manager
     if dlogic_manager is None:
-        dlogic_manager = DLogicRawDataManager()
+        # 既存のfast_engine_instanceから共有インスタンスを取得
+        try:
+            from api.chat import fast_engine_instance
+            # FastDLogicEngineが既にDLogicRawDataManagerを保持
+            dlogic_manager = fast_engine_instance.raw_manager
+            logger.info("V2 D-Logic: Using pre-initialized knowledge from FastDLogicEngine")
+        except ImportError:
+            # フォールバック：新規作成（互換性のため）
+            logger.warning("V2 D-Logic: Creating new DLogicRawDataManager instance")
+            dlogic_manager = DLogicRawDataManager()
     return dlogic_manager
 
 def get_dlogic_engine():

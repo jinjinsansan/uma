@@ -17,9 +17,18 @@ class DLogicRawDataManager:
     """D-Logic生データ管理システム"""
     
     def __init__(self):
-        self.knowledge_file = os.path.join(
-            os.path.dirname(__file__), '..', 'data', 'dlogic_raw_knowledge.json'
-        )
+        # Render Proプランの永続ディスクパスを使用
+        # /opt/render/project/src は一時的、/var/data は永続的
+        if os.environ.get('RENDER'):
+            # Render環境では永続ディスクを使用
+            self.knowledge_file = '/var/data/dlogic_raw_knowledge.json'
+            print(f"📁 Render環境検出: 永続ディスク使用 {self.knowledge_file}")
+        else:
+            # ローカル開発環境
+            self.knowledge_file = os.path.join(
+                os.path.dirname(__file__), '..', 'data', 'dlogic_raw_knowledge.json'
+            )
+        
         self.knowledge_data = self._load_knowledge()
         horse_count = len(self.knowledge_data.get('horses', {}))
         print(f"🚀 D-Logic生データマネージャー初期化完了 ({horse_count}頭)")
@@ -74,10 +83,15 @@ class DLogicRawDataManager:
                 
                 # ローカルに保存（キャッシュとして）
                 try:
-                    os.makedirs(os.path.dirname(self.knowledge_file), exist_ok=True)
+                    # Render環境では/var/dataディレクトリを作成
+                    if os.environ.get('RENDER'):
+                        os.makedirs('/var/data', exist_ok=True)
+                    else:
+                        os.makedirs(os.path.dirname(self.knowledge_file), exist_ok=True)
+                    
                     with open(self.knowledge_file, 'w', encoding='utf-8') as f:
                         json.dump(data, f, ensure_ascii=False, indent=2)
-                    print("💾 ローカルキャッシュに保存完了")
+                    print(f"💾 永続ディスクに保存完了: {self.knowledge_file}")
                 except Exception as e:
                     print(f"⚠️ ローカル保存失敗（メモリ上で動作継続）: {e}")
                 

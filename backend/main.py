@@ -100,8 +100,14 @@ async def startup_event():
     try:
         from api.chat import fast_engine_instance
         print("✅ 通常ナレッジファイル: FastDLogicEngine経由で初期化済み")
+        
+        # V2 D-Logicエンジンも事前初期化（2分遅延を防ぐ）
+        from api.v2.dlogic import get_dlogic_manager, get_dlogic_engine
+        v2_manager = get_dlogic_manager()
+        v2_engine = get_dlogic_engine()
+        print("✅ V2 D-Logicエンジン: 事前初期化完了")
     except Exception as e:
-        print(f"⚠️  通常ナレッジファイル初期化エラー: {e}")
+        print(f"⚠️  ナレッジファイル初期化エラー: {e}")
     
     # 2. 騎手ナレッジファイル
     try:

@@ -398,6 +398,30 @@ ViewLogic見解（開発中）
         if self._is_out_of_scope(message, race_data):
             venue = race_data.get('venue', '')
             race_number = race_data.get('race_number', '')
+            
+            # レースに存在しない馬名が含まれているかチェック
+            race_horses = race_data.get('horses', [])
+            potential_horses = re.findall(r'[ア-ンー]+|[A-Za-z]+', message)
+            
+            for potential_horse in potential_horses:
+                if len(potential_horse) >= 3:
+                    is_in_race = False
+                    for race_horse in race_horses:
+                        if potential_horse in race_horse or race_horse in potential_horse:
+                            is_in_race = True
+                            break
+                    
+                    if not is_in_race and re.search(f'{potential_horse}(の|は|が|を|と|って|という)', message):
+                        common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー']
+                        if potential_horse not in common_words:
+                            return {
+                                'content': f"「{potential_horse}」は、{venue} {race_number}Rには出走しません。\nこのレースの出走馬は以下の通りです:\n" + "、".join(race_horses[:5]) + ("..." if len(race_horses) > 5 else ""),
+                                'ai_type': determined_ai,
+                                'sub_type': 'out_of_scope',
+                                'analysis_data': None
+                            }
+            
+            # 他のレースや開催場への言及の場合
             return {
                 'content': f"このチャットは{venue} {race_number}R専用です。他のレースについては新しいチャットを作成してください。",
                 'ai_type': determined_ai,
@@ -450,5 +474,28 @@ ViewLogic見解（開発中）
                 # 明確に他の開催場のレースについて聞いている場合
                 if re.search(f'{venue}\\d+R', message):
                     return True
+        
+        # レースに存在しない馬名をチェック
+        race_horses = race_data.get('horses', [])
+        if race_horses:
+            # メッセージから馬名らしい単語を抽出（カタカナまたは英字の連続）
+            potential_horses = re.findall(r'[ア-ンー]+|[A-Za-z]+', message)
+            
+            for potential_horse in potential_horses:
+                # 3文字以上で、かつレースの馬名リストに存在しない場合
+                if len(potential_horse) >= 3:
+                    # レースの馬名リストに存在するかチェック
+                    is_in_race = False
+                    for race_horse in race_horses:
+                        if potential_horse in race_horse or race_horse in potential_horse:
+                            is_in_race = True
+                            break
+                    
+                    # 明らかに馬名として言及されている場合（〜の、〜は、など）
+                    if not is_in_race and re.search(f'{potential_horse}(の|は|が|を|と|って|という)', message):
+                        # 一般的な単語や助詞でないことを確認
+                        common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー']
+                        if potential_horse not in common_words:
+                            return True
         
         return False

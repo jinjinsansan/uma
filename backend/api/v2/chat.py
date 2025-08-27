@@ -211,12 +211,15 @@ async def create_chat(
 async def get_chat_sessions(
     limit: int = 20,
     offset: int = 0,
-    user_id: str = Depends(get_current_user)
+    user_info: dict = Depends(verify_email_token)
 ):
     """
     ユーザーのチャットセッション一覧を取得
     """
     try:
+        user_id = user_info["user_id"]
+        logger.info(f"Getting sessions for user: {user_info.get('email', 'unknown')}, user_id: {user_id}")
+        
         chat_service = V2ChatService()
         sessions = await chat_service.get_user_sessions(
             user_id=user_id,
@@ -224,25 +227,32 @@ async def get_chat_sessions(
             offset=offset
         )
         
+        logger.info(f"Returning {len(sessions)} sessions")
+        
         return {
             "sessions": sessions,
             "limit": limit,
-            "offset": offset
+            "offset": offset,
+            "total": len(sessions)
         }
         
     except Exception as e:
         logger.error(f"セッション一覧取得エラー: {e}")
+        logger.error(f"Error details: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail="セッション一覧の取得に失敗しました")
 
 @router.get("/session/{session_id}")
 async def get_chat_session(
     session_id: str,
-    user_id: str = Depends(get_current_user)
+    user_info: dict = Depends(verify_email_token)
 ):
     """
     特定のチャットセッションを取得
     """
     try:
+        user_id = user_info["user_id"]
         chat_service = V2ChatService()
         session = await chat_service.get_session(session_id, user_id)
         

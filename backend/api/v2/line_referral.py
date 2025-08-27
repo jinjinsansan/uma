@@ -120,22 +120,35 @@ async def apply_referral_code(
         if not update_result.data:
             raise HTTPException(status_code=500, detail="紹介情報の更新に失敗しました")
         
-        # 被紹介者にポイント付与（環境変数から読み込み）
-        points_to_grant = v2_config.POINTS_REFERRAL
+        # 被紹介者にポイント付与（10ポイント固定）
+        points_for_referred = v2_config.POINTS_REFERRAL_RECEIVED
         service = V2PointsService()
-        transaction = await service.grant_points(
+        referred_transaction = await service.grant_points(
             user_id=user_id,
-            amount=points_to_grant,
+            amount=points_for_referred,
             transaction_type="referral_applied",
-            description=f"友達紹介コード使用によるポイント付与（{points_to_grant}ポイント）",
+            description=f"友達紹介コード使用によるポイント付与（{points_for_referred}ポイント）",
             related_entity_id=referrer["id"]
         )
         
-        # 紹介者の紹介回数を増やす（将来の特典用）
-        referral_count = (referrer.get("referral_count") or 0) + 1
+        # 紹介者の紹介回数を増やす
+        old_referral_count = referrer.get("referral_count") or 0
+        new_referral_count = old_referral_count + 1
         supabase.table("v2_users").update({
-            "referral_count": referral_count
+            "referral_count": new_referral_count
         }).eq("id", referrer["id"]).execute()
+        
+        # 紹介者に段階的ポイント付与
+        points_for_referrer = v2_config.get_referral_points_for_count(new_referral_count)
+        if points_for_referrer > 0:
+            referrer_transaction = await service.grant_points(
+                user_id=referrer["id"],
+                amount=points_for_referrer,
+                transaction_type="referral_bonus",
+                description=f"{new_referral_count}人目の友達紹介ボーナス（{points_for_referrer}ポイント）",
+                related_entity_id=user_id
+            )
+            logger.info(f"紹介者{referrer['id']}に{points_for_referrer}ポイント付与（{new_referral_count}人目）")
         
         # 紹介履歴を記録
         supabase.table("v2_referral_history").insert({
@@ -148,9 +161,10 @@ async def apply_referral_code(
         return {
             "success": True,
             "message": "紹介コードが適用されました",
-            "points_granted": points_to_grant,
-            "new_balance": transaction["balance_after"],
-            "referrer_name": referrer.get("name", "友達")
+            "points_granted": points_for_referred,
+            "new_balance": referred_transaction["balance_after"],
+            "referrer_name": referrer.get("name", "友達"),
+            "referrer_bonus": points_for_referrer if points_for_referrer > 0 else None
         }
         
     except HTTPException:
@@ -173,7 +187,7 @@ async def claim_daily_login_bonus(user_id: str = Depends(get_current_user)):
         if existing.data:
             raise HTTPException(status_code=400, detail="本日のログインボーナスは既に受け取り済みです")
         
-        # ログインボーナスを付与（環境変数から読み込み）
+        # ログインボーナスを付与（2ポイント）
         points_to_grant = v2_config.POINTS_DAILY_LOGIN
         service = V2PointsService()
         transaction = await service.grant_points(

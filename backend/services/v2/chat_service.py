@@ -87,25 +87,53 @@ class V2ChatService:
     ) -> List[Dict]:
         """ユーザーのチャットセッション一覧を取得"""
         try:
+            logger.info(f"Getting sessions for user_id: {user_id}, limit: {limit}, offset: {offset}")
             
             # セッション一覧取得
             sessions_response = self.supabase.table("v2_chat_sessions")\
                 .select("*")\
                 .eq("user_id", user_id)\
-                .order("created_at.desc")\
+                .order("created_at", desc=True)\
                 .limit(limit)\
                 .offset(offset)\
                 .execute()
             
-            # race_snapshotをパース
-            for session in sessions_response.data:
-                if session.get("race_snapshot"):
-                    session["race_snapshot"] = json.loads(session["race_snapshot"])
+            sessions = sessions_response.data if sessions_response.data else []
+            logger.info(f"Found {len(sessions)} sessions")
             
-            return sessions_response.data
+            # race_snapshotをパース
+            for session in sessions:
+                if session.get("race_snapshot"):
+                    try:
+                        if isinstance(session["race_snapshot"], str):
+                            session["race_snapshot"] = json.loads(session["race_snapshot"])
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Failed to parse race_snapshot for session {session.get('id')}: {e}")
+                        session["race_snapshot"] = {}
+            
+            # メッセージカウントを追加
+            for session in sessions:
+                try:
+                    # Supabaseのcount機能を使用
+                    messages_response = self.supabase.table("v2_chat_messages")\
+                        .select("*", count="exact")\
+                        .eq("session_id", session["id"])\
+                        .execute()
+                    # countプロパティが存在する場合は使用、なければデータの長さを使用
+                    if hasattr(messages_response, 'count') and messages_response.count is not None:
+                        session["message_count"] = messages_response.count
+                    else:
+                        session["message_count"] = len(messages_response.data) if messages_response.data else 0
+                except Exception as e:
+                    logger.warning(f"Failed to get message count for session {session.get('id')}: {e}")
+                    session["message_count"] = 0
+            
+            return sessions
             
         except Exception as e:
             logger.error(f"セッション一覧取得エラー: {e}")
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"User ID: {user_id}")
             raise
     
     async def get_session(self, session_id: str, user_id: str) -> Optional[Dict]:

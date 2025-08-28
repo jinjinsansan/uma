@@ -136,13 +136,13 @@ async def calculate_ilogic_batch(
         engine = RaceAnalysisEngine()
         
         # レースアナリシス（I-Logic）計算
-        analysis_result = engine.analyze_race_modern(
-            horses=horses,
-            jockeys=jockeys,
-            posts=posts,
-            horse_numbers=horse_numbers,
-            venue=venue
-        )
+        analysis_result = engine.analyze_race({
+            'venue': venue,
+            'horses': horses,
+            'jockeys': jockeys,
+            'posts': posts,
+            'horse_numbers': horse_numbers
+        })
         
         if not analysis_result or not analysis_result.get("rankings"):
             return None

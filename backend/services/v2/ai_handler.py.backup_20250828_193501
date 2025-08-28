@@ -228,18 +228,18 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
     def _get_default_weights(self) -> Dict[str, float]:
         """デフォルトの12項目重み付けを返す"""
         return {
-            '1_distance_aptitude': 8.33,
-            '2_bloodline_evaluation': 8.33,
-            '3_jockey_compatibility': 8.33,
-            '4_trainer_evaluation': 8.33,
-            '5_track_aptitude': 8.33,
-            '6_weather_aptitude': 8.33,
-            '7_popularity_factor': 8.33,
-            '8_weight_impact': 8.33,
-            '9_horse_weight_impact': 8.33,
-            '10_corner_specialist': 8.33,
-            '11_margin_analysis': 8.33,
-            '12_time_index': 8.37
+            'distance_aptitude': 10,
+            'track_aptitude': 8,
+            'growth_potential': 7,
+            'trainer_skill': 6,
+            'breakthrough_potential': 8,
+            'strength_score': 10,
+            'winning_percentage': 9,
+            'recent_performance': 10,
+            'course_experience': 8,
+            'distance_experience': 8,
+            'stability': 8,
+            'jockey_compatibility': 8
         }
     
     def _format_imlogic_result(self, analysis_result: Dict[str, Any], race_data: Dict[str, Any]) -> str:
@@ -535,42 +535,45 @@ ViewLogic見解（開発中）
         try:
             # D-Logic分析を実行する場合
             if self._should_analyze(message):
-                # V2のD-Logicバッチ計算を使用
-                from api.v2.dlogic import calculate_dlogic_batch
+                # 既存のD-Logic APIエンドポイントを呼び出し
+                import requests
+                import json
+                
+                api_url = "https://uma-i30n.onrender.com/api/chat/message"
                 
                 # レース情報から馬名を抽出
                 horses = race_data.get('horses', [])
                 if not horses:
                     return ("分析対象の馬が指定されていません。", None)
                 
-                try:
-                    # D-Logicバッチ計算を実行
-                    dlogic_result = await calculate_dlogic_batch(horses)
+                # D-Logic分析用のプロンプトを作成
+                venue = race_data.get('venue', '')
+                race_number = race_data.get('race_number', '')
+                race_name = race_data.get('race_name', '')
+                
+                prompt = f"{venue}{race_number}R {race_name}\n出走馬: {', '.join(horses)}"
+                
+                # APIリクエスト
+                response = requests.post(
+                    api_url,
+                    json={
+                        'message': prompt,
+                        'user_id': 'v2-system'
+                    },
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    content = result.get('response', '分析結果の取得に失敗しました。')
                     
-                    if not dlogic_result:
-                        return ("D-Logic分析の実行に失敗しました。", None)
-                    
-                    # 結果をフォーマット
-                    content = self._format_dlogic_batch_result(dlogic_result, race_data)
-                    
-                    # 分析データを抽出
-                    analysis_data = {
-                        'type': 'dlogic',
-                        'scores': dlogic_result,
-                        'top_horses': sorted(
-                            [h for h in dlogic_result.keys() if dlogic_result[h].get('data_available', False)],
-                            key=lambda h: dlogic_result[h].get('score', 0),
-                            reverse=True
-                        )[:5]
-                    }
+                    # D-Logic結果をパース（スコア抽出）
+                    analysis_data = self._parse_dlogic_result(content)
                     
                     return (content, analysis_data)
-                    
-                except Exception as e:
-                    logger.error(f"D-Logic分析エラー: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    return ("D-Logic分析の実行中にエラーが発生しました。", None)
+                else:
+                    logger.error(f"D-Logic API error: {response.status_code}")
+                    return ("D-Logic分析の実行に失敗しました。少し時間をおいて再試行してください。", None)
             
             # 通常の会話の場合
             else:
@@ -614,15 +617,16 @@ D-Logicは、12項目による馬の総合評価システムです。
         try:
             # I-Logic分析を実行する場合
             if self._should_analyze(message):
-                # V2のI-Logicバッチ計算を使用
-                from api.v2.ilogic import calculate_ilogic_batch
+                # レースアナリシスV2 APIを呼び出し
+                import requests
+                
+                api_url = "https://uma-i30n.onrender.com/api/race_analysis/analyze"
                 
                 # レース情報を準備
                 horses = race_data.get('horses', [])
                 jockeys = race_data.get('jockeys', [])
                 posts = race_data.get('posts', [])
                 horse_numbers = race_data.get('horse_numbers', [])
-                venue = race_data.get('venue', '')
                 
                 if not horses:
                     return ("分析対象の馬が指定されていません。", None)
@@ -631,40 +635,36 @@ D-Logicは、12項目による馬の総合評価システムです。
                 if not jockeys or not posts:
                     return ("I-Logic分析には騎手・枠順情報が必要です。このレースでは分析できません。", None)
                 
-                try:
-                    # I-Logicバッチ計算を実行
-                    ilogic_result = await calculate_ilogic_batch(
-                        horses=horses,
-                        jockeys=jockeys,
-                        posts=posts,
-                        horse_numbers=horse_numbers or list(range(1, len(horses) + 1)),
-                        venue=venue
-                    )
-                    
-                    if not ilogic_result:
-                        return ("I-Logic分析の実行に失敗しました。", None)
+                # APIリクエストデータ
+                request_data = {
+                    'venue': race_data.get('venue', ''),
+                    'race_number': race_data.get('race_number', 1),
+                    'horses': horses,
+                    'jockeys': jockeys,
+                    'posts': posts,
+                    'horse_numbers': horse_numbers or list(range(1, len(horses) + 1)),
+                    'distance': race_data.get('distance', '1600m'),
+                    'track_condition': race_data.get('track_condition', '良')
+                }
+                
+                # APIリクエスト実行
+                response = requests.post(
+                    api_url,
+                    json=request_data,
+                    timeout=60
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    analysis_result = result.get('race_analysis', {})
                     
                     # 結果をフォーマット
-                    content = self._format_ilogic_batch_result(ilogic_result, race_data)
+                    content = self._format_ilogic_result(analysis_result, race_data)
                     
-                    # 分析データを抽出
-                    analysis_data = {
-                        'type': 'ilogic',
-                        'scores': ilogic_result,
-                        'top_horses': sorted(
-                            [h for h in ilogic_result.keys() if ilogic_result[h].get('data_available', False)],
-                            key=lambda h: ilogic_result[h].get('score', 0),
-                            reverse=True
-                        )[:5]
-                    }
-                    
-                    return (content, analysis_data)
-                    
-                except Exception as e:
-                    logger.error(f"I-Logic分析エラー: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    return ("I-Logic分析の実行中にエラーが発生しました。", None)
+                    return (content, analysis_result)
+                else:
+                    logger.error(f"I-Logic API error: {response.status_code}")
+                    return ("I-Logic分析の実行に失敗しました。少し時間をおいて再試行してください。", None)
             
             # 通常の会話の場合
             else:
@@ -754,125 +754,6 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                     lines.append(f"   馬: {horse_score:.1f}点 | 騎手: {jockey_score:.1f}点")
                 else:
                     lines.append(f"{emoji} {horse_name}")
-            
-            return "\n".join(lines)
-            
-        except Exception as e:
-            logger.error(f"I-Logic結果フォーマットエラー: {e}")
-            return "I-Logic分析結果の表示中にエラーが発生しました。"
-    
-    def _format_dlogic_batch_result(self, dlogic_result: Dict[str, Any], race_data: Dict[str, Any]) -> str:
-        """
-        D-Logicバッチ計算結果をフォーマット
-        """
-        try:
-            if not dlogic_result:
-                return "D-Logic分析結果が取得できませんでした。"
-            
-            # スコアがある馬を抽出してソート
-            valid_horses = []
-            for horse_name, data in dlogic_result.items():
-                if data.get('data_available', False) and data.get('score') is not None:
-                    valid_horses.append((horse_name, data))
-            
-            # スコア順にソート
-            valid_horses.sort(key=lambda x: x[1].get('score', 0), reverse=True)
-            
-            # 結果のフォーマット
-            lines = []
-            lines.append(f"🎯 D-Logic分析結果")
-            lines.append(f"{race_data.get('venue', '')} {race_data.get('race_number', '')}R {race_data.get('race_name', '')}")
-            lines.append("─" * 40)
-            
-            # 上位5頭を表示
-            emojis = ['🥇', '🥈', '🥉', '4位:', '5位:']
-            for i, (horse_name, data) in enumerate(valid_horses[:5]):
-                emoji = emojis[i] if i < 5 else f"{i+1}."
-                score = data.get('score', 0)
-                lines.append(f"{emoji} {horse_name}: {score:.1f}点")
-                
-                # 詳細スコアがあれば表示
-                if data.get('details'):
-                    details = data['details']
-                    # 主要な項目を表示
-                    if 'distance_aptitude' in details:
-                        lines.append(f"   距離適性: {details['distance_aptitude']:.1f}")
-                    if 'bloodline_evaluation' in details:
-                        lines.append(f"   血統評価: {details['bloodline_evaluation']:.1f}")
-            
-            # 6位以下も簡潔に表示
-            if len(valid_horses) > 5:
-                lines.append("")
-                lines.append("【6位以下】")
-                for horse_name, data in valid_horses[5:]:
-                    score = data.get('score', 0)
-                    lines.append(f"{horse_name}: {score:.1f}点")
-            
-            # データがない馬がいる場合の注記
-            no_data_horses = [name for name, data in dlogic_result.items() 
-                            if not data.get('data_available', False)]
-            if no_data_horses:
-                lines.append("")
-                lines.append("【データ不足】")
-                lines.append(f"以下の馬はデータ不足のため分析できませんでした:")
-                lines.append(f"{', '.join(no_data_horses)}")
-            
-            return "\n".join(lines)
-            
-        except Exception as e:
-            logger.error(f"D-Logic結果フォーマットエラー: {e}")
-            return "D-Logic分析結果の表示中にエラーが発生しました。"
-    
-    def _format_ilogic_batch_result(self, ilogic_result: Dict[str, Any], race_data: Dict[str, Any]) -> str:
-        """
-        I-Logicバッチ計算結果をフォーマット
-        """
-        try:
-            if not ilogic_result:
-                return "I-Logic分析結果が取得できませんでした。"
-            
-            # スコアがある馬を抽出してソート
-            valid_horses = []
-            for horse_name, data in ilogic_result.items():
-                if data.get('data_available', False) and data.get('score') is not None:
-                    valid_horses.append((horse_name, data))
-            
-            # スコア順にソート
-            valid_horses.sort(key=lambda x: x[1].get('score', 0), reverse=True)
-            
-            # 結果のフォーマット
-            lines = []
-            lines.append(f"👑 I-Logic分析結果")
-            lines.append(f"{race_data.get('venue', '')} {race_data.get('race_number', '')}R {race_data.get('race_name', '')}")
-            lines.append("─" * 40)
-            
-            # 上位5頭を表示
-            emojis = ['🥇', '🥈', '🥉', '4位:', '5位:']
-            for i, (horse_name, data) in enumerate(valid_horses[:5]):
-                emoji = emojis[i] if i < 5 else f"{i+1}."
-                total_score = data.get('score', 0)
-                horse_score = data.get('horse_score', 0)
-                jockey_score = data.get('jockey_score', 0)
-                
-                lines.append(f"{emoji} {horse_name}: {total_score:.1f}点")
-                lines.append(f"   馬: {horse_score:.1f}点 | 騎手: {jockey_score:.1f}点")
-            
-            # 6位以下も簡潔に表示
-            if len(valid_horses) > 5:
-                lines.append("")
-                lines.append("【6位以下】")
-                for horse_name, data in valid_horses[5:]:
-                    total_score = data.get('score', 0)
-                    lines.append(f"{horse_name}: {total_score:.1f}点")
-            
-            # データがない馬がいる場合の注記
-            no_data_horses = [name for name, data in ilogic_result.items() 
-                            if not data.get('data_available', False)]
-            if no_data_horses:
-                lines.append("")
-                lines.append("【データ不足】")
-                lines.append(f"以下の馬はデータ不足のため分析できませんでした:")
-                lines.append(f"{', '.join(no_data_horses)}")
             
             return "\n".join(lines)
             

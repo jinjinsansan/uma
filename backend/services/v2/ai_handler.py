@@ -634,12 +634,13 @@ D-Logicは、12項目による馬の総合評価システムです。
                     return ("I-Logic分析には騎手・枠順情報が必要です。このレースでは分析できません。", None)
                 
                 try:
-                    # V1のrace-analysis-v2 APIを正しい形式で呼び出し
-                    if not httpx:
-                        logger.error("httpx library not available")
-                        return ("HTTPライブラリが利用できません。", None)
+                    # HTTPリクエストではなく直接関数呼び出しを使用（Render環境対応）
+                    logger.info(f"I-Logic直接関数呼び出し開始: {venue} {race_number}R")
                     
-                    # race-analysis-v2/chat APIの期待する形式に合わせる
+                    # race-analysis-v2/chat 関数を直接呼び出し
+                    from api.race_analysis_v2 import race_analysis_chat
+                    
+                    # APIの期待する形式に合わせる
                     request_data = {
                         'message': f"{venue} {race_number}Rを分析して",
                         'race_info': {
@@ -652,32 +653,16 @@ D-Logicは、12項目による馬の総合評価システムです。
                         }
                     }
                     
-                    logger.info(f"I-Logic API呼び出し: {request_data}")
+                    logger.info(f"I-Logic関数呼び出しデータ: {request_data}")
                     
-                    # 同一サーバー内のAPIエンドポイントを呼び出し
-                    async with httpx.AsyncClient(timeout=60.0) as client:
-                        # 本番環境では同じサーバー内のAPIを呼び出し
-                        api_url = "http://127.0.0.1:8000/api/race-analysis-v2/chat"
-                        logger.info(f"Calling I-Logic API: {api_url}")
-                        
-                        response = await client.post(
-                            api_url,
-                            json=request_data
-                        )
-                        
-                        logger.info(f"I-Logic API レスポンス: status={response.status_code}")
-                        
-                        if response.status_code != 200:
-                            error_text = response.text
-                            logger.error(f"I-Logic API エラー: {response.status_code}, {error_text}")
-                            return (f"I-Logic APIエラー (ステータス: {response.status_code})", None)
-                        
-                        result_data = response.json()
-                        logger.info(f"I-Logic API レスポンスデータ: {result_data}")
+                    # 直接関数を呼び出し
+                    result_data = await race_analysis_chat(request_data)
                     
-                    # race-analysis-v2/chat APIのレスポンス形式を処理
+                    logger.info(f"I-Logic関数レスポンス: {result_data}")
+                    
+                    # レスポンスの処理
                     if not result_data:
-                        return ("I-Logic APIから空のレスポンスを受信しました。", None)
+                        return ("I-Logic分析から空のレスポンスを受信しました。", None)
                     
                     if result_data.get('status') != 'success':
                         error_msg = result_data.get('response', 'I-Logic分析でエラーが発生しました')

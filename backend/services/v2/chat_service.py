@@ -350,17 +350,20 @@ class V2ChatService:
         session_id: str,
         role: str,
         content: str,
-        ai_type: str,
+        ai_type: Optional[str],
         analysis_data: Optional[Dict] = None
     ) -> Dict:
         """メッセージを保存"""
         try:
+            # ai_typeがNoneの場合はデフォルトで"imlogic"を使用
+            final_ai_type = ai_type if ai_type is not None else "imlogic"
+            
             message_data = {
                 "id": str(uuid.uuid4()),
                 "session_id": session_id,
                 "role": role,
                 "content": content,
-                "ai_type": ai_type,
+                "ai_type": final_ai_type,
                 "analysis_data": json.dumps(analysis_data) if analysis_data else None,
                 "created_at": datetime.now().isoformat()
             }

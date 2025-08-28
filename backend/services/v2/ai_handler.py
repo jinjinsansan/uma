@@ -807,7 +807,6 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             lines = []
             lines.append(f"🎯 D-Logic分析結果")
             lines.append(f"{race_data.get('venue', '')} {race_data.get('race_number', '')}R {race_data.get('race_name', '')}")
-            lines.append("─" * 40)
             
             # 上位5頭を表示
             emojis = ['🥇', '🥈', '🥉', '4位:', '5位:']
@@ -884,7 +883,6 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             lines = []
             lines.append(f"👑 I-Logic分析結果")
             lines.append(f"{race_data.get('venue', '')} {race_data.get('race_number', '')}R {race_data.get('race_name', '')}")
-            lines.append("─" * 40)
             
             # 上位5頭を表示
             emojis = ['🥇', '🥈', '🥉', '4位:', '5位:']
@@ -931,7 +929,6 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             lines = []
             lines.append(f"👑 I-Logic分析結果")
             lines.append(f"{race_data.get('venue', '')} {race_data.get('race_number', '')}R {race_data.get('race_name', '')}")
-            lines.append("─" * 40)
             
             # 上位5頭を表示
             emojis = ['🥇', '🥈', '🥉', '4位:', '5位:']

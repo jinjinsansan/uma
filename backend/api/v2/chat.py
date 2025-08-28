@@ -438,11 +438,13 @@ async def send_message(
         logger.info(f"process_message完了: {ai_response}")
         
         # チャットサービスに保存
+        # ユーザーメッセージにもデフォルトのai_typeを設定
+        user_ai_type = request.ai_type or "imlogic"
         response = await chat_service.save_message(
             session_id=session_id,
             role="user",
             content=request.message,
-            ai_type=request.ai_type
+            ai_type=user_ai_type
         )
         
         # ai_typeがNoneの場合はデフォルトで"imlogic"を使用

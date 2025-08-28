@@ -445,11 +445,14 @@ async def send_message(
             ai_type=request.ai_type
         )
         
+        # ai_typeがNoneの場合はデフォルトで"imlogic"を使用
+        final_ai_type = ai_response.get("ai_type") or request.ai_type or "imlogic"
+        
         assistant_response = await chat_service.save_message(
             session_id=session_id,
             role="assistant",
             content=ai_response.get("content", ""),  # 辞書からcontentを取得
-            ai_type=ai_response.get("ai_type", request.ai_type),
+            ai_type=final_ai_type,
             analysis_data=ai_response.get("analysis_data")
         )
         

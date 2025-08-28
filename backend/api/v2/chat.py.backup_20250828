@@ -119,12 +119,6 @@ class CreateChatRequest(BaseModel):
     jockeys: Optional[List[str]] = []
     posts: Optional[List[int]] = []
     horse_numbers: Optional[List[int]] = []
-    # V2フィールド（2025-08-28追加）
-    sex_ages: Optional[List[str]] = []        # 性齢
-    weights: Optional[List[float]] = []       # 斤量
-    trainers: Optional[List[str]] = []        # 調教師
-    odds: Optional[List[float]] = []          # オッズ
-    popularities: Optional[List[int]] = []    # 人気
     distance: Optional[int] = None
     course_type: Optional[str] = None
     weather: Optional[str] = None
@@ -176,11 +170,6 @@ async def create_chat(
                 "jockeys": request.jockeys,
                 "posts": request.posts,
                 "horse_numbers": request.horse_numbers,
-                "sex_ages": request.sex_ages,          # V2フィールド追加
-                "weights": request.weights,            # V2フィールド追加
-                "trainers": request.trainers,          # V2フィールド追加
-                "odds": request.odds,                  # V2フィールド追加
-                "popularities": request.popularities,  # V2フィールド追加
                 "distance": request.distance,
                 "course_type": request.course_type,
                 "weather": request.weather,
@@ -405,34 +394,3 @@ async def send_message(
         error_detail = f"エラー: {str(e)}\n\nトレース: {traceback.format_exc()}"
         logger.error(f"メッセージ送信エラー: {error_detail}")
         raise HTTPException(status_code=500, detail=f"メッセージの送信に失敗しました: {str(e)}")
-
-@router.delete("/session/{session_id}")
-async def delete_chat_session(
-    session_id: str,
-    user_info: dict = Depends(get_user_from_email_header)
-):
-    """
-    チャットセッションを削除
-    """
-    try:
-        user_id = user_info["user_id"]
-        logger.info(f"Deleting session: {session_id} for user: {user_id}")
-        
-        chat_service = V2ChatService()
-        
-        # セッションの所有権確認
-        session = await chat_service.get_session(session_id, user_id)
-        if not session:
-            raise HTTPException(status_code=404, detail="チャットセッションが見つかりません")
-        
-        # セッションとメッセージを削除
-        await chat_service.delete_session(session_id, user_id)
-        
-        logger.info(f"Successfully deleted session: {session_id}")
-        return {"success": True, "message": "チャット履歴を削除しました"}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"セッション削除エラー: {e}")
-        raise HTTPException(status_code=500, detail="チャット履歴の削除に失敗しました")

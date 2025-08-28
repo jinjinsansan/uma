@@ -400,4 +400,28 @@ class V2ChatService:
             else:
                 response += f"- {result['horse']}: データなし\n"
         
-        return response
+        return response    
+    async def delete_session(
+        self,
+        session_id: str,
+        user_id: str
+    ) -> bool:
+        """チャットセッションと関連メッセージを削除"""
+        try:
+            # まずメッセージを削除
+            delete_messages = self.supabase.table("v2_chat_messages").delete().eq("session_id", session_id).execute()
+            logger.info(f"Deleted {len(delete_messages.data) if delete_messages.data else 0} messages for session {session_id}")
+            
+            # セッションを削除
+            delete_session = self.supabase.table("v2_chat_sessions").delete().eq("id", session_id).eq("user_id", user_id).execute()
+            
+            if delete_session.data:
+                logger.info(f"Successfully deleted session {session_id}")
+                return True
+            else:
+                logger.warning(f"Session {session_id} not found for user {user_id}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Failed to delete session {session_id}: {e}")
+            raise

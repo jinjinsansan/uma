@@ -146,6 +146,7 @@ async def create_chat(
     """
     新しいチャットセッションを作成（1ポイント消費）
     管理者テストモードの場合はポイント消費なし
+    初回作成時はD-Logic/I-Logicバッチ計算を実行してv2_race_scoresに保存
     """
     try:
         user_id = user_info["user_id"]
@@ -161,6 +162,62 @@ async def create_chat(
             
             if points_data["current_points"] < 1:
                 raise HTTPException(status_code=400, detail="チャット作成にはポイントが必要です")
+        
+        # v2_race_scoresテーブルをチェック（初回かどうか確認）
+        from services.v2.race_scores_service import V2RaceScoresService
+        race_scores_service = V2RaceScoresService()
+        existing_scores = await race_scores_service.get_race_scores(request.race_id)
+        
+        # 初回の場合、バッチ計算を実行
+        if not existing_scores:
+            logger.info(f"初回チャット作成: {request.race_id} - バッチ計算を実行")
+            
+            # D-Logicバッチ計算
+            try:
+                from api.v2.dlogic import calculate_dlogic_batch
+                dlogic_scores = await calculate_dlogic_batch(request.horses)
+                logger.info(f"D-Logicバッチ計算完了: {len(dlogic_scores)}頭")
+            except Exception as e:
+                logger.warning(f"D-Logicバッチ計算失敗: {e}")
+                dlogic_scores = None
+            
+            # I-Logicバッチ計算（騎手データがある場合のみ）
+            ilogic_scores = None
+            if request.jockeys and request.posts:
+                try:
+                    from api.v2.ilogic import calculate_ilogic_batch
+                    ilogic_scores = await calculate_ilogic_batch(
+                        horses=request.horses,
+                        jockeys=request.jockeys,
+                        posts=request.posts,
+                        horse_numbers=request.horse_numbers or [],
+                        venue=request.venue
+                    )
+                    logger.info(f"I-Logicバッチ計算完了: {len(ilogic_scores)}頭")
+                except Exception as e:
+                    logger.warning(f"I-Logicバッチ計算失敗: {e}")
+                    ilogic_scores = None
+            
+            # v2_race_scoresに保存
+            await race_scores_service.save_race_scores(
+                race_id=request.race_id,
+                race_date=request.race_date,
+                venue=request.venue,
+                race_number=request.race_number,
+                race_name=request.race_name,
+                horses=request.horses,
+                jockeys=request.jockeys,
+                posts=request.posts,
+                horse_numbers=request.horse_numbers,
+                sex_ages=request.sex_ages,
+                weights=request.weights,
+                trainers=request.trainers,
+                odds=request.odds,
+                popularities=request.popularities,
+                dlogic_scores=dlogic_scores,
+                ilogic_scores=ilogic_scores
+            )
+            logger.info(f"v2_race_scoresに保存完了: {request.race_id}")
         
         # チャット作成
         chat_service = V2ChatService()
@@ -436,3 +493,31 @@ async def delete_chat_session(
     except Exception as e:
         logger.error(f"セッション削除エラー: {e}")
         raise HTTPException(status_code=500, detail="チャット履歴の削除に失敗しました")
+
+@router.get("/race-scores/{race_id}")
+async def get_race_scores(race_id: str):
+    """
+    レースのD-Logic/I-Logicスコアを取得
+    v2_race_scoresテーブルから取得
+    """
+    try:
+        from services.v2.race_scores_service import V2RaceScoresService
+        
+        service = V2RaceScoresService()
+        scores = await service.get_race_scores(race_id)
+        
+        if scores:
+            # JSONBフィールドをパース
+            if scores.get("dlogic_scores") and isinstance(scores["dlogic_scores"], str):
+                import json
+                scores["dlogic_scores"] = json.loads(scores["dlogic_scores"])
+            
+            if scores.get("ilogic_scores") and isinstance(scores["ilogic_scores"], str):
+                import json
+                scores["ilogic_scores"] = json.loads(scores["ilogic_scores"])
+        
+        return scores or {}
+        
+    except Exception as e:
+        logger.error(f"レーススコア取得エラー: {e}")
+        return {}

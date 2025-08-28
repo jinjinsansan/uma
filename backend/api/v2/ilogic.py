@@ -117,3 +117,49 @@ async def calculate_batch_ilogic(request: BatchILogicRequest):
             calculation_time=calculation_time,
             error=str(e)
         )
+
+async def calculate_ilogic_batch(
+    horses: List[str],
+    jockeys: List[str],
+    posts: List[int],
+    horse_numbers: List[int],
+    venue: str
+) -> Optional[Dict[str, Any]]:
+    """
+    I-Logicバッチ計算（内部使用）
+    チャット作成時にv2_race_scoresに保存するため
+    """
+    try:
+        from services.race_analysis_engine import RaceAnalysisEngine
+        
+        engine = RaceAnalysisEngine()
+        
+        # レースアナリシス（I-Logic）計算
+        analysis_result = engine.analyze_race_modern(
+            horses=horses,
+            jockeys=jockeys,
+            posts=posts,
+            horse_numbers=horse_numbers,
+            venue=venue
+        )
+        
+        if not analysis_result or not analysis_result.get("rankings"):
+            return None
+        
+        # 結果を辞書形式に変換
+        result = {}
+        for item in analysis_result["rankings"]:
+            horse_name = item["horse_name"]
+            result[horse_name] = {
+                "score": round(item["final_score"], 1),
+                "rank": item["rank"],
+                "horse_score": round(item["horse_score"], 1),
+                "jockey_score": round(item["jockey_score"], 1),
+                "data_available": True
+            }
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"I-Logicバッチ計算エラー: {e}")
+        return None

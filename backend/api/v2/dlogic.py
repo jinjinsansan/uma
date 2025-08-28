@@ -249,6 +249,62 @@ async def calculate_batch_dlogic(request: BatchDLogicRequest):
             )
         raise HTTPException(status_code=500, detail=str(e))
 
+async def calculate_dlogic_batch(horses: List[str]) -> Optional[Dict[str, Any]]:
+    """
+    D-Logicバッチ計算（内部使用）
+    チャット作成時にv2_race_scoresに保存するため
+    """
+    try:
+        manager = get_dlogic_manager()
+        engine = get_dlogic_engine()
+        
+        result = {}
+        for horse_name in horses:
+            try:
+                dlogic_scores = manager.calculate_dlogic_realtime(horse_name)
+                
+                if "error" in dlogic_scores:
+                    result[horse_name] = {
+                        "score": None,
+                        "rank": 0,
+                        "data_available": False
+                    }
+                    continue
+                
+                if dlogic_scores and "total_score" in dlogic_scores:
+                    total_score = dlogic_scores.get('total_score', 50.0)
+                    details = dlogic_scores.get('d_logic_scores', {})
+                else:
+                    total_score = 50.0
+                    details = None
+                
+                result[horse_name] = {
+                    "score": round(total_score, 1),
+                    "details": details,
+                    "data_available": True
+                }
+                
+            except Exception as e:
+                logger.error(f"Error calculating D-Logic for {horse_name}: {e}")
+                result[horse_name] = {
+                    "score": None,
+                    "rank": 0,
+                    "data_available": False
+                }
+        
+        # ランク付け
+        valid_horses = [h for h in result.keys() if result[h].get("data_available", False)]
+        sorted_horses = sorted(valid_horses, key=lambda h: result[h]["score"], reverse=True)
+        
+        for rank, horse_name in enumerate(sorted_horses, 1):
+            result[horse_name]["rank"] = rank
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"D-Logicバッチ計算エラー: {e}")
+        return None
+
 @router.post("/precalculate")
 async def precalculate_dlogic(request: PreCalculateRequest):
     """

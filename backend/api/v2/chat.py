@@ -372,8 +372,8 @@ async def send_message(
         if not session:
             raise HTTPException(status_code=404, detail="チャットセッションが見つかりません")
         
-        # AIタイプ確認
-        if request.ai_type not in ["imlogic", "viewlogic"]:
+        # AIタイプ確認（Noneの場合は自然言語判定するため許可）
+        if request.ai_type is not None and request.ai_type not in ["imlogic", "viewlogic", "dlogic", "ilogic"]:
             raise HTTPException(status_code=400, detail="無効なAIタイプです")
         
         # V2 AIハンドラーで処理（グローバルインスタンスを使用してメモリ節約）

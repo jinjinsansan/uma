@@ -87,6 +87,22 @@ class RaceAnalysisEngine:
                 'track_condition': race_data.get('track_condition', '良')
             }
             
+            # デフォルトの12項目重み付け（各項目8.33%、IMLogicと同じ）
+            default_item_weights = {
+                '1_distance_aptitude': 8.33,
+                '2_bloodline_evaluation': 8.33,
+                '3_jockey_compatibility': 8.33,
+                '4_trainer_evaluation': 8.33,
+                '5_track_aptitude': 8.33,
+                '6_weather_aptitude': 8.33,
+                '7_popularity_factor': 8.33,
+                '8_weight_impact': 8.33,
+                '9_horse_weight_impact': 8.33,
+                '10_corner_specialist': 8.33,
+                '11_margin_analysis': 8.33,
+                '12_time_index': 8.37  # 合計100になるよう調整
+            }
+            
             # 各馬の分析
             results = []
             horses = race_data.get('horses', [])
@@ -102,11 +118,11 @@ class RaceAnalysisEngine:
                     post = posts[i] if i < len(posts) else 1
                     horse_number = horse_numbers[i] if i < len(horse_numbers) else i + 1
                     
-                    # 馬の評価（ベイズ推定を有効化）
-                    horse_analysis = self.modern_engine.calculate_horse_score(
-                        horse_name, 
-                        context,
-                        enable_bayesian=True
+                    # IMLogicと同じ方法で馬のスコアを計算（12項目重み付け）
+                    horse_score, has_data, estimation_method = self._calculate_horse_score_with_weights(
+                        horse_name=horse_name,
+                        context=context,
+                        item_weights=default_item_weights
                     )
                     
                     # 騎手の評価
@@ -120,14 +136,18 @@ class RaceAnalysisEngine:
                         jockey_context
                     )
                     
-                    # 総合評価
-                    horse_score = horse_analysis.get('final_score', 50.0)
                     jockey_score = jockey_analysis.get('total_score', 0)
                     
-                    total_score = (
-                        horse_score * self.HORSE_WEIGHT +
-                        jockey_score * self.JOCKEY_WEIGHT
-                    )
+                    # 総合評価（馬70%、騎手30%）
+                    if not has_data:
+                        # データなしの馬はスキップまたは0点
+                        total_score = 0
+                        logger.info(f"{horse_name}: データなしのため0点")
+                    else:
+                        total_score = (
+                            horse_score * self.HORSE_WEIGHT +
+                            jockey_score * self.JOCKEY_WEIGHT
+                        )
                     
                     results.append({
                         'rank': 0,  # 後でソート
@@ -138,12 +158,12 @@ class RaceAnalysisEngine:
                         'total_score': round(total_score, 1),
                         'horse_score': round(horse_score, 1),
                         'jockey_score': round(jockey_score, 1),
+                        'has_data': has_data,  # データ有無フラグ追加
+                        'estimation_method': estimation_method,  # 推定方法追加
                         'horse_details': {
-                            'base': round(horse_analysis.get('base_score', 50.0), 1),
-                            'venue_distance_bonus': horse_analysis.get('venue_distance_bonus', 0),
-                            'class_factor': horse_analysis.get('class_factor', 1.0),
-                            'track_bonus': horse_analysis.get('track_bonus', 0),
-                            'venue_history': horse_analysis.get('details', {}).get('venue_history', {})
+                            'has_knowledge_data': has_data,
+                            'estimation_method': estimation_method,
+                            'data_status': 'no_data' if not has_data else ('bayesian' if estimation_method == 'bayesian' else 'full_data')
                         },
                         'jockey_details': {
                             'venue': jockey_analysis.get('venue_score', 0),
@@ -189,11 +209,12 @@ class RaceAnalysisEngine:
                 'results': results,
                 'summary': summary,
                 'analysis_type': 'race_analysis_v2',
-                'base_horse': 'レースアナリシスV2基準',
+                'base_horse': 'イクイノックス基準（12項目均等重み）',
                 'weights': {
                     'horse': self.HORSE_WEIGHT,
                     'jockey': self.JOCKEY_WEIGHT
-                }
+                },
+                'item_weights': default_item_weights  # 12項目の重み付けを返す
             }
             
         except Exception as e:
@@ -219,6 +240,86 @@ class RaceAnalysisEngine:
             return False
         
         return True
+    
+    def _calculate_horse_score_with_weights(
+        self, 
+        horse_name: str, 
+        context: Dict[str, Any],
+        item_weights: Dict[str, float]
+    ) -> tuple[float, bool, str]:
+        """
+        IMLogicと同じ方法で馬のスコアを計算（12項目重み付け）
+        
+        Args:
+            horse_name: 馬名
+            context: レースコンテキスト
+            item_weights: 12項目の重み付け
+        
+        Returns:
+            (馬のスコア, データ有無, 推定方法) - データなしの場合は(0, False, 'no_data')
+        """
+        try:
+            # ModernDLogicEngineで基本計算（イクイノックス基準）
+            ilogic_result = self.modern_engine.calculate_horse_score(
+                horse_name=horse_name,
+                context=context,
+                enable_bayesian=True
+            )
+            
+            # データ状態の判定
+            estimation_method = ilogic_result.get('estimation_method', 'unknown')
+            data_confidence = ilogic_result.get('data_confidence', 'none')
+            
+            # データなしの馬は0を返す（IMLogicと同じ）
+            if estimation_method == 'default' and data_confidence == 'none':
+                logger.info(f"{horse_name}: ナレッジファイルにデータが存在しません")
+                return 0, False, 'no_data'
+            
+            # ベイズ推定の場合（データ不足だが1走以上ある）
+            if estimation_method == 'bayesian':
+                logger.info(f"{horse_name}: データ不足のためベイズ推定を適用")
+            
+            base_score = ilogic_result.get('base_score', 50.0)
+            venue_distance_bonus = ilogic_result.get('venue_distance_bonus', 0)
+            track_bonus = ilogic_result.get('track_bonus', 0)
+            class_factor = ilogic_result.get('class_factor', 1.0)
+            
+            # 12項目の個別スコアを取得またはデフォルト値を設定
+            item_scores = {
+                '1_distance_aptitude': base_score + 5,
+                '2_bloodline_evaluation': base_score,
+                '3_jockey_compatibility': base_score - 5,
+                '4_trainer_evaluation': base_score - 5,
+                '5_track_aptitude': base_score + 3,
+                '6_weather_aptitude': base_score,
+                '7_popularity_factor': base_score - 10,
+                '8_weight_impact': base_score - 3,
+                '9_horse_weight_impact': base_score - 3,
+                '10_corner_specialist': base_score - 8,
+                '11_margin_analysis': base_score - 2,
+                '12_time_index': base_score + 2
+            }
+            
+            # ユーザーの重み付けで12項目を計算
+            weighted_score = 0.0
+            for key, weight in item_weights.items():
+                score = item_scores.get(key, base_score)
+                normalized_weight = weight / 100.0
+                contribution = score * normalized_weight
+                weighted_score += contribution
+            
+            # 開催場・距離・馬場ボーナスを加算
+            final_score = weighted_score + venue_distance_bonus + track_bonus
+            
+            # クラス補正を適用
+            final_score *= class_factor
+            
+            # 最大150点まで可能（IMLogicと同じ）
+            return min(150.0, max(0.0, final_score)), True, estimation_method
+            
+        except Exception as e:
+            logger.error(f"馬スコア計算エラー ({horse_name}): {e}")
+            return 0, False, 'error'
     
     def _get_horse_sire(self, horse_name: str) -> str:
         """馬の父馬を取得"""

@@ -614,15 +614,13 @@ D-Logicは、12項目による馬の総合評価システムです。
         try:
             # I-Logic分析を実行する場合
             if self._should_analyze(message):
-                # V2のI-Logicバッチ計算を使用
-                from api.v2.ilogic import calculate_ilogic_batch
-                
                 # レース情報を準備
                 horses = race_data.get('horses', [])
                 jockeys = race_data.get('jockeys', [])
                 posts = race_data.get('posts', [])
                 horse_numbers = race_data.get('horse_numbers', [])
                 venue = race_data.get('venue', '')
+                race_number = race_data.get('race_number', 0)
                 
                 if not horses:
                     return ("分析対象の馬が指定されていません。", None)
@@ -632,17 +630,28 @@ D-Logicは、12項目による馬の総合評価システムです。
                     return ("I-Logic分析には騎手・枠順情報が必要です。このレースでは分析できません。", None)
                 
                 try:
-                    # I-Logicバッチ計算を実行
-                    ilogic_result = await calculate_ilogic_batch(
-                        horses=horses,
-                        jockeys=jockeys,
-                        posts=posts,
-                        horse_numbers=horse_numbers or list(range(1, len(horses) + 1)),
-                        venue=venue
-                    )
+                    # RaceAnalysisEngineを使用してI-Logic計算を実行
+                    from services.race_analysis_engine import RaceAnalysisEngine
                     
-                    if not ilogic_result:
+                    race_engine = RaceAnalysisEngine()
+                    
+                    # レースデータを準備
+                    analysis_data = {
+                        'horses': horses,
+                        'jockeys': jockeys,
+                        'posts': posts,
+                        'venue': venue,
+                        'horse_numbers': horse_numbers or list(range(1, len(horses) + 1))
+                    }
+                    
+                    # I-Logic分析を実行
+                    analysis_result = race_engine.analyze_race(analysis_data)
+                    
+                    if not analysis_result or 'results' not in analysis_result:
                         return ("I-Logic分析の実行に失敗しました。", None)
+                    
+                    # 結果を取得（resultsキーから）
+                    ilogic_result = analysis_result.get('results', {})
                     
                     # 結果をフォーマット
                     content = self._format_ilogic_batch_result(ilogic_result, race_data)

@@ -48,14 +48,14 @@ async def calculate_batch_ilogic(request: BatchILogicRequest):
             race_engine = RaceAnalysisEngine()
             
             # 実際のI-Logic計算を実行
-            result = race_engine.analyze_race(
-                horses=request.horses,
-                jockeys=request.jockeys,
-                posts=request.posts,
-                venue=request.venue,
-                distance=None,  # 距離は任意
-                track_condition=None  # 馬場状態も任意
-            )
+            race_data = {
+                'horses': request.horses,
+                'jockeys': request.jockeys,
+                'posts': request.posts,
+                'venue': request.venue,
+                'horse_numbers': request.horse_numbers if request.horse_numbers else list(range(1, len(request.horses) + 1))
+            }
+            result = race_engine.analyze_race(race_data)
             
             if result and "scores" in result:
                 scores_list = result["scores"]

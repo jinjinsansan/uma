@@ -634,9 +634,10 @@ D-Logicは、12項目による馬の総合評価システムです。
                     return ("I-Logic分析には騎手・枠順情報が必要です。このレースでは分析できません。", None)
                 
                 try:
-                    # V1と同じ /api/race-analysis-v2/chat エンドポイントを呼び出し
-                    import httpx
-                    import asyncio
+                    # V1のrace-analysis-v2 APIを直接呼び出し
+                    if not httpx:
+                        logger.error("httpx library not available")
+                        return ("HTTPライブラリが利用できません。", None)
                     
                     # リクエストデータを準備（V1フォーマット）
                     request_data = {
@@ -649,24 +650,41 @@ D-Logicは、12項目による馬の総合評価システムです。
                         'horse_numbers': horse_numbers or list(range(1, len(horses) + 1))
                     }
                     
-                    # HTTPクライアントでAPIを呼び出し
-                    async with httpx.AsyncClient(timeout=30.0) as client:
+                    logger.info(f"I-Logic API呼び出し: {request_data}")
+                    
+                    # 同一サーバー内のAPIエンドポイントを呼び出し
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        # 本番環境では同じサーバー内のAPIを呼び出し
+                        api_url = "http://127.0.0.1:8000/api/race-analysis-v2/chat"
+                        logger.info(f"Calling I-Logic API: {api_url}")
+                        
                         response = await client.post(
-                            "http://localhost:8000/api/race-analysis-v2/chat",
+                            api_url,
                             json=request_data
                         )
                         
+                        logger.info(f"I-Logic API レスポンス: status={response.status_code}")
+                        
                         if response.status_code != 200:
-                            logger.error(f"I-Logic API エラー: {response.status_code}, {response.text}")
-                            return ("I-Logic分析の実行に失敗しました。", None)
+                            error_text = response.text
+                            logger.error(f"I-Logic API エラー: {response.status_code}, {error_text}")
+                            return (f"I-Logic APIエラー (ステータス: {response.status_code})", None)
                         
                         result_data = response.json()
+                        logger.info(f"I-Logic API レスポンスデータ: {result_data}")
                     
                     # レスポンスから分析結果を取得
-                    if not result_data or 'scores' not in result_data:
-                        return ("I-Logic分析結果が取得できませんでした。", None)
+                    if not result_data:
+                        return ("I-Logic APIから空のレスポンスを受信しました。", None)
+                    
+                    if 'scores' not in result_data:
+                        logger.error(f"Scoresキーが見つかりません: {result_data}")
+                        return ("I-Logic分析結果の形式が正しくありません。", None)
                     
                     scores = result_data.get('scores', [])
+                    
+                    if not scores:
+                        return ("I-Logic分析でスコアが取得できませんでした。", None)
                     
                     # 結果をフォーマット
                     content = self._format_ilogic_api_result(scores, race_data)

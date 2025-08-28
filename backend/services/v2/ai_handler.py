@@ -13,6 +13,10 @@ try:
     from anthropic import Anthropic
 except ImportError:
     Anthropic = None
+try:
+    import httpx
+except ImportError:
+    httpx = None
 import os
 
 logger = logging.getLogger(__name__)
@@ -609,7 +613,7 @@ D-Logicは、12項目による馬の総合評価システムです。
         race_data: Dict[str, Any]
     ) -> Tuple[str, Optional[Dict]]:
         """
-        I-Logicメッセージ処理
+        I-Logicメッセージ処理 - V1と同じAPIエンドポイントを使用
         """
         try:
             # I-Logic分析を実行する場合
@@ -630,41 +634,48 @@ D-Logicは、12項目による馬の総合評価システムです。
                     return ("I-Logic分析には騎手・枠順情報が必要です。このレースでは分析できません。", None)
                 
                 try:
-                    # RaceAnalysisEngineを使用してI-Logic計算を実行
-                    from services.race_analysis_engine import RaceAnalysisEngine
+                    # V1と同じ /api/race-analysis-v2/chat エンドポイントを呼び出し
+                    import httpx
+                    import asyncio
                     
-                    race_engine = RaceAnalysisEngine()
-                    
-                    # レースデータを準備
-                    analysis_data = {
+                    # リクエストデータを準備（V1フォーマット）
+                    request_data = {
+                        'race_id': f"{venue}-{race_number}R",
                         'horses': horses,
+                        'venue': venue,
+                        'race_number': race_number,
                         'jockeys': jockeys,
                         'posts': posts,
-                        'venue': venue,
                         'horse_numbers': horse_numbers or list(range(1, len(horses) + 1))
                     }
                     
-                    # I-Logic分析を実行
-                    analysis_result = race_engine.analyze_race(analysis_data)
+                    # HTTPクライアントでAPIを呼び出し
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        response = await client.post(
+                            "http://localhost:8000/api/race-analysis-v2/chat",
+                            json=request_data
+                        )
+                        
+                        if response.status_code != 200:
+                            logger.error(f"I-Logic API エラー: {response.status_code}, {response.text}")
+                            return ("I-Logic分析の実行に失敗しました。", None)
+                        
+                        result_data = response.json()
                     
-                    if not analysis_result or 'results' not in analysis_result:
-                        return ("I-Logic分析の実行に失敗しました。", None)
+                    # レスポンスから分析結果を取得
+                    if not result_data or 'scores' not in result_data:
+                        return ("I-Logic分析結果が取得できませんでした。", None)
                     
-                    # 結果を取得（resultsキーから）
-                    ilogic_result = analysis_result.get('results', {})
+                    scores = result_data.get('scores', [])
                     
                     # 結果をフォーマット
-                    content = self._format_ilogic_batch_result(ilogic_result, race_data)
+                    content = self._format_ilogic_api_result(scores, race_data)
                     
                     # 分析データを抽出
                     analysis_data = {
                         'type': 'ilogic',
-                        'scores': ilogic_result,
-                        'top_horses': sorted(
-                            [h for h in ilogic_result.keys() if ilogic_result[h].get('data_available', False)],
-                            key=lambda h: ilogic_result[h].get('score', 0),
-                            reverse=True
-                        )[:5]
+                        'scores': scores,
+                        'top_horses': [score.get('horse', '') for score in scores[:5] if score.get('horse')]
                     }
                     
                     return (content, analysis_data)
@@ -831,6 +842,45 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         except Exception as e:
             logger.error(f"D-Logic結果フォーマットエラー: {e}")
             return "D-Logic分析結果の表示中にエラーが発生しました。"
+    
+    def _format_ilogic_api_result(self, scores: List[Dict[str, Any]], race_data: Dict[str, Any]) -> str:
+        """
+        I-Logic API結果をフォーマット（V1互換）
+        """
+        try:
+            if not scores:
+                return "I-Logic分析結果が取得できませんでした。"
+            
+            # 結果のフォーマット
+            lines = []
+            lines.append(f"👑 I-Logic分析結果")
+            lines.append(f"{race_data.get('venue', '')} {race_data.get('race_number', '')}R {race_data.get('race_name', '')}")
+            lines.append("─" * 40)
+            
+            # 上位5頭を表示
+            emojis = ['🥇', '🥈', '🥉', '4位:', '5位:']
+            for i, score_data in enumerate(scores[:5]):
+                emoji = emojis[i] if i < 5 else f"{i+1}."
+                horse_name = score_data.get('horse', '不明')
+                total_score = score_data.get('score', 0)
+                
+                lines.append(f"{emoji} {horse_name}: {total_score:.1f}点")
+            
+            # 6位以下も簡潔に表示
+            if len(scores) > 5:
+                lines.append("")
+                lines.append("【6位以下】")
+                for score_data in scores[5:]:
+                    horse_name = score_data.get('horse', '不明')
+                    total_score = score_data.get('score', 0)
+                    lines.append(f"{horse_name}: {total_score:.1f}点")
+            
+            return "
+".join(lines)
+            
+        except Exception as e:
+            logger.error(f"I-Logic API結果フォーマットエラー: {e}")
+            return "I-Logic分析結果の表示中にエラーが発生しました。"
     
     def _format_ilogic_batch_result(self, ilogic_result: Dict[str, Any], race_data: Dict[str, Any]) -> str:
         """

@@ -16,6 +16,9 @@ class BatchILogicRequest(BaseModel):
     horses: List[str]
     venue: Optional[str] = None
     race_number: Optional[int] = None
+    jockeys: Optional[List[str]] = None
+    posts: Optional[List[int]] = None
+    horse_numbers: Optional[List[int]] = None
 
 class HorseScore(BaseModel):
     horse_name: str
@@ -36,39 +39,37 @@ async def calculate_batch_ilogic(request: BatchILogicRequest):
     start_time = datetime.now()
     
     try:
-        scores_list = []
-        
-        # 簡易的なI-Logic計算（馬・騎手総合評価）
-        for horse_name in request.horses:
-            try:
-                # 基本スコア（50-85の範囲）
-                # 実際の実装では馬データと騎手データを考慮した計算を行う
-                import random
-                random.seed(hash(horse_name) % 1000)  # 馬名から決定的なシードを生成
-                
-                if "テスト" in horse_name or horse_name == "存在しない馬":
-                    # テスト馬や存在しない馬には「データなし」を返す
-                    scores_list.append({
-                        "horse_name": horse_name,
-                        "score": None,  # スコアをNullにして「データなし」を示す
-                        "data_available": False
-                    })
-                else:
-                    # 正常な馬には計算スコアを返す
-                    base_score = random.uniform(50.0, 85.0)
-                    scores_list.append({
-                        "horse_name": horse_name,
-                        "score": round(base_score, 1),
-                        "data_available": True
-                    })
-                    
-            except Exception as e:
-                logger.error(f"Error calculating I-Logic for {horse_name}: {e}")
-                scores_list.append({
-                    "horse_name": horse_name,
-                    "score": None,
-                    "data_available": False
-                })
+        # jockeys、posts、horse_numbersがある場合はI-Logicエンジンを使用
+        if request.jockeys and request.posts and request.venue:
+            from services.race_analysis_engine import RaceAnalysisEngine
+            
+            # I-Logicエンジンのインスタンスを作成
+            race_engine = RaceAnalysisEngine()
+            
+            # 実際のI-Logic計算を実行
+            result = race_engine.analyze_race(
+                horses=request.horses,
+                jockeys=request.jockeys,
+                posts=request.posts,
+                venue=request.venue,
+                distance=None,  # 距離は任意
+                track_condition=None  # 馬場状態も任意
+            )
+            
+            if result and "scores" in result:
+                scores_list = result["scores"]
+            else:
+                # エンジンからの結果がない場合は空のリストを返す
+                scores_list = []
+        else:
+            # 騎手情報がない場合はエラーとする（簡易計算は行わない）
+            logger.error(f"I-Logic batch calculation requires jockeys, posts and venue. Request: {request.dict()}")
+            return BatchILogicResponse(
+                race_id=request.race_id,
+                scores=[],
+                calculation_time=(datetime.now() - start_time).total_seconds(),
+                error="騎手情報、枠順、開催場が必要です"
+            )
         
         # データが利用可能な馬のみでランキング計算
         valid_scores = [s for s in scores_list if s.get("data_available", False) and s.get("score") is not None]

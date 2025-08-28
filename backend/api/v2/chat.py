@@ -135,7 +135,7 @@ class CreateChatRequest(BaseModel):
 class ChatMessageRequest(BaseModel):
     """チャットメッセージリクエスト"""
     message: str
-    ai_type: str  # 'imlogic' or 'viewlogic'
+    ai_type: Optional[str] = None  # 'imlogic', 'dlogic', 'ilogic', 'viewlogic', or None for auto-detect
     imlogic_settings: Optional[Dict] = None  # IMLogic設定（オプション）
 
 @router.post("/create")
@@ -427,10 +427,11 @@ async def send_message(
         logger.info(f"race_data: {race_data}")
         logger.info(f"imlogic_settings: {imlogic_settings}")
         
+        # ai_typeがNoneの場合は自然言語判定させる
         ai_response = await ai_handler.process_message(
             message=request.message,
             race_data=race_data,
-            ai_type=request.ai_type,
+            ai_type=request.ai_type,  # Noneの場合、ai_handler内で自然言語判定
             settings=imlogic_settings
         )
         

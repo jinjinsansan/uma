@@ -634,20 +634,22 @@ D-Logicは、12項目による馬の総合評価システムです。
                     return ("I-Logic分析には騎手・枠順情報が必要です。このレースでは分析できません。", None)
                 
                 try:
-                    # V1のrace-analysis-v2 APIを直接呼び出し
+                    # V1のrace-analysis-v2 APIを正しい形式で呼び出し
                     if not httpx:
                         logger.error("httpx library not available")
                         return ("HTTPライブラリが利用できません。", None)
                     
-                    # リクエストデータを準備（V1フォーマット）
+                    # race-analysis-v2/chat APIの期待する形式に合わせる
                     request_data = {
-                        'race_id': f"{venue}-{race_number}R",
-                        'horses': horses,
-                        'venue': venue,
-                        'race_number': race_number,
-                        'jockeys': jockeys,
-                        'posts': posts,
-                        'horse_numbers': horse_numbers or list(range(1, len(horses) + 1))
+                        'message': f"{venue} {race_number}Rを分析して",
+                        'race_info': {
+                            'venue': venue,
+                            'race_number': race_number,
+                            'horses': horses,
+                            'jockeys': jockeys,
+                            'posts': posts,
+                            'horse_numbers': horse_numbers or list(range(1, len(horses) + 1))
+                        }
                     }
                     
                     logger.info(f"I-Logic API呼び出し: {request_data}")
@@ -673,30 +675,30 @@ D-Logicは、12項目による馬の総合評価システムです。
                         result_data = response.json()
                         logger.info(f"I-Logic API レスポンスデータ: {result_data}")
                     
-                    # レスポンスから分析結果を取得
+                    # race-analysis-v2/chat APIのレスポンス形式を処理
                     if not result_data:
                         return ("I-Logic APIから空のレスポンスを受信しました。", None)
                     
-                    if 'scores' not in result_data:
-                        logger.error(f"Scoresキーが見つかりません: {result_data}")
-                        return ("I-Logic分析結果の形式が正しくありません。", None)
+                    if result_data.get('status') != 'success':
+                        error_msg = result_data.get('response', 'I-Logic分析でエラーが発生しました')
+                        return (error_msg, None)
                     
-                    scores = result_data.get('scores', [])
+                    response_text = result_data.get('response', '')
                     
-                    if not scores:
-                        return ("I-Logic分析でスコアが取得できませんでした。", None)
+                    if not response_text:
+                        return ("I-Logic分析結果が空です。", None)
                     
-                    # 結果をフォーマット
-                    content = self._format_ilogic_api_result(scores, race_data)
+                    # レスポンステキストから馬名とスコアを抽出
+                    scores = self._parse_ilogic_response(response_text, horses)
                     
                     # 分析データを抽出
                     analysis_data = {
                         'type': 'ilogic',
-                        'scores': scores,
-                        'top_horses': [score.get('horse', '') for score in scores[:5] if score.get('horse')]
+                        'response_text': response_text,
+                        'top_horses': scores[:5] if scores else []
                     }
                     
-                    return (content, analysis_data)
+                    return (response_text, analysis_data)
                     
                 except Exception as e:
                     logger.error(f"I-Logic分析エラー: {e}")
@@ -860,6 +862,30 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         except Exception as e:
             logger.error(f"D-Logic結果フォーマットエラー: {e}")
             return "D-Logic分析結果の表示中にエラーが発生しました。"
+    
+    def _parse_ilogic_response(self, response_text: str, horses: List[str]) -> List[str]:
+        """
+        I-Logicレスポンステキストから馬名順位を抽出
+        """
+        try:
+            import re
+            
+            # テキストから馬名を順位順に抽出
+            extracted_horses = []
+            
+            # 各馬名が何位に表示されているかチェック
+            for horse in horses:
+                for line in response_text.split('\n'):
+                    if horse in line and ('位' in line or '🥇' in line or '🥈' in line or '🥉' in line or '🏅' in line):
+                        if horse not in extracted_horses:
+                            extracted_horses.append(horse)
+                            break
+            
+            return extracted_horses
+            
+        except Exception as e:
+            logger.error(f"I-Logicレスポンス解析エラー: {e}")
+            return []
     
     def _format_ilogic_api_result(self, scores: List[Dict[str, Any]], race_data: Dict[str, Any]) -> str:
         """

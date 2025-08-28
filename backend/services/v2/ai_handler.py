@@ -875,8 +875,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                     total_score = score_data.get('score', 0)
                     lines.append(f"{horse_name}: {total_score:.1f}点")
             
-            return "
-".join(lines)
+            return "\n".join(lines)
             
         except Exception as e:
             logger.error(f"I-Logic API結果フォーマットエラー: {e}")

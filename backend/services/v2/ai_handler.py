@@ -34,8 +34,9 @@ class V2AIHandler:
         # AI選択キーワード
         self.AI_KEYWORDS = {
             'imlogic': ['分析', '評価', 'IMLogic', 'IM', 'アイエム'],
-            'viewlogic_trend': ['傾向', 'トレンド', '統計', 'データ', '過去'],
+            'viewlogic_trend': ['傾向', 'トレンド', '統計', 'データ', '過去', 'コース傾向', '騎手成績', '血統', '枠順'],
             'viewlogic_opinion': ['見解', '意見', '予想', '推奨', 'おすすめ'],
+            'viewlogic_flow': ['展開', 'ペース', '逃げ', '先行', '差し', '追込', '脚質', 'ハイペース', 'スローペース', '流れ'],
             'dlogic': ['d-logic', 'ディーロジック', 'D-Logic', 'Dロジック', '指数', 'スコア', '12項目', '評価点'],
             'ilogic': ['i-logic', 'ilogic', 'アイロジック', 'I-Logic', 'Iロジック', '騎手', '総合', 'レースアナリシス', 'アナリシス']
         }
@@ -57,15 +58,20 @@ class V2AIHandler:
             if keyword.lower() in message_lower:
                 return ('dlogic', 'analysis')
         
+        # ViewLogic展開予想（最優先）
+        for keyword in self.AI_KEYWORDS['viewlogic_flow']:
+            if keyword in message_lower:
+                return ('viewlogic', 'flow')
+        
+        # ViewLogic傾向分析（I-Logicより優先）
+        for keyword in self.AI_KEYWORDS['viewlogic_trend']:
+            if keyword in message_lower:
+                return ('viewlogic', 'trend')
+        
         # I-Logic分析
         for keyword in self.AI_KEYWORDS['ilogic']:
             if keyword.lower() in message_lower:
                 return ('ilogic', 'analysis')
-        
-        # ViewLogic傾向分析
-        for keyword in self.AI_KEYWORDS['viewlogic_trend']:
-            if keyword in message_lower:
-                return ('viewlogic', 'trend')
         
         # ViewLogic見解
         for keyword in self.AI_KEYWORDS['viewlogic_opinion']:
@@ -307,34 +313,208 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         message: str,
         race_data: Dict[str, Any],
         sub_type: str = 'trend'
-    ) -> str:
+    ) -> Tuple[str, Optional[Dict]]:
         """
-        ViewLogicメッセージ処理（将来実装用）
-        """
-        # 現在はプレースホルダー
-        venue = race_data.get('venue', '不明')
-        race_number = race_data.get('race_number', '不明')
+        ViewLogicメッセージ処理
         
-        if sub_type == 'trend':
-            return f"""
-ViewLogic傾向分析（開発中）
-{venue} {race_number}Rの傾向分析機能は現在開発中です。
-近日中に以下の分析が可能になります：
-- 過去の類似レースデータ分析
-- 開催場別の傾向
-- 騎手・調教師の成績傾向
-"""
-        elif sub_type == 'opinion':
-            return f"""
-ViewLogic見解（開発中）
-{venue} {race_number}Rの見解機能は現在開発中です。
-近日中に以下の情報が提供されます：
-- AIによる推奨馬
-- 穴馬の可能性
-- 馬券の組み立て提案
-"""
-        else:
-            return "ViewLogic機能は現在開発中です。"
+        Returns:
+            (content, analysis_data) のタプル
+        """
+        try:
+            # ViewLogicエンジンをインポート・初期化
+            from services.viewlogic_engine import ViewLogicEngine
+            viewlogic_engine = ViewLogicEngine()
+            
+            venue = race_data.get('venue', '不明')
+            race_number = race_data.get('race_number', '不明')
+            
+            if sub_type == 'flow':
+                # 展開予想
+                result = viewlogic_engine.predict_race_flow(race_data)
+                if result['status'] == 'success':
+                    content = self._format_flow_prediction(result)
+                    return (content, result)
+                else:
+                    return (f"展開予想に失敗しました: {result.get('message', '不明なエラー')}", None)
+                    
+            elif sub_type == 'trend':
+                # コース傾向分析
+                distance = race_data.get('distance')
+                track_type = race_data.get('course_type', '芝')  # デフォルトは芝
+                
+                result = viewlogic_engine.analyze_course_trend(
+                    venue=venue,
+                    distance=distance,
+                    track_type=track_type
+                )
+                
+                if result['status'] == 'success':
+                    content = self._format_trend_analysis(result)
+                    return (content, result)
+                else:
+                    return (f"傾向分析に失敗しました: {result.get('message', '不明なエラー')}", None)
+                    
+            elif sub_type == 'opinion':
+                # 見解（当日傾向として実装）
+                import datetime
+                today = datetime.datetime.now().strftime('%Y-%m-%d')
+                
+                result = viewlogic_engine.analyze_daily_trend(
+                    date=today,
+                    venue=venue
+                )
+                
+                if result['status'] == 'success':
+                    content = self._format_daily_trend(result)
+                    return (content, result)
+                else:
+                    # フォールバック: 基本的な見解を提供
+                    return (f"""
+🔮 ViewLogic見解
+{venue} {race_number}R
+
+本日の傾向データは限定的ですが、以下の点に注目してください：
+• 脚質のバランスを確認
+• 騎手の調子を重視
+• 枠順の有利不利を考慮
+
+詳細な分析には「展開予想」または「傾向分析」をご利用ください。
+""", None)
+            else:
+                return ("ViewLogic機能をご利用いただきありがとうございます。「展開」「傾向」「見解」のいずれかをお試しください。", None)
+                
+        except ImportError as e:
+            logger.error(f"ViewLogicエンジンのインポートエラー: {e}")
+            return ("ViewLogicエンジンの読み込みに失敗しました。システム管理者にお問い合わせください。", None)
+        except Exception as e:
+            logger.error(f"ViewLogic処理エラー: {e}")
+            import traceback
+            traceback.print_exc()
+            return (f"ViewLogic分析中にエラーが発生しました: {str(e)}", None)
+    
+    def _format_flow_prediction(self, result: Dict[str, Any]) -> str:
+        """展開予想結果をフォーマット"""
+        lines = []
+        lines.append("🏇 **ViewLogic展開予想**")
+        
+        race_info = result['race_info']
+        lines.append(f"{race_info['venue']} {race_info['race_number']}R - {race_info['race_name']}")
+        lines.append("")
+        
+        prediction = result['prediction']
+        lines.append(f"**【ペース予想】{prediction['pace']}**")
+        lines.append(f"確信度: {prediction['pace_confidence']}%")
+        lines.append("")
+        
+        # 脚質分布
+        lines.append("**【脚質分布】**")
+        for style_data in prediction['style_distribution']:
+            horses_str = ', '.join(style_data['horses']) if style_data['horses'] else ''
+            lines.append(f"• {style_data['style']}: {style_data['count']}頭")
+            if horses_str:
+                lines.append(f"  {horses_str}")
+        lines.append("")
+        
+        # 詳細な逃げ馬分析
+        if prediction['detailed_escapes']:
+            lines.append("**【逃げ馬詳細】**")
+            for escape_type, horses in prediction['detailed_escapes'].items():
+                if horses:
+                    lines.append(f"• {escape_type}: {', '.join(horses)}")
+            lines.append("")
+        
+        # 有利/不利
+        if prediction['advantaged_horses']:
+            lines.append("**🎯 有利な馬**")
+            for horse in prediction['advantaged_horses']:
+                lines.append(f"• {horse}")
+            lines.append("")
+        
+        if prediction['disadvantaged_horses']:
+            lines.append("**⚠️ 不利な馬**")
+            for horse in prediction['disadvantaged_horses']:
+                lines.append(f"• {horse}")
+            lines.append("")
+        
+        lines.append(f"_分析馬数: {result['analyzed_horses']}/{result['total_horses']}頭_")
+        
+        return "\n".join(lines)
+    
+    def _format_trend_analysis(self, result: Dict[str, Any]) -> str:
+        """コース傾向分析結果をフォーマット"""
+        lines = []
+        lines.append("📊 **ViewLogicコース傾向分析**")
+        
+        course = result['course_info']
+        lines.append(f"{course['venue']} {course.get('distance', '')}m {course.get('track_type', '')}")
+        lines.append("")
+        
+        trends = result['trends']
+        
+        # 騎手成績
+        if trends.get('jockey_ranking'):
+            lines.append("**【騎手成績TOP5】**")
+            for i, jockey in enumerate(trends['jockey_ranking'], 1):
+                lines.append(f"{i}. {jockey['name']}: 勝率{jockey['win_rate']:.0%} 複勝率{jockey['fukusho_rate']:.0%}")
+            lines.append("")
+        
+        # 血統成績
+        if trends.get('sire_ranking'):
+            lines.append("**【血統成績TOP3】**")
+            for i, sire in enumerate(trends['sire_ranking'], 1):
+                lines.append(f"{i}. {sire['name']}: 複勝率{sire['fukusho_rate']:.0%}")
+            lines.append("")
+        
+        # 枠順別成績
+        if trends.get('post_position_stats'):
+            lines.append("**【枠順別成績】**")
+            for position, stats in trends['post_position_stats'].items():
+                lines.append(f"• {position}: 勝率{stats['win_rate']:.0%} 複勝率{stats['fukusho_rate']:.0%}")
+            lines.append("")
+        
+        # インサイト
+        if result.get('insights'):
+            lines.append("**💡 ポイント**")
+            for insight in result['insights']:
+                lines.append(f"• {insight}")
+        
+        return "\n".join(lines)
+    
+    def _format_daily_trend(self, result: Dict[str, Any]) -> str:
+        """当日傾向分析結果をフォーマット"""
+        lines = []
+        lines.append("📈 **ViewLogic当日傾向**")
+        lines.append(f"{result['venue']} - {result['date']}")
+        lines.append(f"実施済み: {result['races_completed']}R")
+        lines.append("")
+        
+        trends = result['trends']
+        
+        # 脚質別成績
+        if trends.get('running_style_performance'):
+            lines.append("**【脚質別成績】**")
+            for style, perf in trends['running_style_performance'].items():
+                lines.append(f"• {style}: {perf['wins']}勝/{perf['runs']}頭 (勝率{perf['win_rate']:.0%})")
+            lines.append("")
+        
+        # 好調騎手
+        if trends.get('hot_jockeys'):
+            lines.append("**【好調騎手】**")
+            for jockey in trends['hot_jockeys']:
+                lines.append(f"• {jockey['name']}: {jockey['wins']}勝/{jockey['runs']}騎乗")
+            lines.append("")
+        
+        # 馬場状態
+        lines.append(f"**【馬場】** {trends.get('track_condition', '良')} / {trends.get('track_bias', 'フラット')}")
+        lines.append("")
+        
+        # 推奨事項
+        if result.get('recommendations'):
+            lines.append("**⭐ 推奨**")
+            for rec in result['recommendations']:
+                lines.append(f"• {rec}")
+        
+        return "\n".join(lines)
     
     def _create_imlogic_prompt(self, settings: Dict[str, Any]) -> str:
         """
@@ -470,7 +650,11 @@ ViewLogic見解（開発中）
             else:
                 content = result
         else:  # viewlogic
-            content = await self.process_viewlogic_message(message, race_data, sub_type)
+            result = await self.process_viewlogic_message(message, race_data, sub_type)
+            if isinstance(result, tuple):
+                content, analysis_data = result
+            else:
+                content = result
         
         return {
             'content': content,

@@ -29,6 +29,7 @@ from api.today_races_ocr import router as today_races_ocr_router
 from api.debug_knowledge import router as debug_knowledge_router
 from api.admin_knowledge import router as admin_knowledge_router
 from api.admin_cache import router as admin_cache_router
+from api.debug_viewlogic import router as debug_viewlogic_router
 from api.mylogic import router as mylogic_router
 # from api.future_races import router as future_races_router  # 一時的にコメントアウト（pymysqlエラー回避）
 from api.batch_dlogic_complete import router as batch_dlogic_router
@@ -178,6 +179,7 @@ app.include_router(today_races_ocr_router, tags=["Today Races OCR"])
 app.include_router(debug_knowledge_router, tags=["Debug"])
 app.include_router(admin_knowledge_router, tags=["Admin Knowledge"])
 app.include_router(admin_cache_router, tags=["Admin Cache"])
+app.include_router(debug_viewlogic_router, prefix="/api/debug", tags=["ViewLogic Debug"])
 app.include_router(mylogic_router, tags=["MyLogicAI"])
 # app.include_router(future_races_router, prefix="/api/future-races", tags=["Future Races"])
 app.include_router(batch_dlogic_router, tags=["Batch D-Logic Analysis"])

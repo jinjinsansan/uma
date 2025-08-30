@@ -329,8 +329,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             race_number = race_data.get('race_number', '不明')
             
             if sub_type == 'flow':
-                # 展開予想
-                result = viewlogic_engine.predict_race_flow(race_data)
+                # 展開予想（高度な分析版を使用）
+                result = viewlogic_engine.predict_race_flow_advanced(race_data)
                 if result['status'] == 'success':
                     content = self._format_flow_prediction(result)
                     return (content, result)
@@ -393,17 +393,25 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             return (f"ViewLogic分析中にエラーが発生しました: {str(e)}", None)
     
     def _format_flow_prediction(self, result: Dict[str, Any]) -> str:
-        """展開予想結果をフォーマット"""
+        """展開予想結果をフォーマット（高度な分析版対応）"""
         lines = []
         lines.append("🏇 **ViewLogic展開予想**")
         
-        race_info = result['race_info']
-        lines.append(f"{race_info['venue']} {race_info['race_number']}R - {race_info['race_name']}")
+        # レース情報
+        race_info = result.get('race_info', {})
+        lines.append(f"{race_info.get('venue', '')} {race_info.get('race_number', '')}R - {race_info.get('race_name', '')}")
+        if race_info.get('distance'):
+            lines.append(f"距離: {race_info.get('distance', '')}")
         lines.append("")
         
-        prediction = result['prediction']
-        lines.append(f"**【ペース予想】{prediction['pace']}**")
-        lines.append(f"確信度: {prediction['pace_confidence']}%")
+        # 新形式（predict_race_flow_advanced）の場合
+        if 'pace_prediction' in result:
+            return self._format_flow_prediction_advanced(result)
+        
+        # 旧形式（predict_race_flow）のフォールバック
+        prediction = result.get('prediction', {})
+        lines.append(f"**【ペース予想】{prediction.get('pace', '不明')}**")
+        lines.append(f"確信度: {prediction.get('pace_confidence', 0)}%")
         lines.append("")
         
         # 脚質分布
@@ -436,7 +444,67 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 lines.append(f"• {horse}")
             lines.append("")
         
-        lines.append(f"_分析馬数: {result['analyzed_horses']}/{result['total_horses']}頭_")
+        lines.append(f"_分析馬数: {result.get('analyzed_horses', 0)}/{result.get('total_horses', 0)}頭_")
+        
+        return "\n".join(lines)
+    
+    def _format_flow_prediction_advanced(self, result: Dict[str, Any]) -> str:
+        """高度な展開予想結果をフォーマット"""
+        lines = []
+        lines.append("🏇 **ViewLogic展開予想**")
+        
+        # レース情報
+        race_info = result.get('race_info', {})
+        lines.append(f"{race_info.get('venue', '')} {race_info.get('race_number', '')}R")
+        if race_info.get('distance'):
+            lines.append(f"距離: {race_info.get('distance', '')}")
+        lines.append("")
+        
+        # ペース予想
+        pace_pred = result.get('pace_prediction', {})
+        pace = pace_pred.get('pace', '不明')
+        confidence = pace_pred.get('confidence', 0)
+        lines.append(f"**【ペース予想】{pace}**")
+        lines.append(f"確信度: {confidence}%")
+        lines.append("")
+        
+        # 詳細な脚質分類
+        detailed_styles = result.get('detailed_styles', {})
+        lines.append("**【展開予想】**")
+        
+        for main_style, sub_styles in detailed_styles.items():
+            has_horses = any(horses for horses in sub_styles.values())
+            if has_horses:
+                lines.append(f"\n◆ {main_style}")
+                for sub_style, horses in sub_styles.items():
+                    if horses:
+                        horses_str = ', '.join(horses[:3])  # 最初の3頭まで表示
+                        if len(horses) > 3:
+                            horses_str += f" 他{len(horses)-3}頭"
+                        lines.append(f"  • {sub_style}: {horses_str}")
+        lines.append("")
+        
+        # レースシミュレーション（ゴール予想のみ）
+        simulation = result.get('race_simulation', {})
+        if simulation and 'finish' in simulation:
+            lines.append("**【上位予想】**")
+            for i, entry in enumerate(simulation['finish'][:5], 1):
+                horse = entry.get('horse_name', '不明')
+                lines.append(f"{i}. {horse}")
+            lines.append("")
+        
+        # ペースに応じた狙い目
+        lines.append("**【狙い目】**")
+        if 'ハイペース' in pace:
+            lines.append("• 後方待機の差し・追込馬が有利")
+            lines.append("• 前半飛ばす逃げ・先行馬は苦戦予想")
+        elif 'スローペース' in pace:
+            lines.append("• 前残りの可能性大")
+            lines.append("• 逃げ・先行馬を重視")
+            lines.append("• 追込一辺倒は厳しい展開")
+        else:
+            lines.append("• 平均ペースで力勝負")
+            lines.append("• 総合力の高い馬を重視")
         
         return "\n".join(lines)
     

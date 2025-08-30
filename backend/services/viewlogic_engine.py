@@ -1766,6 +1766,17 @@ class ViewLogicEngine:
         """
         jockey_post_performances = {}
         
+        # 騎手データの検証
+        if not jockeys:
+            logger.warning("騎手データが空です")
+            return {}
+        
+        # None値やempty stringを除外
+        valid_jockeys = [j for j in jockeys if j and isinstance(j, str) and j.strip()]
+        if not valid_jockeys:
+            logger.warning(f"有効な騎手データがありません: {jockeys}")
+            return {}
+        
         if not self.jockey_manager.is_loaded():
             logger.warning("騎手ナレッジファイルが読み込まれていません")
             return {}
@@ -1773,8 +1784,8 @@ class ViewLogicEngine:
         try:
             # 騎手名を4文字に正規化（騎手ナレッジファイルの形式に合わせる）
             normalized_jockeys = []
-            logger.info(f"傾向分析に使用する騎手名（元データ）: {jockeys}")
-            for jockey in jockeys:
+            logger.info(f"傾向分析に使用する騎手名（元データ）: {valid_jockeys}")
+            for jockey in valid_jockeys:
                 # 既存のスペースを削除
                 jockey_clean = jockey.strip().replace(' ', '').replace('　', '')
                 
@@ -1849,7 +1860,7 @@ class ViewLogicEngine:
             jockey_post_stats = self.jockey_manager.get_jockey_post_position_fukusho_rates(normalized_jockeys)
             
             # 元の騎手名をキーとして返す（枠番情報も含む）
-            for i, original_jockey in enumerate(jockeys):
+            for i, original_jockey in enumerate(valid_jockeys):
                 if i < len(normalized_jockeys):
                     normalized = normalized_jockeys[i]
                     result_data = {}
@@ -1911,13 +1922,24 @@ class ViewLogicEngine:
         jockey_course_performances = []
         course_key = f"{venue}{distance}m{track_type}" if distance else f"{venue}{track_type}"
         
+        # 騎手データの検証
+        if not jockeys:
+            logger.warning("騎手データが空です（コース成績分析）")
+            return []
+        
+        # None値やempty stringを除外
+        valid_jockeys = [j for j in jockeys if j and isinstance(j, str) and j.strip()]
+        if not valid_jockeys:
+            logger.warning(f"有効な騎手データがありません（コース成績分析）: {jockeys}")
+            return []
+        
         if not self.data_manager.is_loaded():
             logger.warning("ViewLogicナレッジファイルが読み込まれていません")
             return []
         
         try:
             # 各騎手について、ViewLogicの全馬データから該当コースでの騎乗成績を集計
-            for jockey_name in jockeys:
+            for jockey_name in valid_jockeys:
                 wins = 0
                 fukusho = 0
                 total_runs = 0

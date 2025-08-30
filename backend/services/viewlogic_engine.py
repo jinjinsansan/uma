@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple, Any
 from statistics import mean, stdev
 import math
 from datetime import datetime
+from .jockey_knowledge_manager import get_jockey_knowledge_manager
 
 # numpy import with fallback
 try:
@@ -432,6 +433,8 @@ class ViewLogicEngine:
         # ViewLogicデータマネージャーを初期化
         from services.viewlogic_data_manager import ViewLogicDataManager
         self.data_manager = ViewLogicDataManager()
+        # 騎手ナレッジマネージャーを初期化
+        self.jockey_manager = get_jockey_knowledge_manager()
     
     def predict_race_flow_advanced(self, race_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -991,6 +994,50 @@ class ViewLogicEngine:
             'last_updated': datetime.now().isoformat()
         }
     
+    def _generate_daily_recommendations(self, daily_stats: Dict) -> List[str]:
+        """当日の推奨事項を生成"""
+        recommendations = []
+        
+        # 脚質に基づく推奨
+        style_perf = daily_stats.get('style_performance', {})
+        if style_perf:
+            best_style = max(style_perf.items(), key=lambda x: x[1].get('ratio', 0))
+            if best_style[1].get('ratio', 0) > 0.4:
+                if best_style[0] == '逃げ':
+                    recommendations.append("逃げ馬が多いためハイペースに注意")
+                    recommendations.append("差し・追込馬の一発に期待")
+                elif best_style[0] == '先行':
+                    recommendations.append("先行馬を中心に馬券を組み立てる")
+                    recommendations.append("ペースが落ち着けば前残りの可能性大")
+                elif best_style[0] == '差し':
+                    recommendations.append("中団から後方の馬を重視")
+                    recommendations.append("直線の長いコースなら差し馬有利")
+                elif best_style[0] == '追込':
+                    recommendations.append("後方一気の追込馬に注目")
+                    recommendations.append("ペースが上がれば追込馬のチャンス")
+        
+        # 騎手に基づく推奨
+        hot_jockeys = daily_stats.get('hot_jockeys', [])
+        if hot_jockeys and hot_jockeys[0]['fukusho_rate'] > 0.5:
+            recommendations.append(f"{hot_jockeys[0]['name']}騎手の騎乗馬は要チェック")
+        
+        # 枠順に基づく推奨
+        track_bias = daily_stats.get('track_bias', 'フラット')
+        if track_bias == '内有利':
+            recommendations.append("内枠（1-6番）の馬を重視")
+            recommendations.append("外枠の人気馬は評価を下げる")
+        elif track_bias == '外有利':
+            recommendations.append("外枠（13-18番）からの差し馬に注目")
+            recommendations.append("内枠の逃げ・先行馬は苦戦の可能性")
+        
+        # デフォルト推奨
+        if not recommendations:
+            recommendations.append("各馬の調子と騎手の技量を重視")
+            recommendations.append("馬場状態の変化に注意")
+            recommendations.append("レース間隔と前走内容をチェック")
+        
+        return recommendations
+    
     def _format_style_distribution(self, distribution: Dict) -> List[Dict]:
         """脚質分布をフォーマット"""
         result = []
@@ -1035,10 +1082,27 @@ class ViewLogicEngine:
                 for race in horse_data.get('races', []):
                     # 開催場コードで一致を確認（venue_codeを使用）
                     if race.get('KEIBAJO_CODE') == venue_code:
-                        if distance and race.get('distance') != distance:
-                            continue
-                        if track_type and race.get('track_type') != track_type:
-                            continue
+                        # distanceのチェック（KYORIフィールドを使用）
+                        if distance:
+                            race_distance = race.get('KYORI')
+                            if race_distance:
+                                # 文字列の場合は数値に変換
+                                if isinstance(distance, str):
+                                    distance_num = int(distance.replace('m', ''))
+                                else:
+                                    distance_num = distance
+                                if abs(int(race_distance) - distance_num) > 100:  # 100m以上の差があれば除外
+                                    continue
+                        
+                        # track_typeのチェック（TRACK_CODEフィールドを使用）
+                        if track_type:
+                            track_code = race.get('TRACK_CODE', '')
+                            # トラックコードから芝/ダートを判定
+                            # 11-19: 芝, 21-29: ダート
+                            if track_type == '芝' and not (11 <= int(track_code) <= 19 if track_code else False):
+                                continue
+                            if track_type == 'ダート' and not (21 <= int(track_code) <= 29 if track_code else False):
+                                continue
                         
                         total_races += 1
                         
@@ -1048,46 +1112,36 @@ class ViewLogicEngine:
                             if jockey not in jockey_stats:
                                 jockey_stats[jockey] = {'runs': 0, 'wins': 0, 'fukusho': 0}
                             jockey_stats[jockey]['runs'] += 1
-                            finish = race.get('KAKUTEI_CHAKUJUN', 99)
-                            if finish == 1:
-                                jockey_stats[jockey]['wins'] += 1
-                            if finish <= 3:
-                                jockey_stats[jockey]['fukusho'] += 1
+                            finish = race.get('KAKUTEI_CHAKUJUN')
+                            if finish is not None:
+                                if finish == 1:
+                                    jockey_stats[jockey]['wins'] += 1
+                                if finish <= 3:
+                                    jockey_stats[jockey]['fukusho'] += 1
                         
                         # 血統統計（現在のデータには含まれていない）
                         # TODO: 血統データが追加されたら実装
                         pass
                         
-                        # 枠順統計（馬番で代用）
-                        post = race.get('UMA_BAN')
-                        if post and isinstance(post, (int, float)):
-                            if 1 <= post <= 4:
-                                post_stats['内枠（1-4）']['runs'] += 1
-                                if race.get('KAKUTEI_CHAKUJUN', 99) <= 3:
-                                    post_stats['内枠（1-4）']['fukusho'] += 1
-                            elif 5 <= post <= 12:
-                                post_stats['中枠（5-12）']['runs'] += 1
-                                if race.get('KAKUTEI_CHAKUJUN', 99) <= 3:
-                                    post_stats['中枠（5-12）']['fukusho'] += 1
-                            elif 13 <= post <= 18:
-                                post_stats['外枠（13-18）']['runs'] += 1
-                                if race.get('KAKUTEI_CHAKUJUN', 99) <= 3:
-                                    post_stats['外枠（13-18）']['fukusho'] += 1
+                        # 枠順統計（Phase 4データが欠落しているため、スキップ）
+                        # 騎手の枠順別複勝率は後で騎手ナレッジから取得
                         
                         # 脚質統計（コーナー通過順位から判定）
-                        corner1 = race.get('CORNER1_JUNI', 99)
-                        if corner1 <= 2:
-                            style = '逃げ'
-                        elif corner1 <= 5:
-                            style = '先行'
-                        elif corner1 <= 9:
-                            style = '差し'
-                        else:
-                            style = '追込'
-                        if style in style_stats:
-                            style_stats[style]['runs'] += 1
-                            if race.get('finish_position') <= 3:
-                                style_stats[style]['fukusho'] += 1
+                        corner1 = race.get('CORNER1_JUNI')
+                        if corner1 is not None:
+                            if corner1 <= 2:
+                                style = '逃げ'
+                            elif corner1 <= 5:
+                                style = '先行'
+                            elif corner1 <= 9:
+                                style = '差し'
+                            else:
+                                style = '追込'
+                            if style in style_stats:
+                                style_stats[style]['runs'] += 1
+                                finish_pos = race.get('KAKUTEI_CHAKUJUN')
+                                if finish_pos is not None and finish_pos <= 3:
+                                    style_stats[style]['fukusho'] += 1
             
             # 騎手統計をリスト形式に変換（複勝率順）
             jockey_list = []
@@ -1113,13 +1167,37 @@ class ViewLogicEngine:
                     })
             sire_list.sort(key=lambda x: x['fukusho_rate'], reverse=True)
             
-            # 枠順統計に勝率・複勝率を追加
-            for key in post_stats:
-                runs = post_stats[key]['runs']
-                if runs > 0:
-                    post_stats[key]['fukusho_rate'] = post_stats[key]['fukusho'] / runs
-                else:
-                    post_stats[key]['fukusho_rate'] = 0
+            # 騎手ナレッジから枠順別複勝率を取得（上位騎手のみ）
+            top_jockeys = [j['name'] for j in jockey_list[:10]]
+            if top_jockeys:
+                jockey_post_stats = self.jockey_manager.get_jockey_post_position_fukusho_rates(top_jockeys)
+                
+                # 集計して平均を計算
+                aggregated_post_stats = {
+                    '内枠（1-6）': {'fukusho_rate': 0, 'race_count': 0, 'jockey_count': 0},
+                    '中枠（7-12）': {'fukusho_rate': 0, 'race_count': 0, 'jockey_count': 0},
+                    '外枠（13-18）': {'fukusho_rate': 0, 'race_count': 0, 'jockey_count': 0}
+                }
+                
+                for jockey_name, jockey_post_data in jockey_post_stats.items():
+                    for category, stats in jockey_post_data.items():
+                        if stats['race_count'] > 0:
+                            prev_count = aggregated_post_stats[category]['race_count']
+                            prev_rate = aggregated_post_stats[category]['fukusho_rate']
+                            new_count = stats['race_count']
+                            new_rate = stats['fukusho_rate']
+                            
+                            # 重み付き平均
+                            total_count = prev_count + new_count
+                            if total_count > 0:
+                                aggregated_post_stats[category]['fukusho_rate'] = (
+                                    (prev_rate * prev_count + new_rate * new_count) / total_count
+                                )
+                                aggregated_post_stats[category]['race_count'] = total_count
+                                aggregated_post_stats[category]['jockey_count'] += 1
+                
+                # post_statsを騎手ナレッジベースに置き換え
+                post_stats = aggregated_post_stats
             
             # 脚質統計に勝率・複勝率を追加
             for key in style_stats:
@@ -1166,8 +1244,8 @@ class ViewLogicEngine:
         # 騎手傾向を予想
         jockey_prediction = self._predict_jockey_trend(venue, jockeys)
         
-        # 枠順傾向を予想（過去データから）
-        post_prediction = self._predict_post_trend(venue)
+        # 枠順傾向を予想（騎手ナレッジを活用）
+        post_prediction = self._predict_post_trend(venue, jockeys)
         
         return {
             'style_performance': style_prediction,
@@ -1218,25 +1296,70 @@ class ViewLogicEngine:
         """騎手リストから好調騎手を予想"""
         jockey_stats = []
         
-        # 各騎手の開催場別成績をナレッジから取得
-        # TODO: 騎手ナレッジファイルから実績を取得
+        if not jockeys or not self.jockey_manager.is_loaded():
+            return jockey_stats
+        
+        # 各騎手の成績を取得
+        for jockey_name in jockeys:
+            jockey_data = self.jockey_manager.get_jockey_data(jockey_name)
+            if jockey_data:
+                # 騎手の総合成績を取得
+                overall_stats = jockey_data.get('overall_stats', {})
+                if overall_stats:
+                    jockey_stats.append({
+                        'name': jockey_name,
+                        'results': f"{overall_stats.get('total_races_analyzed', 0)}戦",
+                        'fukusho_rate': overall_stats.get('overall_fukusho_rate', 0) / 100,  # パーセントを小数に
+                        'venue_course_stats': jockey_data.get('venue_course_stats', {})
+                    })
+        
+        # 複勝率順にソート
+        jockey_stats.sort(key=lambda x: x['fukusho_rate'], reverse=True)
         
         return jockey_stats
     
-    def _predict_post_trend(self, venue: str) -> Dict:
-        """開催場の枠順傾向を予想"""
-        # _calculate_course_statisticsから枠順データを取得
-        course_stats = self._calculate_course_statistics(venue)
-        return course_stats.get('post_stats', {})
+    def _predict_post_trend(self, venue: str, jockeys: List[str] = None) -> Dict:
+        """開催場の枠順傾向を予想（騎手ナレッジを活用）"""
+        if jockeys and self.jockey_manager.is_loaded():
+            # 騎手リストから枠順別複勝率を取得
+            jockey_post_stats = self.jockey_manager.get_jockey_post_position_fukusho_rates(jockeys)
+            
+            # 集計
+            aggregated_stats = {
+                '内枠（1-6）': {'fukusho_rate': 0, 'race_count': 0},
+                '中枠（7-12）': {'fukusho_rate': 0, 'race_count': 0},
+                '外枠（13-18）': {'fukusho_rate': 0, 'race_count': 0}
+            }
+            
+            for jockey_name, jockey_data in jockey_post_stats.items():
+                for category, stats in jockey_data.items():
+                    if stats['race_count'] > 0:
+                        prev_count = aggregated_stats[category]['race_count']
+                        prev_rate = aggregated_stats[category]['fukusho_rate']
+                        new_count = stats['race_count']
+                        new_rate = stats['fukusho_rate']
+                        
+                        total_count = prev_count + new_count
+                        if total_count > 0:
+                            aggregated_stats[category]['fukusho_rate'] = (
+                                (prev_rate * prev_count + new_rate * new_count) / total_count
+                            )
+                            aggregated_stats[category]['race_count'] = total_count
+            
+            return aggregated_stats
+        else:
+            # 騎手データがない場合は従来の方法
+            course_stats = self._calculate_course_statistics(venue)
+            return course_stats.get('post_stats', {})
     
     def _predict_track_bias(self, post_trend: Dict) -> str:
         """枠順傾向からトラックバイアスを予想"""
         if not post_trend:
             return 'フラット'
         
-        # ベイズ補正を適用
+        # ベイズ補正を適用（内枠は1-6、外枠は13-18）
         outer_rate = post_trend.get('外枠（13-18）', {}).get('fukusho_rate', 0)
-        inner_rate = post_trend.get('内枠（1-4）', {}).get('fukusho_rate', 0)
+        inner_rate = post_trend.get('内枠（1-6）', {}).get('fukusho_rate', 0)
         
         if outer_rate > 0.4:
             return '外有利'
@@ -1245,30 +1368,68 @@ class ViewLogicEngine:
         return 'フラット'
     
     def _generate_daily_prediction_text(self, daily_stats: Dict, venue: str) -> str:
-        """当日傾向の予想文章を生成"""
-        text = f"本日の{venue}は\n"
+        """当日傾向の詳細な予想文章を生成"""
+        lines = []
+        lines.append(f"## 本日の{venue}傾向予想")
+        lines.append("")
         
-        # 脚質傾向
+        # 脚質傾向の詳細分析
         style_perf = daily_stats.get('style_performance', {})
         if style_perf:
+            lines.append("### 脚質別予想")
+            # 統計を整理
+            sorted_styles = sorted(style_perf.items(), key=lambda x: x[1].get('ratio', 0), reverse=True)
+            
+            for style, data in sorted_styles:
+                if data.get('runs', 0) > 0:
+                    ratio = data.get('ratio', 0)
+                    lines.append(f"- **{style}**: {data['runs']}頭 (構成比 {ratio*100:.1f}%)")
+            
             # 最も有利な脚質を判定
             best_style = max(style_perf.items(), key=lambda x: x[1].get('ratio', 0))
             if best_style[1].get('ratio', 0) > 0.3:
-                text += f"{best_style[0]}有利です\n"
+                lines.append("")
+                lines.append(f"**予想**: {best_style[0]}馬が{best_style[1]['runs']}頭と多く、ペースが{'速く' if best_style[0] in ['逃げ', '先行'] else '落ち着いた展開に'}なりそうです。")
         
-        # 好調騎手
+        lines.append("")
+        
+        # 好調騎手の詳細
         hot_jockeys = daily_stats.get('hot_jockeys', [])
         if hot_jockeys:
-            text += f"\nまた\n好調騎手は{hot_jockeys[0]['name']}で\n"
+            lines.append("### 注目騎手")
+            for i, jockey in enumerate(hot_jockeys[:3], 1):
+                lines.append(f"{i}. **{jockey['name']}** - 複勝率 {jockey['fukusho_rate']*100:.1f}% ({jockey.get('results', 'データなし')})")
+            
+            if hot_jockeys[0]['fukusho_rate'] > 0.5:
+                lines.append("")
+                lines.append(f"特に**{hot_jockeys[0]['name']}騎手**は複勝率{hot_jockeys[0]['fukusho_rate']*100:.1f}%と絶好調です。")
         
-        # 枠順傾向
+        lines.append("")
+        
+        # 枠順傾向の詳細
+        lines.append("### 枠順傾向")
+        post_trend = daily_stats.get('post_trend', {})
+        if post_trend:
+            for position, stats in post_trend.items():
+                fukusho_rate = stats.get('fukusho_rate', 0)
+                race_count = stats.get('race_count', 0)
+                if race_count > 0:
+                    lines.append(f"- {position}: 複勝率 **{fukusho_rate:.1f}%** ({race_count}レース)")
+        
+        # トラックバイアス判定
         track_bias = daily_stats.get('track_bias', 'フラット')
+        lines.append("")
         if track_bias == '外有利':
-            text += "\n枠順は7,8枠の好走が目立ちます\n"
+            lines.append("**バイアス**: 外枠有利 - 外回りコースで差し馬が台頭しやすい傾向")
         elif track_bias == '内有利':
-            text += "\n枠順は1,2枠の好走が目立ちます\n"
+            lines.append("**バイアス**: 内枠有利 - 内ラチ沿いが伸びる馬場状態")
+        else:
+            lines.append("**バイアス**: フラット - 枠順による有利不利は少ない")
         
-        return text
+        lines.append("")
+        lines.append("---")
+        
+        return "\n".join(lines)
     
     def _calculate_daily_statistics(self, date: str, venue: str) -> Dict:
         """当日統計を計算（実際のレースデータから予想）"""

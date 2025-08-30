@@ -111,11 +111,21 @@ async def startup_event():
     
     # 2. 騎手ナレッジファイル
     try:
-        from services.jockey_data_manager import jockey_manager
-        jockey_count = len(jockey_manager.jockey_data)
+        from services.jockey_knowledge_manager import get_jockey_knowledge_manager
+        jockey_manager = get_jockey_knowledge_manager()
+        jockey_count = jockey_manager.get_total_jockeys()
         print(f"✅ 騎手ナレッジファイル: {jockey_count}騎手のデータを初期化")
     except Exception as e:
         print(f"⚠️  騎手ナレッジファイル初期化エラー: {e}")
+    
+    # 2.5. ViewLogicナレッジファイル  
+    try:
+        from services.viewlogic_data_manager import get_viewlogic_data_manager
+        viewlogic_manager = get_viewlogic_data_manager()
+        viewlogic_count = viewlogic_manager.get_total_horses()
+        print(f"✅ ViewLogicナレッジファイル: {viewlogic_count}頭のデータを初期化")
+    except Exception as e:
+        print(f"⚠️  ViewLogicナレッジファイル初期化エラー: {e}")
     
     # 3. 拡張ナレッジファイル（レース分析V2用）
     try:
@@ -137,18 +147,19 @@ async def startup_event():
     # メモリ使用量を確認・最適化
     gc.collect()  # 強制的にガベージコレクション実行
     
-    import psutil
-    import os
-    try:
-        process = psutil.Process(os.getpid())
-        memory_mb = process.memory_info().rss / 1024 / 1024
-        print(f"📊 現在のメモリ使用量: {memory_mb:.1f}MB / 4096MB")
-        if memory_mb > 3000:
-            print("⚠️  警告: メモリ使用量が高い状態です（3GB超）。")
-        elif memory_mb > 2000:
-            print("ℹ️  メモリ使用量: 正常範囲内（2-3GB）")
-    except:
-        pass  # psutilがない場合はスキップ
+    # psutilモジュールが利用できない環境のためコメントアウト
+    # import psutil
+    # import os
+    # try:
+    #     process = psutil.Process(os.getpid())
+    #     memory_mb = process.memory_info().rss / 1024 / 1024
+    #     print(f"📊 現在のメモリ使用量: {memory_mb:.1f}MB / 4096MB")
+    #     if memory_mb > 3000:
+    #         print("⚠️  警告: メモリ使用量が高い状態です（3GB超）。")
+    #     elif memory_mb > 2000:
+    #         print("ℹ️  メモリ使用量: 正常範囲内（2-3GB）")
+    # except:
+    #     pass  # psutilがない場合はスキップ
     
     print("=" * 80)
     print("✅ 起動時初期化完了")

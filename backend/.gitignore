@@ -5,3 +5,9 @@ data/jockey_knowledge_intermediate_*.json
 data/jockey_knowledge.json
 data/jockey_knowledge_summary.txt
 data/dlogic_extended_knowledge.json
+
+# ViewLogic data files
+backend/data/viewlogic_knowledge.json
+backend/data/viewlogic_knowledge_summary.json
+backend/data/.wrangler/
+test_viewlogic*.py

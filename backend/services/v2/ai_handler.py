@@ -678,7 +678,14 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         # AI タイプの決定
         if ai_type:
             determined_ai = ai_type
-            sub_type = 'manual'
+            # ViewLogicの場合は、メッセージからサブタイプを決定
+            if ai_type == 'viewlogic':
+                _, sub_type = self.determine_ai_type(message)
+                # ViewLogic以外が判定された場合はデフォルトに
+                if sub_type not in ['flow', 'trend', 'opinion']:
+                    sub_type = 'manual'
+            else:
+                sub_type = 'manual'
         else:
             determined_ai, sub_type = self.determine_ai_type(message)
         

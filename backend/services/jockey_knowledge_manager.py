@@ -154,6 +154,10 @@ class JockeyKnowledgeManager:
                             category = '外枠（13-18）'
                         
                         # 重み付き平均を計算
+                        # statsが辞書でない場合（整数など）の対応
+                        if not isinstance(stats, dict):
+                            logger.warning(f"騎手 {jockey_name} の枠順データが辞書でない: {type(stats)} = {stats}")
+                            continue
                         race_count = stats.get('race_count', 0)
                         fukusho_rate = stats.get('fukusho_rate', 0)
                         

@@ -430,9 +430,9 @@ class ViewLogicEngine:
         self.predictor = RaceFlowPredictor()
         self.style_analyzer = RunningStyleAnalyzer()
         self.bayesian = BayesianCorrector()
-        # ViewLogicデータマネージャーを初期化
-        from services.viewlogic_data_manager import ViewLogicDataManager
-        self.data_manager = ViewLogicDataManager()
+        # ViewLogicデータマネージャーを初期化（シングルトンインスタンスを使用）
+        from services.viewlogic_data_manager import get_viewlogic_data_manager
+        self.data_manager = get_viewlogic_data_manager()
         # 騎手ナレッジマネージャーを初期化
         self.jockey_manager = get_jockey_knowledge_manager()
     
@@ -919,22 +919,36 @@ class ViewLogicEngine:
     
     def analyze_course_trend(self, race_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        コース傾向分析（実際の出場馬・騎手の該当コース成績に基づく4項目分析）
+        コース傾向分析（実際の出場馬・騎手の該当コース成績に基づく3項目分析）
         
         Args:
             race_data: レース情報（出場馬・騎手含む）
         
         Returns:
-            コース傾向分析結果（4項目）:
+            コース傾向分析結果（3項目）:
             1. 出場する馬全ての開催場所（開催場+距離+コース種別）での成績複勝率
             2. 騎手の枠順別複勝率  
             3. 騎手の開催場所（開催場+距離+コース種別）での成績複勝率
-            4. 開催場所（開催場+距離+コース種別）の血統成績上位順
         """
         try:
             venue = race_data.get('venue', '不明')
             distance = race_data.get('distance')
-            track_type = race_data.get('course_type', '芝')
+            
+            # distanceが文字列の場合、数値に変換
+            if isinstance(distance, str):
+                # "1200m" -> 1200 のような変換
+                distance_str = distance.replace('m', '').replace('M', '').strip()
+                try:
+                    distance = int(distance_str)
+                except (ValueError, AttributeError):
+                    distance = None
+            
+            # track_typeはcourse_typeまたはtrack_conditionから取得
+            track_type = race_data.get('course_type') or race_data.get('track_type', '芝')
+            if track_type not in ['芝', 'ダート']:
+                # デフォルトは芝
+                track_type = '芝'
+            
             horses = race_data.get('horses', [])
             jockeys = race_data.get('jockeys', [])
             
@@ -942,8 +956,9 @@ class ViewLogicEngine:
             course_key = f"{venue}{distance}m{track_type}" if distance else f"{venue}{track_type}"
             
             logger.info(f"傾向分析開始（実出場データ）: {course_key}")
-            logger.info(f"出場馬: {horses}")
-            logger.info(f"騎手: {jockeys}")
+            logger.info(f"venue: {venue}, distance: {distance} (type: {type(distance)}), track_type: {track_type}")
+            logger.info(f"出場馬 ({len(horses)}頭): {horses[:5] if horses else []}")  # 最初の5頭のみログ
+            logger.info(f"騎手 ({len(jockeys)}名): {jockeys[:5] if jockeys else []}")  # 最初の5名のみログ
             
             # 1. 出場馬の該当コース成績複勝率を分析
             horse_course_stats = self._analyze_horses_course_performance(horses, venue, distance, track_type)
@@ -1554,10 +1569,14 @@ class ViewLogicEngine:
         venue_code = venue_codes.get(venue, '')
         
         try:
+            logger.info(f"馬の該当コース成績分析開始: {len(horses)}頭, venue_code={venue_code}, distance={distance}")
+            logger.info(f"data_manager loaded: {self.data_manager.is_loaded()}, total_horses: {self.data_manager.get_total_horses()}")
+            
             for horse_name in horses:
                 horse_data = self.data_manager.get_horse_data(horse_name)
                 if not horse_data or 'races' not in horse_data:
-                    # データがない場合はデフォルト値
+                    logger.debug(f"馬データなし: {horse_name}")
+                    # データがない場合は記録しておく
                     horse_performances.append({
                         'horse_name': horse_name,
                         'course_key': course_key,
@@ -1614,6 +1633,7 @@ class ViewLogicEngine:
                 # 成績をまとめる
                 if course_runs > 0:
                     fukusho_rate = course_fukusho / course_runs
+                    logger.info(f"馬の該当コース成績あり: {horse_name}, {course_runs}戦, 複勝率{fukusho_rate:.1%}")
                     horse_performances.append({
                         'horse_name': horse_name,
                         'course_key': course_key,
@@ -1659,27 +1679,58 @@ class ViewLogicEngine:
             return {}
         
         try:
-            # 騎手名を正規化（テスト用マッピング）
+            # 騎手名を4文字に正規化（騎手ナレッジファイルの形式に合わせる）
             normalized_jockeys = []
+            logger.info(f"傾向分析に使用する騎手名（元データ）: {jockeys}")
             for jockey in jockeys:
-                # よくある騎手名のマッピング
-                if 'ルメール' in jockey:
-                    normalized_jockeys.append('ルメール')
-                elif '武豊' in jockey or jockey == '武豊':
-                    normalized_jockeys.append('武豊　　')  # 全角スペース2つ
-                elif '川田' in jockey:
-                    normalized_jockeys.append('川田将雅')
-                elif '福永' in jockey:
-                    normalized_jockeys.append('福永祐一')
-                elif '横山武' in jockey:
-                    normalized_jockeys.append('横山武史')
-                elif '横山和' in jockey:
-                    normalized_jockeys.append('横山和生')
-                elif 'ムーア' in jockey or 'Moore' in jockey:
-                    normalized_jockeys.append('Ｒ．ムー')
+                # 既存のスペースを削除
+                jockey_clean = jockey.strip().replace(' ', '').replace('　', '')
+                
+                # 特定の騎手名のマッピング（略称→フルネーム）
+                special_mappings = {
+                    'ルメール': 'ルメール',
+                    'Cルメール': 'ルメール',
+                    'C.ルメール': 'ルメール',
+                    '武豊': '武豊',
+                    '川田': '川田将雅',
+                    '福永': '福永祐一',
+                    '横山武': '横山武史',
+                    '横山和': '横山和生',
+                    '松山': '松山弘平',
+                    '戸崎': '戸崎圭太',
+                    '岩田康': '岩田康誠',
+                    '岩田望': '岩田望来',
+                    '田辺': '田辺裕信',
+                    '藤岡佑': '藤岡佑介',
+                    '藤岡康': '藤岡康太',
+                    'ムーア': 'Ｒ．ムー',
+                    'Moore': 'Ｒ．ムー',
+                    'Rムーア': 'Ｒ．ムー'
+                }
+                
+                # マッピングから探す
+                mapped_name = None
+                for key, value in special_mappings.items():
+                    if key in jockey_clean:
+                        mapped_name = value
+                        break
+                
+                if mapped_name:
+                    jockey_clean = mapped_name
+                
+                # 4文字に正規化（短い場合は全角スペースで埋める）
+                if len(jockey_clean) < 4:
+                    # 全角スペースで4文字に埋める
+                    jockey_normalized = jockey_clean + '　' * (4 - len(jockey_clean))
+                elif len(jockey_clean) > 4:
+                    # 4文字を超える場合は最初の4文字
+                    jockey_normalized = jockey_clean[:4]
                 else:
-                    # そのまま使用
-                    normalized_jockeys.append(jockey)
+                    jockey_normalized = jockey_clean
+                
+                normalized_jockeys.append(jockey_normalized)
+            
+            logger.info(f"正規化後の騎手名: {normalized_jockeys}")
             
             # 騎手ナレッジから枠順別複勝率を取得
             jockey_post_stats = self.jockey_manager.get_jockey_post_position_fukusho_rates(normalized_jockeys)
@@ -1841,13 +1892,53 @@ class ViewLogicEngine:
             return []
 
     def _normalize_jockey_name(self, name: str) -> str:
-        """騎手名を正規化（スペースや記号の違いを吸収）"""
+        """騎手名を4文字に正規化（騎手ナレッジファイルの形式に合わせる）"""
         if not name:
             return ""
-        # 全角・半角スペースを除去
-        normalized = name.strip().replace('　', '').replace(' ', '')
-        # よくある表記の統一
-        normalized = normalized.replace('Ｃ．', 'C.').replace('Ｒ．', 'R.')
+        
+        # 既存のスペースを削除
+        name_clean = name.strip().replace(' ', '').replace('　', '')
+        
+        # 特定の騎手名のマッピング（略称→フルネーム）
+        special_mappings = {
+            'ルメール': 'ルメール',
+            'Cルメール': 'ルメール',
+            'C.ルメール': 'ルメール',
+            '武豊': '武豊',
+            '川田': '川田将雅',
+            '福永': '福永祐一',
+            '横山武': '横山武史',
+            '横山和': '横山和生',
+            '松山': '松山弘平',
+            '戸崎': '戸崎圭太',
+            '岩田康': '岩田康誠',
+            '岩田望': '岩田望来',
+            '田辺': '田辺裕信',
+            '藤岡佑': '藤岡佑介',
+            '藤岡康': '藤岡康太',
+            '吉田豊': '吉田豊',
+            '吉田隼': '吉田隼人',
+            'ムーア': 'Ｒ．ムー',
+            'Moore': 'Ｒ．ムー',
+            'Rムーア': 'Ｒ．ムー'
+        }
+        
+        # マッピングから探す
+        for key, value in special_mappings.items():
+            if key in name_clean:
+                name_clean = value
+                break
+        
+        # 4文字に正規化（短い場合は全角スペースで埋める）
+        if len(name_clean) < 4:
+            # 全角スペースで4文字に埋める
+            normalized = name_clean + '　' * (4 - len(name_clean))
+        elif len(name_clean) > 4:
+            # 4文字を超える場合は最初の4文字
+            normalized = name_clean[:4]
+        else:
+            normalized = name_clean
+        
         return normalized
     
     def _generate_trend_insights_from_real_data(self, horse_course_stats: List[Dict], jockey_post_stats: Dict, 

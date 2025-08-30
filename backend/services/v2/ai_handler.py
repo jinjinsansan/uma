@@ -628,7 +628,19 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                             
                             if race_count > 0:
                                 jockey_count += 1
-                                lines.append(f"{jockey_count}. **{jockey_name}**（{assigned_post}枠）: {race_count}戦 複勝率{fukusho_rate*100:.1f}%")
+                                # 複勝率を正常範囲（0-100%）に修正
+                                if fukusho_rate > 100:
+                                    # 異常に大きい値は100で割る
+                                    display_rate = fukusho_rate / 100
+                                elif fukusho_rate > 1.0:
+                                    # 1を超える値はそのまま使用（パーセント値）
+                                    display_rate = fukusho_rate
+                                else:
+                                    # 0.0-1.0の場合は100倍してパーセント値に
+                                    display_rate = fukusho_rate * 100
+                                # 100%を上限とする
+                                display_rate = min(display_rate, 100.0)
+                                lines.append(f"{jockey_count}. **{jockey_name}**（{assigned_post}枠）: {race_count}戦 複勝率{display_rate:.1f}%")
                             else:
                                 jockey_count += 1
                                 lines.append(f"{jockey_count}. **{jockey_name}**（{assigned_post}枠）: データなし")
@@ -652,7 +664,16 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                             if total_races > 0:
                                 avg_fukusho = total_fukusho / total_races
                                 jockey_count += 1
-                                lines.append(f"{jockey_count}. **{jockey_name}**: 全体{total_races}戦 複勝率{avg_fukusho*100:.1f}%")
+                                # 全体成績でも同じ正規化を適用
+                                if avg_fukusho > 100:
+                                    display_avg = avg_fukusho / 100
+                                elif avg_fukusho > 1.0:
+                                    display_avg = avg_fukusho
+                                else:
+                                    display_avg = avg_fukusho * 100
+                                # 100%を上限とする
+                                display_avg = min(display_avg, 100.0)
+                                lines.append(f"{jockey_count}. **{jockey_name}**: 全体{total_races}戦 複勝率{display_avg:.1f}%")
                             else:
                                 jockey_count += 1
                                 lines.append(f"{jockey_count}. **{jockey_name}**: データなし")

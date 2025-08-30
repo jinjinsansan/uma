@@ -119,12 +119,17 @@ class JockeyKnowledgeManager:
     
     def get_jockey_data(self, jockey_name: str) -> Optional[Dict[str, Any]]:
         """騎手のデータを取得"""
-        return self.jockey_data.get(jockey_name)
+        data = self.jockey_data.get(jockey_name)
+        # データが辞書でない場合はNoneを返す
+        if data is not None and not isinstance(data, dict):
+            logger.error(f"騎手 {jockey_name} のデータが辞書でない: {type(data)} = {data}")
+            return None
+        return data
     
     def get_post_position_stats(self, jockey_name: str) -> Optional[Dict[str, Any]]:
         """騎手の枠順別統計を取得"""
         jockey = self.get_jockey_data(jockey_name)
-        if jockey:
+        if jockey and isinstance(jockey, dict):
             return jockey.get('post_position_stats', {})
         return None
     

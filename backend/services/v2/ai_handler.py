@@ -599,14 +599,29 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             lines.append("**【騎手の枠順別成績】**")
             jockey_post_data = trends['jockey_post_performance']
             
-            if jockey_post_data:
+            # jockey_post_dataの型チェック
+            if jockey_post_data and isinstance(jockey_post_data, dict):
                 # 枠順カテゴリ別の平均を計算
                 position_averages = {'内枠（1-6）': [], '中枠（7-12）': [], '外枠（13-18）': []}
                 
                 for jockey_name, post_stats in jockey_post_data.items():
-                    for position, stats in post_stats.items():
-                        if stats.get('status') == 'found' and stats.get('race_count', 0) > 0:
-                            position_averages[position].append(stats['fukusho_rate'])
+                    # post_statsの型チェック
+                    if not isinstance(post_stats, dict):
+                        logger.error(f"騎手 {jockey_name} のpost_statsが辞書ではありません: type={type(post_stats)}")
+                        continue
+                    
+                    # all_post_statsを探す
+                    all_stats = post_stats.get('all_post_stats', {})
+                    if not isinstance(all_stats, dict):
+                        logger.error(f"騎手 {jockey_name} のall_post_statsが辞書ではありません: type={type(all_stats)}")
+                        continue
+                    
+                    for position, stats in all_stats.items():
+                        if not isinstance(stats, dict):
+                            logger.error(f"騎手 {jockey_name} の {position} statsが辞書ではありません: type={type(stats)}")
+                            continue
+                        if stats.get('race_count', 0) > 0:
+                            position_averages[position].append(stats.get('fukusho_rate', 0))
                 
                 for position, rates in position_averages.items():
                     if rates:
@@ -614,6 +629,9 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                         lines.append(f"• {position}: 平均複勝率{avg_rate:.1f}% ({len(rates)}名)")
                     else:
                         lines.append(f"• {position}: データなし")
+            elif jockey_post_data and not isinstance(jockey_post_data, dict):
+                logger.error(f"jockey_post_dataが辞書ではありません: type={type(jockey_post_data)}")
+                lines.append("• 枠順別データの取得に失敗しました")
             else:
                 lines.append("• 枠順別データなし")
             lines.append("")

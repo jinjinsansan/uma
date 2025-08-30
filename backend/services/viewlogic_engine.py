@@ -1921,6 +1921,11 @@ class ViewLogicEngine:
             # 騎手ナレッジから枠順別複勝率を取得
             jockey_post_stats = self.jockey_manager.get_jockey_post_position_fukusho_rates(normalized_jockeys)
             
+            # jockey_post_statsの型チェック
+            if not isinstance(jockey_post_stats, dict):
+                logger.error(f"jockey_post_statsが辞書ではありません: type={type(jockey_post_stats)}, value={jockey_post_stats}")
+                return {}
+            
             # 元の騎手名をキーとして返す（枠番情報も含む）
             for i, original_jockey in enumerate(valid_jockeys):
                 if i < len(normalized_jockeys):
@@ -1942,14 +1947,29 @@ class ViewLogicEngine:
                         result_data['post_category'] = category
                     
                     if normalized in jockey_post_stats:
-                        # 全枠順データを保持
-                        result_data['all_post_stats'] = jockey_post_stats[normalized]
-                        
-                        # 該当枠番での成績を特別に抽出
-                        if 'post_category' in result_data:
-                            category = result_data['post_category']
-                            if category in jockey_post_stats[normalized]:
-                                result_data['assigned_post_stats'] = jockey_post_stats[normalized][category]
+                        # jockey_post_stats[normalized]の型チェック
+                        jockey_stats = jockey_post_stats[normalized]
+                        if not isinstance(jockey_stats, dict):
+                            logger.error(f"騎手 {normalized} のpost_statsが辞書ではありません: type={type(jockey_stats)}, value={jockey_stats}")
+                            result_data['all_post_stats'] = {
+                                '内枠（1-6）': {'race_count': 0, 'fukusho_rate': 0.0, 'status': 'error'},
+                                '中枠（7-12）': {'race_count': 0, 'fukusho_rate': 0.0, 'status': 'error'},
+                                '外枠（13-18）': {'race_count': 0, 'fukusho_rate': 0.0, 'status': 'error'}
+                            }
+                        else:
+                            # 全枠順データを保持
+                            result_data['all_post_stats'] = jockey_stats
+                            
+                            # 該当枠番での成績を特別に抽出
+                            if 'post_category' in result_data:
+                                category = result_data['post_category']
+                                if category in jockey_stats:
+                                    category_stats = jockey_stats[category]
+                                    # category_statsの型チェック
+                                    if not isinstance(category_stats, dict):
+                                        logger.error(f"騎手 {normalized} のカテゴリー {category} データが辞書ではありません: type={type(category_stats)}")
+                                    else:
+                                        result_data['assigned_post_stats'] = category_stats
                     else:
                         # データがない場合
                         result_data['all_post_stats'] = {

@@ -332,7 +332,9 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 # 展開予想（高度な分析版を使用）
                 result = viewlogic_engine.predict_race_flow_advanced(race_data)
                 if result['status'] == 'success':
-                    content = self._format_flow_prediction(result)
+                    # 外部フォーマット関数を使用
+                    from services.v2.ai_handler_format_advanced import format_flow_prediction_advanced
+                    content = format_flow_prediction_advanced(result)
                     return (content, result)
                 else:
                     return (f"展開予想に失敗しました: {result.get('message', '不明なエラー')}", None)
@@ -523,21 +525,38 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         if trends.get('jockey_ranking'):
             lines.append("**【騎手成績TOP5】**")
             for i, jockey in enumerate(trends['jockey_ranking'], 1):
-                lines.append(f"{i}. {jockey['name']}: 勝率{jockey['win_rate']:.0%} 複勝率{jockey['fukusho_rate']:.0%}")
+                # win_rateが存在しない場合の処理
+                win_rate = jockey.get('win_rate', 0)
+                fukusho_rate = jockey.get('fukusho_rate', 0)
+                # パーセント表記のために100で割る必要があるかチェック
+                if win_rate > 1:
+                    win_rate = win_rate / 100
+                if fukusho_rate > 1:
+                    fukusho_rate = fukusho_rate / 100
+                lines.append(f"{i}. {jockey['name']}: 勝率{win_rate:.0%} 複勝率{fukusho_rate:.0%}")
             lines.append("")
         
         # 血統成績
         if trends.get('sire_ranking'):
             lines.append("**【血統成績TOP3】**")
-            for i, sire in enumerate(trends['sire_ranking'], 1):
-                lines.append(f"{i}. {sire['name']}: 複勝率{sire['fukusho_rate']:.0%}")
+            for i, sire in enumerate(trends['sire_ranking'][:3], 1):
+                fukusho_rate = sire.get('fukusho_rate', 0)
+                if fukusho_rate > 1:
+                    fukusho_rate = fukusho_rate / 100
+                lines.append(f"{i}. {sire['name']}: 複勝率{fukusho_rate:.0%}")
             lines.append("")
         
         # 枠順別成績
         if trends.get('post_position_stats'):
             lines.append("**【枠順別成績】**")
             for position, stats in trends['post_position_stats'].items():
-                lines.append(f"• {position}: 勝率{stats['win_rate']:.0%} 複勝率{stats['fukusho_rate']:.0%}")
+                win_rate = stats.get('win_rate', 0)
+                fukusho_rate = stats.get('fukusho_rate', 0)
+                if win_rate > 1:
+                    win_rate = win_rate / 100
+                if fukusho_rate > 1:
+                    fukusho_rate = fukusho_rate / 100
+                lines.append(f"• {position}: 勝率{win_rate:.0%} 複勝率{fukusho_rate:.0%}")
             lines.append("")
         
         # インサイト
@@ -562,7 +581,12 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         if trends.get('running_style_performance'):
             lines.append("**【脚質別成績】**")
             for style, perf in trends['running_style_performance'].items():
-                lines.append(f"• {style}: {perf['wins']}勝/{perf['runs']}頭 (勝率{perf['win_rate']:.0%})")
+                win_rate = perf.get('win_rate', 0)
+                if win_rate > 1:
+                    win_rate = win_rate / 100
+                wins = perf.get('wins', 0)
+                runs = perf.get('runs', 0)
+                lines.append(f"• {style}: {wins}勝/{runs}頭 (勝率{win_rate:.0%})")
             lines.append("")
         
         # 好調騎手
@@ -676,7 +700,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                             break
                     
                     if not is_in_race and re.search(f'{potential_horse}(の|は|が|を|と|って|という)', message):
-                        common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー']
+                        common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー', 'ViewLogic', 'IMLogic', 'DLogic', 'ILogic']
                         if potential_horse not in common_words:
                             return {
                                 'content': f"「{potential_horse}」は、{venue} {race_number}Rには出走しません。\nこのレースの出走馬は以下の通りです:\n" + "、".join(race_horses[:5]) + ("..." if len(race_horses) > 5 else ""),
@@ -774,7 +798,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     # 明らかに馬名として言及されている場合（〜の、〜は、など）
                     if not is_in_race and re.search(f'{potential_horse}(の|は|が|を|と|って|という)', message):
                         # 一般的な単語や助詞でないことを確認
-                        common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー']
+                        common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー', 'ViewLogic', 'IMLogic', 'DLogic', 'ILogic']
                         if potential_horse not in common_words:
                             return True
         

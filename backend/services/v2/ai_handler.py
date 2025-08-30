@@ -341,13 +341,37 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     
             elif sub_type == 'trend':
                 # コース傾向分析（実際の出場馬・騎手データを使用）
-                result = viewlogic_engine.analyze_course_trend(race_data)
+                import signal
+                import time
                 
-                if result['status'] == 'success':
-                    content = self._format_trend_analysis(result)
-                    return (content, result)
-                else:
-                    return (f"傾向分析に失敗しました: {result.get('message', '不明なエラー')}", None)
+                # タイムアウトハンドラー
+                def timeout_handler(signum, frame):
+                    raise TimeoutError("傾向分析がタイムアウトしました")
+                
+                try:
+                    # 25秒のタイムアウトを設定（Renderの30秒制限より短く）
+                    signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(25)
+                    
+                    result = viewlogic_engine.analyze_course_trend(race_data)
+                    
+                    # タイムアウトをリセット
+                    signal.alarm(0)
+                    
+                    if result['status'] == 'success':
+                        content = self._format_trend_analysis(result)
+                        return (content, result)
+                    else:
+                        return (f"傾向分析に失敗しました: {result.get('message', '不明なエラー')}", None)
+                        
+                except TimeoutError:
+                    signal.alarm(0)  # タイムアウトをリセット
+                    logger.error("ViewLogic傾向分析がタイムアウトしました（25秒）")
+                    return ("傾向分析の処理に時間がかかりすぎています。データ量が多い可能性があります。", None)
+                except Exception as e:
+                    signal.alarm(0)  # タイムアウトをリセット
+                    logger.error(f"ViewLogic傾向分析中にエラー: {e}")
+                    return (f"傾向分析中にエラーが発生しました: {str(e)}", None)
                     
             elif sub_type == 'opinion':
                 # 見解（当日傾向として実装）

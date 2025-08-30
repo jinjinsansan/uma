@@ -1026,6 +1026,44 @@ class ViewLogicEngine:
                 # horsesが数値の配列の場合、空配列に置き換える
                 horses = []
             
+            # jockeysのデータ型チェック
+            if jockeys:
+                # jockeysが文字列のリストであることを確認
+                if not isinstance(jockeys, list):
+                    logger.error(f"jockeysがリストではありません: type={type(jockeys)}")
+                    jockeys = []
+                else:
+                    # 各要素が文字列であることを確認
+                    valid_jockeys = []
+                    for j in jockeys:
+                        if isinstance(j, str):
+                            valid_jockeys.append(j)
+                        else:
+                            logger.error(f"騎手名が文字列ではありません: type={type(j)}, value={j}")
+                    jockeys = valid_jockeys
+            
+            # postsのデータ型チェック
+            if posts:
+                # postsが数値のリストであることを確認
+                if not isinstance(posts, list):
+                    logger.error(f"postsがリストではありません: type={type(posts)}")
+                    posts = []
+                else:
+                    # 各要素が数値であることを確認
+                    valid_posts = []
+                    for p in posts:
+                        if isinstance(p, (int, float)):
+                            valid_posts.append(int(p))
+                        elif isinstance(p, str):
+                            # 文字列の場合は数値に変換を試みる
+                            try:
+                                valid_posts.append(int(p))
+                            except (ValueError, TypeError):
+                                logger.error(f"枠番が数値に変換できません: type={type(p)}, value={p}")
+                        else:
+                            logger.error(f"枠番が不正な型です: type={type(p)}, value={p}")
+                    posts = valid_posts
+            
             # コース識別子（例: "新潟1800m芝"）
             course_key = f"{venue}{distance}m{track_type}" if distance else f"{venue}{track_type}"
             
@@ -1821,13 +1859,33 @@ class ViewLogicEngine:
         """
         jockey_post_performances = {}
         
+        # jockeysパラメータの型をチェック
+        logger.info(f"_analyze_jockeys_post_performance called with jockeys type: {type(jockeys)}, posts type: {type(posts)}")
+        if not isinstance(jockeys, list):
+            logger.error(f"jockeys パラメータがリストではありません: type={type(jockeys)}, value={jockeys}")
+            return {}
+        
+        # postsパラメータの型をチェック（Noneでない場合）
+        if posts is not None and not isinstance(posts, list):
+            logger.error(f"posts パラメータがリストではありません: type={type(posts)}, value={posts}")
+            return {}
+        
         # 騎手データの検証
         if not jockeys:
             logger.warning("騎手データが空です")
             return {}
         
-        # None値やempty stringを除外
-        valid_jockeys = [j for j in jockeys if j and isinstance(j, str) and j.strip()]
+        # 各要素の型チェックとNone値やempty stringを除外
+        valid_jockeys = []
+        for i, item in enumerate(jockeys):
+            if not isinstance(item, str):
+                logger.error(f"騎手名[{i}]が文字列ではありません: type={type(item)}, value={item}")
+                continue
+            if item and item.strip():
+                valid_jockeys.append(item)
+            else:
+                logger.warning(f"騎手名[{i}]が空文字列です")
+        
         if not valid_jockeys:
             logger.warning(f"有効な騎手データがありません: {jockeys}")
             return {}
@@ -1837,6 +1895,20 @@ class ViewLogicEngine:
             return {}
         
         try:
+            # postsの要素もチェック（提供されている場合）
+            valid_posts = None
+            if posts is not None:
+                valid_posts = []
+                for i, post in enumerate(posts):
+                    if not isinstance(post, (int, float)):
+                        logger.error(f"枠番[{i}]が数値ではありません: type={type(post)}, value={post}")
+                        # 不正な値は0として扱う
+                        valid_posts.append(0)
+                    else:
+                        # floatの場合はintに変換
+                        valid_posts.append(int(post))
+                logger.info(f"検証後の枠番リスト: {valid_posts}")
+            
             # 騎手名を正規化（騎手ナレッジファイルの形式に合わせる）
             normalized_jockeys = []
             logger.info(f"傾向分析に使用する騎手名（元データ）: {valid_jockeys}")
@@ -1856,8 +1928,8 @@ class ViewLogicEngine:
                     result_data = {}
                     
                     # 枠番が提供されている場合は、その枠番での成績を取得
-                    if posts and i < len(posts):
-                        post_num = posts[i]
+                    if valid_posts and i < len(valid_posts):
+                        post_num = valid_posts[i]
                         # 枠番カテゴリーを判定
                         if post_num <= 6:
                             category = '内枠（1-6）'
@@ -1912,13 +1984,28 @@ class ViewLogicEngine:
         jockey_course_performances = []
         course_key = f"{venue}{distance}m{track_type}" if distance else f"{venue}{track_type}"
         
+        # jockeysパラメータの型をチェック
+        logger.info(f"_analyze_jockeys_course_performance called with jockeys type: {type(jockeys)}")
+        if not isinstance(jockeys, list):
+            logger.error(f"jockeys パラメータがリストではありません（コース成績）: type={type(jockeys)}, value={jockeys}")
+            return []
+        
         # 騎手データの検証
         if not jockeys:
             logger.warning("騎手データが空です（コース成績分析）")
             return []
         
-        # None値やempty stringを除外
-        valid_jockeys = [j for j in jockeys if j and isinstance(j, str) and j.strip()]
+        # 各要素の型チェックとNone値やempty stringを除外
+        valid_jockeys = []
+        for i, item in enumerate(jockeys):
+            if not isinstance(item, str):
+                logger.error(f"騎手名[{i}]が文字列ではありません（コース成績）: type={type(item)}, value={item}")
+                continue
+            if item and item.strip():
+                valid_jockeys.append(item)
+            else:
+                logger.warning(f"騎手名[{i}]が空文字列です（コース成績）")
+        
         if not valid_jockeys:
             logger.warning(f"有効な騎手データがありません（コース成績分析）: {jockeys}")
             return []

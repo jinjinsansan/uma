@@ -544,15 +544,28 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             lines.append("**【出場馬の当コース成績】**")
             horses = trends['horse_course_performance']
             
-            # 成績がある馬のみ表示（上位5頭）
+            # 成績がある馬のみ表示
             horses_with_data = [h for h in horses if h.get('status') == 'found' and h.get('total_runs', 0) > 0]
+            horses_no_data = [h for h in horses if h.get('status') != 'found' or h.get('total_runs', 0) == 0]
+            
             if horses_with_data:
-                for i, horse in enumerate(horses_with_data[:5], 1):
+                for i, horse in enumerate(horses_with_data, 1):
                     total_runs = horse.get('total_runs', 0)
                     fukusho_rate = horse.get('fukusho_rate', 0.0)
                     lines.append(f"{i}. **{horse['horse_name']}**: {total_runs}戦 複勝率{fukusho_rate*100:.1f}%")
+                
+                # 完結メッセージを追加
+                lines.append("")
+                lines.append(f"以上が当コースで出走経験のある{len(horses_with_data)}頭です。")
+                if horses_no_data:
+                    no_data_names = [h['horse_name'] for h in horses_no_data[:5]]  # 最初の5頭のみ表示
+                    if len(horses_no_data) > 5:
+                        lines.append(f"その他の馬（{', '.join(no_data_names)}他）は当コースでの出走経験がありません。")
+                    else:
+                        lines.append(f"その他の馬（{', '.join(no_data_names)}）は当コースでの出走経験がありません。")
             else:
-                lines.append("• 該当コースでの実績データなし")
+                lines.append("出場馬全頭が当コースでの出走経験がありません。")
+                lines.append("過去のデータがないため、他の要素での判断が重要になります。")
             lines.append("")
         
         # 2. 騎手の該当コース成績複勝率
@@ -560,16 +573,25 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             lines.append("**【騎手の当コース成績】**")
             jockeys = trends['jockey_course_performance']
             
-            # 成績がある騎手のみ表示（上位5名）
+            # 成績がある騎手のみ表示
             jockeys_with_data = [j for j in jockeys if j.get('status') == 'found' and j.get('total_runs', 0) > 0]
+            jockeys_no_data = [j for j in jockeys if j.get('status') != 'found' or j.get('total_runs', 0) == 0]
+            
             if jockeys_with_data:
-                for i, jockey in enumerate(jockeys_with_data[:5], 1):
+                for i, jockey in enumerate(jockeys_with_data, 1):
                     total_runs = jockey.get('total_runs', 0)
                     win_rate = jockey.get('win_rate', 0.0)
                     fukusho_rate = jockey.get('fukusho_rate', 0.0)
                     lines.append(f"{i}. **{jockey['jockey_name']}**: {total_runs}戦 勝率{win_rate*100:.1f}% 複勝率{fukusho_rate*100:.1f}%")
+                
+                # 完結メッセージを追加
+                lines.append("")
+                lines.append(f"以上が当コースで騎乗経験のある{len(jockeys_with_data)}名です。")
+                if jockeys_no_data:
+                    lines.append(f"その他の騎手は当コースでの騎乗経験がありません。")
             else:
-                lines.append("• 該当コースでの実績データなし")
+                lines.append("出場騎手全員が当コースでの騎乗経験がありません。")
+                lines.append("騎手の適性よりも馬の能力を重視した方がよいでしょう。")
             lines.append("")
         
         # 3. 騎手の枠順別複勝率

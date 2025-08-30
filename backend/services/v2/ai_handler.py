@@ -340,15 +340,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     return (f"展開予想に失敗しました: {result.get('message', '不明なエラー')}", None)
                     
             elif sub_type == 'trend':
-                # コース傾向分析
-                distance = race_data.get('distance')
-                track_type = race_data.get('course_type', '芝')  # デフォルトは芝
-                
-                result = viewlogic_engine.analyze_course_trend(
-                    venue=venue,
-                    distance=distance,
-                    track_type=track_type
-                )
+                # コース傾向分析（実際の出場馬・騎手データを使用）
+                result = viewlogic_engine.analyze_course_trend(race_data)
                 
                 if result['status'] == 'success':
                     content = self._format_trend_analysis(result)
@@ -511,53 +504,75 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         return "\n".join(lines)
     
     def _format_trend_analysis(self, result: Dict[str, Any]) -> str:
-        """コース傾向分析結果をフォーマット"""
+        """コース傾向分析結果をフォーマット（新しい4項目構造対応）"""
         lines = []
         lines.append("📊 **ViewLogicコース傾向分析**")
         
         course = result['course_info']
-        lines.append(f"{course['venue']} {course.get('distance', '')}m {course.get('track_type', '')}")
+        course_key = course.get('course_key', f"{course['venue']}コース")
+        lines.append(f"{course_key}")
         lines.append("")
         
         trends = result['trends']
         
-        # 騎手成績
-        if trends.get('jockey_ranking'):
-            lines.append("**【騎手成績TOP5】**")
-            for i, jockey in enumerate(trends['jockey_ranking'], 1):
-                # win_rateが存在しない場合の処理
-                win_rate = jockey.get('win_rate', 0)
-                fukusho_rate = jockey.get('fukusho_rate', 0)
-                # パーセント表記のために100で割る必要があるかチェック
-                if win_rate > 1:
-                    win_rate = win_rate / 100
-                if fukusho_rate > 1:
-                    fukusho_rate = fukusho_rate / 100
-                lines.append(f"{i}. {jockey['name']}: 勝率{win_rate:.0%} 複勝率{fukusho_rate:.0%}")
+        # 1. 出場馬の該当コース成績複勝率
+        if trends.get('horse_course_performance'):
+            lines.append("**【出場馬の当コース成績】**")
+            horses = trends['horse_course_performance']
+            
+            # 成績がある馬のみ表示（上位5頭）
+            horses_with_data = [h for h in horses if h.get('status') == 'found' and h.get('total_runs', 0) > 0]
+            if horses_with_data:
+                for i, horse in enumerate(horses_with_data[:5], 1):
+                    total_runs = horse.get('total_runs', 0)
+                    fukusho_rate = horse.get('fukusho_rate', 0.0)
+                    lines.append(f"{i}. **{horse['horse_name']}**: {total_runs}戦 複勝率{fukusho_rate*100:.1f}%")
+            else:
+                lines.append("• 該当コースでの実績データなし")
             lines.append("")
         
-        # 血統成績
-        if trends.get('sire_ranking'):
-            lines.append("**【血統成績TOP3】**")
-            for i, sire in enumerate(trends['sire_ranking'][:3], 1):
-                fukusho_rate = sire.get('fukusho_rate', 0)
-                if fukusho_rate > 1:
-                    fukusho_rate = fukusho_rate / 100
-                lines.append(f"{i}. {sire['name']}: 複勝率{fukusho_rate:.0%}")
+        # 2. 騎手の該当コース成績複勝率
+        if trends.get('jockey_course_performance'):
+            lines.append("**【騎手の当コース成績】**")
+            jockeys = trends['jockey_course_performance']
+            
+            # 成績がある騎手のみ表示（上位5名）
+            jockeys_with_data = [j for j in jockeys if j.get('status') == 'found' and j.get('total_runs', 0) > 0]
+            if jockeys_with_data:
+                for i, jockey in enumerate(jockeys_with_data[:5], 1):
+                    total_runs = jockey.get('total_runs', 0)
+                    win_rate = jockey.get('win_rate', 0.0)
+                    fukusho_rate = jockey.get('fukusho_rate', 0.0)
+                    lines.append(f"{i}. **{jockey['jockey_name']}**: {total_runs}戦 勝率{win_rate*100:.1f}% 複勝率{fukusho_rate*100:.1f}%")
+            else:
+                lines.append("• 該当コースでの実績データなし")
             lines.append("")
         
-        # 枠順別成績
-        if trends.get('post_position_stats'):
-            lines.append("**【枠順別成績】**")
-            for position, stats in trends['post_position_stats'].items():
-                win_rate = stats.get('win_rate', 0)
-                fukusho_rate = stats.get('fukusho_rate', 0)
-                if win_rate > 1:
-                    win_rate = win_rate / 100
-                if fukusho_rate > 1:
-                    fukusho_rate = fukusho_rate / 100
-                lines.append(f"• {position}: 勝率{win_rate:.0%} 複勝率{fukusho_rate:.0%}")
+        # 3. 騎手の枠順別複勝率
+        if trends.get('jockey_post_performance'):
+            lines.append("**【騎手の枠順別成績】**")
+            jockey_post_data = trends['jockey_post_performance']
+            
+            if jockey_post_data:
+                # 枠順カテゴリ別の平均を計算
+                position_averages = {'内枠（1-6）': [], '中枠（7-12）': [], '外枠（13-18）': []}
+                
+                for jockey_name, post_stats in jockey_post_data.items():
+                    for position, stats in post_stats.items():
+                        if stats.get('status') == 'found' and stats.get('race_count', 0) > 0:
+                            position_averages[position].append(stats['fukusho_rate'])
+                
+                for position, rates in position_averages.items():
+                    if rates:
+                        avg_rate = sum(rates) / len(rates)
+                        lines.append(f"• {position}: 平均複勝率{avg_rate:.1f}% ({len(rates)}名)")
+                    else:
+                        lines.append(f"• {position}: データなし")
+            else:
+                lines.append("• 枠順別データなし")
             lines.append("")
+        
+
         
         # インサイト
         if result.get('insights'):

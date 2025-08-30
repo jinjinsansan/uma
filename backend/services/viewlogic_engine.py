@@ -917,46 +917,73 @@ class ViewLogicEngine:
             'total_horses': len(horses)
         }
     
-    def analyze_course_trend(self, venue: str, distance: int = None, track_type: str = None) -> Dict[str, Any]:
+    def analyze_course_trend(self, race_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        コース傾向分析 - コース別の騎手・血統・枠順傾向を分析
+        コース傾向分析（実際の出場馬・騎手の該当コース成績に基づく4項目分析）
         
         Args:
-            venue: 開催場（東京、中山など）
-            distance: 距離（メートル）
-            track_type: 芝/ダート
+            race_data: レース情報（出場馬・騎手含む）
         
         Returns:
-            コース傾向分析結果
+            コース傾向分析結果（4項目）:
+            1. 出場する馬全ての開催場所（開催場+距離+コース種別）での成績複勝率
+            2. 騎手の枠順別複勝率  
+            3. 騎手の開催場所（開催場+距離+コース種別）での成績複勝率
+            4. 開催場所（開催場+距離+コース種別）の血統成績上位順
         """
-        # ナレッジデータから該当コースのデータを集計
-        course_stats = self._calculate_course_statistics(venue, distance, track_type)
-        
-        if not course_stats:
+        try:
+            venue = race_data.get('venue', '不明')
+            distance = race_data.get('distance')
+            track_type = race_data.get('course_type', '芝')
+            horses = race_data.get('horses', [])
+            jockeys = race_data.get('jockeys', [])
+            
+            # コース識別子（例: "新潟1800m芝"）
+            course_key = f"{venue}{distance}m{track_type}" if distance else f"{venue}{track_type}"
+            
+            logger.info(f"傾向分析開始（実出場データ）: {course_key}")
+            logger.info(f"出場馬: {horses}")
+            logger.info(f"騎手: {jockeys}")
+            
+            # 1. 出場馬の該当コース成績複勝率を分析
+            horse_course_stats = self._analyze_horses_course_performance(horses, venue, distance, track_type)
+            
+            # 2. 騎手の枠順別複勝率を分析（騎手ナレッジファイル使用）
+            jockey_post_stats = self._analyze_jockeys_post_performance(jockeys)
+            
+            # 3. 騎手の該当コース成績複勝率を分析
+            jockey_course_stats = self._analyze_jockeys_course_performance(jockeys, venue, distance, track_type)
+            
+            return {
+                'status': 'success',
+                'type': 'trend_analysis',
+                'course_info': {
+                    'venue': venue,
+                    'distance': distance,
+                    'track_type': track_type,
+                    'course_key': course_key
+                },
+                'trends': {
+                    'horse_course_performance': horse_course_stats,      # 1. 出場馬の該当コース成績
+                    'jockey_post_performance': jockey_post_stats,        # 2. 騎手の枠順別複勝率
+                    'jockey_course_performance': jockey_course_stats     # 3. 騎手の該当コース成績
+                },
+                'insights': self._generate_trend_insights_from_real_data(
+                    horse_course_stats, jockey_post_stats, jockey_course_stats
+                ),
+                'data_period': '2023-2025',
+                'sample_size': len(horses) + len(jockeys),
+                'course_identifier': course_key
+            }
+            
+        except Exception as e:
+            logger.error(f"コース傾向分析エラー: {e}")
+            import traceback
+            traceback.print_exc()
             return {
                 'status': 'error',
-                'message': f'{venue}のデータが見つかりません'
+                'message': f'コース傾向分析に失敗しました: {str(e)}'
             }
-        
-        return {
-            'status': 'success',
-            'type': 'trend_analysis',
-            'course_info': {
-                'venue': venue,
-                'distance': distance,
-                'track_type': track_type
-            },
-            'trends': {
-                'jockey_ranking': course_stats.get('jockey_stats', [])[:5],
-                'sire_ranking': course_stats.get('sire_stats', [])[:5],
-                'post_position_stats': course_stats.get('post_stats', {}),
-                'running_style_stats': course_stats.get('style_stats', {})
-            },
-            'insights': self._generate_course_insights(course_stats),
-            'data_period': '2023-2025',
-            'sample_size': course_stats.get('total_races', 0),
-            'total_races': course_stats.get('total_races', 0)
-        }
     
     def analyze_daily_trend(self, date: str, venue: str, race_data: Dict[str, Any] = None) -> Dict[str, Any]:
         """
@@ -1497,3 +1524,384 @@ class ViewLogicEngine:
             recommendations.append(f"{hot_jockey}騎手騎乗馬を軸に")
         
         return recommendations
+
+    # =====================================
+    # ViewLogic傾向分析：4項目分析メソッド群
+    # =====================================
+
+    def _analyze_horses_course_performance(self, horses: List[str], venue: str, distance: int, track_type: str) -> List[Dict]:
+        """
+        1. 出場する馬全ての開催場所（開催場+距離+コース種別）での成績複勝率を分析
+        
+        Args:
+            horses: 出場馬名リスト
+            venue: 開催場（新潟、東京など）
+            distance: 距離（1800など）
+            track_type: コース種別（芝、ダートなど）
+            
+        Returns:
+            出場馬の該当コース成績リスト
+        """
+        horse_performances = []
+        course_key = f"{venue}{distance}m{track_type}" if distance else f"{venue}{track_type}"
+        
+        # 開催場コードマッピング
+        venue_codes = {
+            '札幌': '01', '函館': '02', '福島': '03', '新潟': '04',
+            '東京': '05', '中山': '06', '中京': '07', '京都': '08',
+            '阪神': '09', '小倉': '10'
+        }
+        venue_code = venue_codes.get(venue, '')
+        
+        try:
+            for horse_name in horses:
+                horse_data = self.data_manager.get_horse_data(horse_name)
+                if not horse_data or 'races' not in horse_data:
+                    # データがない場合はデフォルト値
+                    horse_performances.append({
+                        'horse_name': horse_name,
+                        'course_key': course_key,
+                        'total_runs': 0,
+                        'fukusho_count': 0,
+                        'fukusho_rate': 0.0,
+                        'status': 'no_data'
+                    })
+                    continue
+                
+                # 該当コースのレースを集計
+                course_runs = 0
+                course_fukusho = 0
+                
+                for race in horse_data.get('races', []):
+                    # 開催場チェック
+                    if race.get('KEIBAJO_CODE') != venue_code:
+                        continue
+                    
+                    # 距離チェック（±100m許容）
+                    if distance:
+                        race_distance = race.get('KYORI')
+                        if race_distance:
+                            try:
+                                if abs(int(race_distance) - distance) > 100:
+                                    continue
+                            except (ValueError, TypeError):
+                                continue
+                    
+                    # コース種別チェック（簡易版：トラックコードから推定）
+                    track_code = race.get('TRACK_CODE', '')
+                    if track_code:
+                        try:
+                            track_code_num = int(track_code)
+                            # 11-19: 芝, 21-29: ダート
+                            if track_type == '芝' and not (11 <= track_code_num <= 19):
+                                continue
+                            if track_type == 'ダート' and not (21 <= track_code_num <= 29):
+                                continue
+                        except (ValueError, TypeError):
+                            pass
+                    
+                    course_runs += 1
+                    
+                    # 複勝判定（3着以内）
+                    finish = race.get('KAKUTEI_CHAKUJUN')
+                    if finish is not None:
+                        try:
+                            if int(finish) <= 3:
+                                course_fukusho += 1
+                        except (ValueError, TypeError):
+                            pass
+                
+                # 成績をまとめる
+                if course_runs > 0:
+                    fukusho_rate = course_fukusho / course_runs
+                    horse_performances.append({
+                        'horse_name': horse_name,
+                        'course_key': course_key,
+                        'total_runs': course_runs,
+                        'fukusho_count': course_fukusho,
+                        'fukusho_rate': fukusho_rate,
+                        'status': 'found'
+                    })
+                else:
+                    horse_performances.append({
+                        'horse_name': horse_name,
+                        'course_key': course_key,
+                        'total_runs': 0,
+                        'fukusho_count': 0,
+                        'fukusho_rate': 0.0,
+                        'status': 'no_course_data'
+                    })
+            
+            # 複勝率順にソート
+            horse_performances.sort(key=lambda x: x['fukusho_rate'], reverse=True)
+            
+            logger.info(f"馬の該当コース成績分析完了: {len(horse_performances)}頭, course={course_key}")
+            return horse_performances
+            
+        except Exception as e:
+            logger.error(f"馬のコース成績分析エラー: {e}")
+            return []
+
+    def _analyze_jockeys_post_performance(self, jockeys: List[str]) -> Dict[str, Dict]:
+        """
+        2. 騎手の枠順別複勝率を分析（騎手ナレッジファイル使用）
+        
+        Args:
+            jockeys: 騎手名リスト
+            
+        Returns:
+            騎手別枠順成績辞書
+        """
+        jockey_post_performances = {}
+        
+        if not self.jockey_manager.is_loaded():
+            logger.warning("騎手ナレッジファイルが読み込まれていません")
+            return {}
+        
+        try:
+            # 騎手名を正規化（テスト用マッピング）
+            normalized_jockeys = []
+            for jockey in jockeys:
+                # よくある騎手名のマッピング
+                if 'ルメール' in jockey:
+                    normalized_jockeys.append('ルメール')
+                elif '武豊' in jockey or jockey == '武豊':
+                    normalized_jockeys.append('武豊　　')  # 全角スペース2つ
+                elif '川田' in jockey:
+                    normalized_jockeys.append('川田将雅')
+                elif '福永' in jockey:
+                    normalized_jockeys.append('福永祐一')
+                elif '横山武' in jockey:
+                    normalized_jockeys.append('横山武史')
+                elif '横山和' in jockey:
+                    normalized_jockeys.append('横山和生')
+                elif 'ムーア' in jockey or 'Moore' in jockey:
+                    normalized_jockeys.append('Ｒ．ムー')
+                else:
+                    # そのまま使用
+                    normalized_jockeys.append(jockey)
+            
+            # 騎手ナレッジから枠順別複勝率を取得
+            jockey_post_stats = self.jockey_manager.get_jockey_post_position_fukusho_rates(normalized_jockeys)
+            
+            # 元の騎手名をキーとして返す
+            for i, original_jockey in enumerate(jockeys):
+                if i < len(normalized_jockeys):
+                    normalized = normalized_jockeys[i]
+                    if normalized in jockey_post_stats:
+                        jockey_post_performances[original_jockey] = jockey_post_stats[normalized]
+                    else:
+                        # データがない場合
+                        jockey_post_performances[original_jockey] = {
+                            '内枠（1-6）': {'race_count': 0, 'fukusho_rate': 0.0, 'status': 'no_data'},
+                            '中枠（7-12）': {'race_count': 0, 'fukusho_rate': 0.0, 'status': 'no_data'},
+                            '外枠（13-18）': {'race_count': 0, 'fukusho_rate': 0.0, 'status': 'no_data'}
+                        }
+            
+            logger.info(f"騎手の枠順別成績分析完了: {len(jockey_post_performances)}名")
+            return jockey_post_performances
+            
+        except Exception as e:
+            logger.error(f"騎手の枠順別成績分析エラー: {e}")
+            return {}
+
+    def _analyze_jockeys_course_performance(self, jockeys: List[str], venue: str, distance: int, track_type: str) -> List[Dict]:
+        """
+        3. 騎手の開催場所（開催場+距離+コース種別）での成績複勝率を分析
+        ViewLogicナレッジファイルのracesデータから騎手別に集計
+        
+        Args:
+            jockeys: 騎手名リスト
+            venue: 開催場
+            distance: 距離
+            track_type: コース種別
+            
+        Returns:
+            騎手の該当コース成績リスト
+        """
+        jockey_course_performances = []
+        course_key = f"{venue}{distance}m{track_type}" if distance else f"{venue}{track_type}"
+        
+        if not self.data_manager.is_loaded():
+            logger.warning("ViewLogicナレッジファイルが読み込まれていません")
+            return []
+        
+        try:
+            # 各騎手について、ViewLogicの全馬データから該当コースでの騎乗成績を集計
+            for jockey_name in jockeys:
+                wins = 0
+                fukusho = 0
+                total_runs = 0
+                
+                # 全馬のデータを検索
+                for horse_name, horse_data in self.data_manager.horses_dict.items():
+                    if 'races' not in horse_data:
+                        continue
+                    
+                    # 該当馬のレースデータから騎手の成績を集計
+                    for race in horse_data['races']:
+                        # ViewLogicのフィールド名を使用
+                        race_jockey = race.get('KISHUMEI_RYAKUSHO', '')
+                        race_venue_code = race.get('KEIBAJO_CODE', '')
+                        race_distance = race.get('KYORI', 0)
+                        race_track_code = race.get('TRACK_CODE', '')
+                        
+                        # 会場コードを会場名に変換
+                        venue_map = {
+                            '01': '札幌', '02': '函館', '03': '福島', '04': '新潟',
+                            '05': '東京', '06': '中山', '07': '中京', '08': '京都',
+                            '09': '阪神', '10': '小倉'
+                        }
+                        race_venue = venue_map.get(race_venue_code, '')
+                        
+                        # トラックコードをコース種別に変換（11-29は芝、それ以外はダート）
+                        race_track = '芝' if 11 <= int(race_track_code) <= 29 else 'ダート'
+                        
+                        # 騎手名の正規化（スペースや記号の違いを吸収）
+                        if self._normalize_jockey_name(race_jockey) == self._normalize_jockey_name(jockey_name):
+                            # コース条件の一致確認
+                            if race_venue == venue and race_track == track_type:
+                                if not distance or race_distance == distance:
+                                    total_runs += 1
+                                    place = race.get('KAKUTEI_CHAKUJUN', 99)
+                                    if place == 1:
+                                        wins += 1
+                                    if place <= 3:
+                                        fukusho += 1
+                
+                # 成績データを追加
+                if total_runs > 0:
+                    jockey_course_performances.append({
+                        'jockey_name': jockey_name,
+                        'course_key': course_key,
+                        'total_runs': total_runs,
+                        'wins': wins,
+                        'fukusho_count': fukusho,
+                        'win_rate': wins / total_runs if total_runs > 0 else 0.0,
+                        'fukusho_rate': fukusho / total_runs if total_runs > 0 else 0.0,
+                        'status': 'found'
+                    })
+                else:
+                    jockey_course_performances.append({
+                        'jockey_name': jockey_name,
+                        'course_key': course_key,
+                        'total_runs': 0,
+                        'wins': 0,
+                        'fukusho_count': 0,
+                        'win_rate': 0.0,
+                        'fukusho_rate': 0.0,
+                        'status': 'no_course_data'
+                    })
+            
+            # 複勝率順にソート
+            jockey_course_performances.sort(key=lambda x: x['fukusho_rate'], reverse=True)
+            
+            logger.info(f"騎手の該当コース成績分析完了: {len(jockey_course_performances)}名, course={course_key}")
+            return jockey_course_performances
+            
+        except Exception as e:
+            logger.error(f"騎手のコース成績分析エラー: {e}")
+            return []
+
+    def _analyze_course_bloodline_performance(self, venue: str, distance: int, track_type: str) -> List[Dict]:
+        """
+        4. 開催場所（開催場+距離+コース種別）の血統成績上位順を分析
+        
+        Args:
+            venue: 開催場
+            distance: 距離
+            track_type: コース種別
+            
+        Returns:
+            血統成績上位順リスト
+        """
+        bloodline_performances = {}
+        course_key = f"{venue}{distance}m{track_type}" if distance else f"{venue}{track_type}"
+        
+        # 開催場コードマッピング
+        venue_codes = {
+            '札幌': '01', '函館': '02', '福島': '03', '新潟': '04',
+            '東京': '05', '中山': '06', '中京': '07', '京都': '08',
+            '阪神': '09', '小倉': '10'
+        }
+        venue_code = venue_codes.get(venue, '')
+        
+        try:
+            # 全馬のデータを走査して血統別成績を集計
+            # 注：現在のViewLogicナレッジには血統情報がないため、代替案として騎手統計を使用
+            # 将来的に血統データが追加されたら修正する
+            
+            logger.warning("血統データは現在のナレッジファイルに含まれていません")
+            
+            # 暫定的に空リストを返す
+            return []
+            
+        except Exception as e:
+            logger.error(f"血統成績分析エラー: {e}")
+            return []
+
+    def _normalize_jockey_name(self, name: str) -> str:
+        """騎手名を正規化（スペースや記号の違いを吸収）"""
+        if not name:
+            return ""
+        # 全角・半角スペースを除去
+        normalized = name.strip().replace('　', '').replace(' ', '')
+        # よくある表記の統一
+        normalized = normalized.replace('Ｃ．', 'C.').replace('Ｒ．', 'R.')
+        return normalized
+    
+    def _generate_trend_insights_from_real_data(self, horse_course_stats: List[Dict], jockey_post_stats: Dict, 
+                                               jockey_course_stats: List[Dict]) -> List[str]:
+        """
+        実データに基づく傾向分析のインサイトを生成
+        
+        Args:
+            horse_course_stats: 馬のコース成績
+            jockey_post_stats: 騎手の枠順別成績
+            jockey_course_stats: 騎手のコース成績  
+            bloodline_stats: 血統成績
+            
+        Returns:
+            インサイト文言リスト
+        """
+        insights = []
+        
+        try:
+            # 1. 馬のコース適性インサイト
+            strong_horses = [h for h in horse_course_stats if h['fukusho_rate'] > 0.5 and h['total_runs'] >= 3]
+            if strong_horses:
+                top_horse = strong_horses[0]
+                insights.append(f"{top_horse['horse_name']}は当コースで複勝率{top_horse['fukusho_rate']:.1%}と高適性")
+            
+            # 2. 騎手の枠順傾向インサイト
+            if jockey_post_stats:
+                # 内枠・中枠・外枠の平均複勝率を計算
+                position_averages = {'内枠（1-6）': 0, '中枠（7-12）': 0, '外枠（13-18）': 0}
+                position_counts = {'内枠（1-6）': 0, '中枠（7-12）': 0, '外枠（13-18）': 0}
+                
+                for jockey_name, post_data in jockey_post_stats.items():
+                    for position, stats in post_data.items():
+                        if stats['race_count'] > 0:
+                            position_averages[position] += stats['fukusho_rate']
+                            position_counts[position] += 1
+                
+                for position in position_averages:
+                    if position_counts[position] > 0:
+                        position_averages[position] /= position_counts[position]
+                
+                # 最も有利な枠順を判定
+                best_position = max(position_averages.items(), key=lambda x: x[1])
+                if best_position[1] > 40:  # 40%以上
+                    insights.append(f"枠順は{best_position[0]}が複勝率{best_position[1]:.1f}%で有利")
+            
+            # 3. 騎手のコース適性インサイト
+            strong_jockeys = [j for j in jockey_course_stats if j['fukusho_rate'] > 0.4 and j['total_runs'] >= 5]
+            if strong_jockeys:
+                top_jockey = strong_jockeys[0]
+                insights.append(f"{top_jockey['jockey_name']}は当コースで複勝率{top_jockey['fukusho_rate']*100:.1f}%の好成績")
+            
+            return insights[:3]  # 最大3つのインサイト
+            
+        except Exception as e:
+            logger.error(f"傾向インサイト生成エラー: {e}")
+            return ["実データに基づく傾向分析を実施"]

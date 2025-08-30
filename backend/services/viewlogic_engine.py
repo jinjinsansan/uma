@@ -951,6 +951,7 @@ class ViewLogicEngine:
             
             horses = race_data.get('horses', [])
             jockeys = race_data.get('jockeys', [])
+            posts = race_data.get('posts', [])  # 枠番データを取得
             
             # コース識別子（例: "新潟1800m芝"）
             course_key = f"{venue}{distance}m{track_type}" if distance else f"{venue}{track_type}"
@@ -959,12 +960,13 @@ class ViewLogicEngine:
             logger.info(f"venue: {venue}, distance: {distance} (type: {type(distance)}), track_type: {track_type}")
             logger.info(f"出場馬 ({len(horses)}頭): {horses[:5] if horses else []}")  # 最初の5頭のみログ
             logger.info(f"騎手 ({len(jockeys)}名): {jockeys[:5] if jockeys else []}")  # 最初の5名のみログ
+            logger.info(f"枠番 ({len(posts)}): {posts[:5] if posts else []}")  # 最初の5枠のみログ
             
             # 1. 出場馬の該当コース成績複勝率を分析
             horse_course_stats = self._analyze_horses_course_performance(horses, venue, distance, track_type)
             
-            # 2. 騎手の枠順別複勝率を分析（騎手ナレッジファイル使用）
-            jockey_post_stats = self._analyze_jockeys_post_performance(jockeys)
+            # 2. 騎手の枠順別複勝率を分析（騎手ナレッジファイル使用、枠番データ付き）
+            jockey_post_stats = self._analyze_jockeys_post_performance(jockeys, posts)
             
             # 3. 騎手の該当コース成績複勝率を分析
             jockey_course_stats = self._analyze_jockeys_course_performance(jockeys, venue, distance, track_type)
@@ -1662,12 +1664,13 @@ class ViewLogicEngine:
             logger.error(f"馬のコース成績分析エラー: {e}")
             return []
 
-    def _analyze_jockeys_post_performance(self, jockeys: List[str]) -> Dict[str, Dict]:
+    def _analyze_jockeys_post_performance(self, jockeys: List[str], posts: List[int] = None) -> Dict[str, Dict]:
         """
         2. 騎手の枠順別複勝率を分析（騎手ナレッジファイル使用）
         
         Args:
             jockeys: 騎手名リスト
+            posts: 枠番リスト（オプション）
             
         Returns:
             騎手別枠順成績辞書
@@ -1705,7 +1708,22 @@ class ViewLogicEngine:
                     '藤岡康': '藤岡康太',
                     'ムーア': 'Ｒ．ムー',
                     'Moore': 'Ｒ．ムー',
-                    'Rムーア': 'Ｒ．ムー'
+                    'Rムーア': 'Ｒ．ムー',
+                    # 新潟4R騎手のマッピング
+                    '菅原隆': '菅原隆一',
+                    '水沼': '水沼元輝',
+                    '遠藤': '遠藤健太',  # または遠藤汰月
+                    '石田': '石田拓郎',
+                    '津村': '津村明秀',
+                    '木幡巧': '木幡巧也',
+                    '菅原明': '菅原明良',
+                    '原': '原優介',  # 複数候補あるが原優介と仮定
+                    '木幡初': '木幡初也',
+                    '上里': '上里直汰',
+                    '佐藤': '佐藤友則',  # 複数候補
+                    '武藤': '武藤雅',
+                    '団野': '団野大成',
+                    '岩部': '岩部純二'
                 }
                 
                 # マッピングから探す
@@ -1718,9 +1736,15 @@ class ViewLogicEngine:
                 if mapped_name:
                     jockey_clean = mapped_name
                 
-                # 4文字に正規化（短い場合は全角スペースで埋める）
-                if len(jockey_clean) < 4:
-                    # 全角スペースで4文字に埋める
+                # 4文字に正規化（騎手ナレッジファイルの形式に合わせる）
+                if len(jockey_clean) == 2:
+                    # 2文字の場合は2つスペースを追加（武豊　　のように）
+                    jockey_normalized = jockey_clean + '　　'
+                elif len(jockey_clean) == 3:
+                    # 3文字の場合は1つスペースを追加（吉田豊　のように）
+                    jockey_normalized = jockey_clean + '　'
+                elif len(jockey_clean) < 4:
+                    # その他短い場合は全角スペースで4文字に埋める
                     jockey_normalized = jockey_clean + '　' * (4 - len(jockey_clean))
                 elif len(jockey_clean) > 4:
                     # 4文字を超える場合は最初の4文字
@@ -1735,19 +1759,44 @@ class ViewLogicEngine:
             # 騎手ナレッジから枠順別複勝率を取得
             jockey_post_stats = self.jockey_manager.get_jockey_post_position_fukusho_rates(normalized_jockeys)
             
-            # 元の騎手名をキーとして返す
+            # 元の騎手名をキーとして返す（枠番情報も含む）
             for i, original_jockey in enumerate(jockeys):
                 if i < len(normalized_jockeys):
                     normalized = normalized_jockeys[i]
+                    result_data = {}
+                    
+                    # 枠番が提供されている場合は、その枠番での成績を取得
+                    if posts and i < len(posts):
+                        post_num = posts[i]
+                        # 枠番カテゴリーを判定
+                        if post_num <= 6:
+                            category = '内枠（1-6）'
+                        elif post_num <= 12:
+                            category = '中枠（7-12）'
+                        else:
+                            category = '外枠（13-18）'
+                        
+                        result_data['assigned_post'] = post_num
+                        result_data['post_category'] = category
+                    
                     if normalized in jockey_post_stats:
-                        jockey_post_performances[original_jockey] = jockey_post_stats[normalized]
+                        # 全枠順データを保持
+                        result_data['all_post_stats'] = jockey_post_stats[normalized]
+                        
+                        # 該当枠番での成績を特別に抽出
+                        if 'post_category' in result_data:
+                            category = result_data['post_category']
+                            if category in jockey_post_stats[normalized]:
+                                result_data['assigned_post_stats'] = jockey_post_stats[normalized][category]
                     else:
                         # データがない場合
-                        jockey_post_performances[original_jockey] = {
+                        result_data['all_post_stats'] = {
                             '内枠（1-6）': {'race_count': 0, 'fukusho_rate': 0.0, 'status': 'no_data'},
                             '中枠（7-12）': {'race_count': 0, 'fukusho_rate': 0.0, 'status': 'no_data'},
                             '外枠（13-18）': {'race_count': 0, 'fukusho_rate': 0.0, 'status': 'no_data'}
                         }
+                        
+                    jockey_post_performances[original_jockey] = result_data
             
             logger.info(f"騎手の枠順別成績分析完了: {len(jockey_post_performances)}名")
             return jockey_post_performances
@@ -1964,17 +2013,27 @@ class ViewLogicEngine:
                 top_horse = strong_horses[0]
                 insights.append(f"{top_horse['horse_name']}は当コースで複勝率{top_horse['fukusho_rate']:.1%}と高適性")
             
-            # 2. 騎手の枠順傾向インサイト
+            # 2. 騎手の枠順傾向インサイト  
             if jockey_post_stats:
                 # 内枠・中枠・外枠の平均複勝率を計算
                 position_averages = {'内枠（1-6）': 0, '中枠（7-12）': 0, '外枠（13-18）': 0}
                 position_counts = {'内枠（1-6）': 0, '中枠（7-12）': 0, '外枠（13-18）': 0}
                 
                 for jockey_name, post_data in jockey_post_stats.items():
-                    for position, stats in post_data.items():
-                        if stats['race_count'] > 0:
-                            position_averages[position] += stats['fukusho_rate']
-                            position_counts[position] += 1
+                    # 新しいデータ構造に対応
+                    if 'assigned_post_stats' in post_data:
+                        # 個別の騎手の該当枠での成績
+                        category = post_data.get('post_category')
+                        stats = post_data['assigned_post_stats']
+                        if category and stats.get('race_count', 0) > 0:
+                            position_averages[category] += stats['fukusho_rate']
+                            position_counts[category] += 1
+                    elif 'all_post_stats' in post_data:
+                        # 全枠順データを使用
+                        for position, stats in post_data['all_post_stats'].items():
+                            if stats.get('race_count', 0) > 0:
+                                position_averages[position] += stats['fukusho_rate']
+                                position_counts[position] += 1
                 
                 for position in position_averages:
                     if position_counts[position] > 0:

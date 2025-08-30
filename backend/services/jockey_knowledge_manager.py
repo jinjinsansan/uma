@@ -134,7 +134,7 @@ class JockeyKnowledgeManager:
         
         for jockey_name in jockey_names:
             post_stats = self.get_post_position_stats(jockey_name)
-            if post_stats:
+            if post_stats and isinstance(post_stats, dict):
                 # 内枠、中枠、外枠に集約
                 aggregated = {
                     '内枠（1-6）': {'fukusho_rate': 0, 'race_count': 0},
@@ -156,7 +156,8 @@ class JockeyKnowledgeManager:
                         # 重み付き平均を計算
                         # statsが辞書でない場合（整数など）の対応
                         if not isinstance(stats, dict):
-                            logger.warning(f"騎手 {jockey_name} の枠順データが辞書でない: {type(stats)} = {stats}")
+                            logger.error(f"騎手 {jockey_name} 枠 {waku_str} のデータが辞書でない: {type(stats)} = {stats}")
+                            logger.error(f"post_stats全体: {post_stats}")
                             continue
                         race_count = stats.get('race_count', 0)
                         fukusho_rate = stats.get('fukusho_rate', 0)
@@ -170,7 +171,8 @@ class JockeyKnowledgeManager:
                                 (prev_rate * prev_count + fukusho_rate * race_count) / total_count
                             )
                             aggregated[category]['race_count'] = total_count
-                    except (ValueError, AttributeError):
+                    except (ValueError, AttributeError, TypeError) as e:
+                        logger.warning(f"騎手 {jockey_name} の枠順データ処理エラー: {e}, waku_str={waku_str}, stats={stats}")
                         continue
                 
                 result[jockey_name] = aggregated

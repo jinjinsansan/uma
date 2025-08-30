@@ -1038,13 +1038,9 @@ class ViewLogicEngine:
                 progress_callback(f"出場馬の{course_key}での成績を分析中...", 30)
             horse_course_stats = self._analyze_horses_course_performance(horses, venue, distance, track_type)
             
-            # 2. 騎手の枠順別複勝率を分析（騎手ナレッジファイル使用、枠番データ付き）
-            if progress_callback:
-                progress_callback(f"騎手{len(jockeys)}名の枠順別成績を分析中...", 70)
-            jockey_post_stats = self._analyze_jockeys_post_performance(jockeys, posts)
-            
-            # 3. 騎手の該当コース成績は将来実装（騎手専用ナレッジファイル作成後）
-            # 現在は空のリストを返す
+            # 騎手分析は削除（エラーの原因のため）
+            # 空のデータを設定
+            jockey_post_stats = []
             jockey_course_stats = []
             
             # プログレス報告: 分析完了
@@ -1061,12 +1057,12 @@ class ViewLogicEngine:
                     'course_key': course_key
                 },
                 'trends': {
-                    'horse_course_performance': horse_course_stats,      # 1. 出場馬の該当コース成績
-                    'jockey_post_performance': jockey_post_stats,        # 2. 騎手の枠順別複勝率
-                    'jockey_course_performance': jockey_course_stats     # 3. 騎手の該当コース成績
+                    'horse_course_performance': horse_course_stats,      # 1. 出場馬の該当コース成績のみ
+                    'jockey_post_performance': [],                       # 2. 騎手分析は無効化
+                    'jockey_course_performance': []                      # 3. 騎手分析は無効化
                 },
                 'insights': self._generate_trend_insights_from_real_data(
-                    horse_course_stats, jockey_post_stats, jockey_course_stats
+                    horse_course_stats, [], []  # 騎手データは空で渡す
                 ),
                 'data_period': '2023-2025',
                 'sample_size': len(horses) + len(jockeys),

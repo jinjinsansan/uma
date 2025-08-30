@@ -1020,6 +1020,12 @@ class ViewLogicEngine:
             jockeys = race_data.get('jockeys', [])
             posts = race_data.get('posts', [])  # 枠番データを取得
             
+            # horsesが整数や辞書の場合の処理
+            if horses and not isinstance(horses[0], str):
+                logger.error(f"horses配列の要素が文字列ではありません: type={type(horses[0])}, value={horses[0]}")
+                # horsesが数値の配列の場合、空配列に置き換える
+                horses = []
+            
             # コース識別子（例: "新潟1800m芝"）
             course_key = f"{venue}{distance}m{track_type}" if distance else f"{venue}{track_type}"
             
@@ -1651,6 +1657,13 @@ class ViewLogicEngine:
             出場馬の該当コース成績リスト
         """
         horse_performances = []
+        
+        # horsesパラメータの型をチェック
+        logger.info(f"_analyze_horses_course_performance called with horses type: {type(horses)}, value: {horses}")
+        if not isinstance(horses, list):
+            logger.error(f"horses パラメータがリストではありません: type={type(horses)}")
+            return []
+        
         course_key = f"{venue}{distance}m{track_type}" if distance else f"{venue}{track_type}"
         
         # 開催場コードマッピング
@@ -1665,8 +1678,28 @@ class ViewLogicEngine:
             logger.info(f"馬の該当コース成績分析開始: {len(horses)}頭, venue_code={venue_code}, distance={distance}")
             logger.info(f"data_manager loaded: {self.data_manager.is_loaded()}, total_horses: {self.data_manager.get_total_horses()}")
             
-            for horse_name in horses:
+            for item in horses:
+                # itemが文字列（馬名）でない場合の処理
+                if not isinstance(item, str):
+                    logger.error(f"馬名が文字列ではありません: type={type(item)}, value={item}")
+                    continue
+                    
+                horse_name = item
                 horse_data = self.data_manager.get_horse_data(horse_name)
+                
+                # horse_dataの型をチェック
+                if not isinstance(horse_data, dict):
+                    logger.error(f"馬 {horse_name} のデータが辞書ではありません: type={type(horse_data)}, value={horse_data}")
+                    horse_performances.append({
+                        'horse_name': horse_name,
+                        'course_key': course_key,
+                        'total_runs': 0,
+                        'fukusho_count': 0,
+                        'fukusho_rate': 0.0,
+                        'status': 'invalid_data_type'
+                    })
+                    continue
+                
                 if not horse_data or 'races' not in horse_data:
                     logger.debug(f"馬データなし: {horse_name}")
                     # データがない場合は記録しておく
@@ -1684,7 +1717,18 @@ class ViewLogicEngine:
                 course_runs = 0
                 course_fukusho = 0
                 
-                for race in horse_data.get('races', []):
+                races_data = horse_data.get('races', [])
+                # racesが正しい形式かチェック
+                if not isinstance(races_data, list):
+                    logger.error(f"馬 {horse_name} のracesデータが配列ではない: {type(races_data)}")
+                    continue
+                    
+                for race in races_data:
+                    # raceが辞書かチェック
+                    if not isinstance(race, dict):
+                        logger.error(f"馬 {horse_name} のレースデータが辞書ではない: {type(race)} = {race}")
+                        continue
+                        
                     # 開催場チェック
                     if race.get('KEIBAJO_CODE') != venue_code:
                         continue

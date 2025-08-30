@@ -5,10 +5,13 @@ ViewLogic展開予想エンジン
 """
 
 import logging
+import json
 from typing import Dict, List, Optional, Tuple, Any
 from statistics import mean, stdev
 import math
-from datetime import datetime
+import hashlib
+import time
+from datetime import datetime, timedelta
 from .jockey_knowledge_manager import get_jockey_knowledge_manager
 
 # numpy import with fallback
@@ -435,6 +438,61 @@ class ViewLogicEngine:
         self.data_manager = get_viewlogic_data_manager()
         # 騎手ナレッジマネージャーを初期化
         self.jockey_manager = get_jockey_knowledge_manager()
+        
+        # メモリキャッシュ（4GBメモリ活用）
+        self.trend_cache = {}
+        self.cache_ttl = 1800  # 30分間キャッシュ
+        self.max_cache_size = 100  # 最大100レース分
+    
+    def _generate_cache_key(self, race_data: Dict[str, Any]) -> str:
+        """レースデータからキャッシュキーを生成"""
+        # 重要な要素のみでキーを作成（順序無視）
+        horses = sorted(race_data.get('horses', []))
+        jockeys = sorted(race_data.get('jockeys', []))
+        posts = sorted(race_data.get('posts', []))
+        
+        key_data = {
+            'venue': race_data.get('venue', ''),
+            'distance': race_data.get('distance', ''),
+            'course_type': race_data.get('course_type', '芝'),
+            'horses': horses,
+            'jockeys': jockeys,
+            'posts': posts
+        }
+        
+        # ハッシュ化してキーにする
+        key_string = json.dumps(key_data, sort_keys=True, ensure_ascii=False)
+        return hashlib.md5(key_string.encode('utf-8')).hexdigest()
+    
+    def _get_cached_trend(self, cache_key: str) -> Optional[Dict[str, Any]]:
+        """キャッシュから傾向分析結果を取得"""
+        if cache_key in self.trend_cache:
+            cache_entry = self.trend_cache[cache_key]
+            # TTL チェック
+            if time.time() - cache_entry['timestamp'] < self.cache_ttl:
+                logger.info(f"キャッシュヒット: {cache_key[:8]}...")
+                return cache_entry['data']
+            else:
+                # 期限切れのキャッシュを削除
+                del self.trend_cache[cache_key]
+                logger.info(f"キャッシュ期限切れ: {cache_key[:8]}...")
+        return None
+    
+    def _cache_trend_result(self, cache_key: str, result: Dict[str, Any]) -> None:
+        """傾向分析結果をキャッシュに保存"""
+        # キャッシュサイズ制限
+        if len(self.trend_cache) >= self.max_cache_size:
+            # 最も古いエントリを削除
+            oldest_key = min(self.trend_cache.keys(), 
+                           key=lambda k: self.trend_cache[k]['timestamp'])
+            del self.trend_cache[oldest_key]
+            logger.info(f"キャッシュサイズ制限により削除: {oldest_key[:8]}...")
+        
+        self.trend_cache[cache_key] = {
+            'data': result,
+            'timestamp': time.time()
+        }
+        logger.info(f"キャッシュに保存: {cache_key[:8]}... (合計: {len(self.trend_cache)}件)")
     
     def predict_race_flow_advanced(self, race_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -917,12 +975,13 @@ class ViewLogicEngine:
             'total_horses': len(horses)
         }
     
-    def analyze_course_trend(self, race_data: Dict[str, Any]) -> Dict[str, Any]:
+    def analyze_course_trend(self, race_data: Dict[str, Any], progress_callback=None) -> Dict[str, Any]:
         """
         コース傾向分析（実際の出場馬・騎手の該当コース成績に基づく3項目分析）
         
         Args:
             race_data: レース情報（出場馬・騎手含む）
+            progress_callback: プログレス報告用コールバック関数
         
         Returns:
             コース傾向分析結果（3項目）:
@@ -931,6 +990,14 @@ class ViewLogicEngine:
             3. 騎手の開催場所（開催場+距離+コース種別）での成績複勝率
         """
         try:
+            # キャッシュチェック
+            cache_key = self._generate_cache_key(race_data)
+            cached_result = self._get_cached_trend(cache_key)
+            if cached_result:
+                if progress_callback:
+                    progress_callback("キャッシュから結果を取得しました", 100)
+                return cached_result
+            
             venue = race_data.get('venue', '不明')
             distance = race_data.get('distance')
             
@@ -962,16 +1029,30 @@ class ViewLogicEngine:
             logger.info(f"騎手 ({len(jockeys)}名): {jockeys[:5] if jockeys else []}")  # 最初の5名のみログ
             logger.info(f"枠番 ({len(posts)}): {posts[:5] if posts else []}")  # 最初の5枠のみログ
             
+            # プログレス報告: 分析開始
+            if progress_callback:
+                progress_callback("ViewLogic傾向分析を開始しています...", 10)
+            
             # 1. 出場馬の該当コース成績複勝率を分析
+            if progress_callback:
+                progress_callback(f"出場馬の{course_key}での成績を分析中...", 25)
             horse_course_stats = self._analyze_horses_course_performance(horses, venue, distance, track_type)
             
             # 2. 騎手の枠順別複勝率を分析（騎手ナレッジファイル使用、枠番データ付き）
+            if progress_callback:
+                progress_callback(f"騎手{len(jockeys)}名の枠順別成績を分析中...", 60)
             jockey_post_stats = self._analyze_jockeys_post_performance(jockeys, posts)
             
             # 3. 騎手の該当コース成績複勝率を分析
+            if progress_callback:
+                progress_callback(f"騎手の{course_key}での成績を分析中...", 85)
             jockey_course_stats = self._analyze_jockeys_course_performance(jockeys, venue, distance, track_type)
             
-            return {
+            # プログレス報告: 分析完了
+            if progress_callback:
+                progress_callback("分析結果をまとめています...", 95)
+            
+            result = {
                 'status': 'success',
                 'type': 'trend_analysis',
                 'course_info': {
@@ -992,6 +1073,14 @@ class ViewLogicEngine:
                 'sample_size': len(horses) + len(jockeys),
                 'course_identifier': course_key
             }
+            
+            # 結果をキャッシュに保存
+            self._cache_trend_result(cache_key, result)
+            
+            if progress_callback:
+                progress_callback("分析完了！", 100)
+                
+            return result
             
         except Exception as e:
             logger.error(f"コース傾向分析エラー: {e}")

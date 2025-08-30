@@ -1139,85 +1139,113 @@ class ViewLogicEngine:
                 'message': f'コース傾向分析に失敗しました: {str(e)}'
             }
     
-    def analyze_daily_trend(self, date: str, venue: str, race_data: Dict[str, Any] = None) -> Dict[str, Any]:
+    def recommend_betting_tickets(self, race_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        当日傾向分析 - 開催日の傾向を予想
+        馬券推奨機能 - ViewLogicデータを基に推奨馬券を生成
         
         Args:
-            date: 開催日（YYYY-MM-DD形式）
-            venue: 開催場
-            race_data: レース情報（出走馬、騎手など）
+            race_data: レース情報（出走馬、騎手、枠番など）
         
         Returns:
-            当日傾向予想結果
+            推奨馬券情報
         """
-        # レースデータから当日の傾向を予想
-        daily_stats = self._calculate_daily_prediction(date, venue, race_data)
-        
-        # 予想文章を生成
-        prediction_text = self._generate_daily_prediction_text(daily_stats, venue)
-        
-        return {
-            'status': 'success',
-            'type': 'daily_trend',
-            'date': date,
-            'venue': venue,
-            'trends': {
-                'running_style_performance': daily_stats.get('style_performance', {}),
-                'hot_jockeys': daily_stats.get('hot_jockeys', [])[:3],
-                'post_position_trend': daily_stats.get('post_trend', {}),
-                'track_condition': daily_stats.get('track_condition', '良'),
-                'track_bias': daily_stats.get('track_bias', 'フラット')
-            },
-            'prediction_text': prediction_text,
-            'recommendations': self._generate_daily_recommendations(daily_stats),
-            'races_completed': daily_stats.get('races_completed', 0),
-            'last_updated': datetime.now().isoformat()
-        }
+        try:
+            # 基本情報を取得
+            venue = race_data.get('venue', '不明')
+            horses = race_data.get('horses', [])
+            jockeys = race_data.get('jockeys', [])
+            posts = race_data.get('posts', [])
+            
+            # データ検証
+            if not horses or len(horses) < 3:
+                return {
+                    'status': 'error',
+                    'message': '推奨馬券の生成には最低3頭の出走馬が必要です。'
+                }
+            
+            # ViewLogicの既存データを活用して馬券推奨を生成
+            recommendations = self._generate_betting_recommendations(race_data)
+            
+            return {
+                'status': 'success',
+                'type': 'betting_recommendation',
+                'venue': venue,
+                'total_horses': len(horses),
+                'recommendations': recommendations,
+                'last_updated': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"馬券推奨生成エラー: {e}")
+            return {
+                'status': 'error',
+                'message': f'馬券推奨の生成に失敗しました: {str(e)}'
+            }
     
-    def _generate_daily_recommendations(self, daily_stats: Dict) -> List[str]:
-        """当日の推奨事項を生成"""
-        recommendations = []
-        
-        # 脚質に基づく推奨
-        style_perf = daily_stats.get('style_performance', {})
-        if style_perf:
-            best_style = max(style_perf.items(), key=lambda x: x[1].get('ratio', 0))
-            if best_style[1].get('ratio', 0) > 0.4:
-                if best_style[0] == '逃げ':
-                    recommendations.append("逃げ馬が多いためハイペースに注意")
-                    recommendations.append("差し・追込馬の一発に期待")
-                elif best_style[0] == '先行':
-                    recommendations.append("先行馬を中心に馬券を組み立てる")
-                    recommendations.append("ペースが落ち着けば前残りの可能性大")
-                elif best_style[0] == '差し':
-                    recommendations.append("中団から後方の馬を重視")
-                    recommendations.append("直線の長いコースなら差し馬有利")
-                elif best_style[0] == '追込':
-                    recommendations.append("後方一気の追込馬に注目")
-                    recommendations.append("ペースが上がれば追込馬のチャンス")
-        
-        # 騎手に基づく推奨
-        hot_jockeys = daily_stats.get('hot_jockeys', [])
-        if hot_jockeys and hot_jockeys[0]['fukusho_rate'] > 0.5:
-            recommendations.append(f"{hot_jockeys[0]['name']}騎手の騎乗馬は要チェック")
-        
-        # 枠順に基づく推奨
-        track_bias = daily_stats.get('track_bias', 'フラット')
-        if track_bias == '内有利':
-            recommendations.append("内枠（1-6番）の馬を重視")
-            recommendations.append("外枠の人気馬は評価を下げる")
-        elif track_bias == '外有利':
-            recommendations.append("外枠（13-18番）からの差し馬に注目")
-            recommendations.append("内枠の逃げ・先行馬は苦戦の可能性")
-        
-        # デフォルト推奨
-        if not recommendations:
-            recommendations.append("各馬の調子と騎手の技量を重視")
-            recommendations.append("馬場状態の変化に注意")
-            recommendations.append("レース間隔と前走内容をチェック")
-        
-        return recommendations
+    def _generate_betting_recommendations(self, race_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """馬券推奨を生成"""
+        try:
+            # 各馬のスコアを計算
+            horse_scores = self._calculate_horse_scores(race_data)
+            
+            # スコア順にソート
+            sorted_horses = sorted(horse_scores.items(), key=lambda x: x[1]['total_score'], reverse=True)
+            
+            # 推奨馬券を生成
+            recommendations = []
+            budget = 10000  # デフォルト予算1万円
+            
+            if len(sorted_horses) >= 2:
+                # 本命馬券（上位2頭の馬連）
+                top_horses = [sorted_horses[0][0], sorted_horses[1][0]]
+                recommendations.append({
+                    'type': '本命',
+                    'ticket_type': '馬連',
+                    'horses': top_horses,
+                    'confidence': 85,
+                    'investment': int(budget * 0.4),
+                    'reason': f'{top_horses[0]} × {top_horses[1]}の鉄板構成'
+                })
+                
+            if len(sorted_horses) >= 4:
+                # 対抗馬券（1位軸の3連複）
+                axis_horse = sorted_horses[0][0]
+                target_horses = [sorted_horses[i][0] for i in range(1, 4)]
+                recommendations.append({
+                    'type': '対抗',
+                    'ticket_type': '3連複',
+                    'horses': [axis_horse] + target_horses,
+                    'confidence': 65,
+                    'investment': int(budget * 0.35),
+                    'reason': f'{axis_horse}軸の手堅い組み合わせ'
+                })
+                
+            # 穴狙い馬券（特殊条件の馬を探す）
+            surprise_candidate = self._find_surprise_candidate(sorted_horses, race_data)
+            if surprise_candidate and len(sorted_horses) >= 3:
+                surprise_horse = surprise_candidate['horse']
+                surprise_reason = surprise_candidate['reason']
+                recommendations.append({
+                    'type': '穴狙い',
+                    'ticket_type': '馬連',
+                    'horses': [sorted_horses[0][0], surprise_horse],
+                    'confidence': 25,
+                    'investment': int(budget * 0.25),
+                    'reason': f'{surprise_horse}は{surprise_reason}'
+                })
+            
+            # 予算が余った場合の調整
+            total_invested = sum(rec['investment'] for rec in recommendations)
+            if total_invested < budget:
+                remaining = budget - total_invested
+                if recommendations:
+                    recommendations[-1]['investment'] += remaining
+            
+            return recommendations
+            
+        except Exception as e:
+            logger.error(f"馬券推奨生成エラー: {e}")
+            return []
     
     def _format_style_distribution(self, distribution: Dict) -> List[Dict]:
         """脚質分布をフォーマット"""
@@ -1669,22 +1697,147 @@ class ViewLogicEngine:
         """当日統計から推奨事項を生成"""
         recommendations = []
         
-        # 脚質推奨
-        style_perf = stats.get('style_performance', {})
-        if style_perf.get('逃げ', {}).get('win_rate', 0) > 0.4:
-            recommendations.append("逃げ馬の単勝が狙い目")
-        
-        # 枠順推奨
-        post_trend = stats.get('post_trend', {})
-        if post_trend.get('7-8枠', {}).get('fukusho_rate', 0) > 0.4:
-            recommendations.append("外枠の馬に注目")
-        
         # 騎手推奨
-        if stats.get('hot_jockeys'):
-            hot_jockey = stats['hot_jockeys'][0]['name']
-            recommendations.append(f"{hot_jockey}騎手騎乗馬を軸に")
+        hot_jockeys = stats.get('hot_jockeys', [])
+        if hot_jockeys:
+            top_jockey = hot_jockeys[0]
+            recommendations.append(f"{top_jockey['name']}騎手の騎乗馬は要注目")
+        
+        # 脚質推奨
+        style_stats = stats.get('style_stats', {})
+        best_style = max(style_stats.items(), key=lambda x: x[1].get('fukusho_rate', 0), default=None)
+        if best_style and best_style[1].get('fukusho_rate', 0) > 0.3:
+            recommendations.append(f"{best_style[0]}馬中心の馬券構成")
         
         return recommendations
+    
+    def _calculate_horse_scores(self, race_data: Dict[str, Any]) -> Dict[str, Dict]:
+        """各馬のスコアを計算"""
+        horses = race_data.get('horses', [])
+        jockeys = race_data.get('jockeys', [])
+        posts = race_data.get('posts', [])
+        venue = race_data.get('venue', '')
+        
+        horse_scores = {}
+        
+        for i, horse_name in enumerate(horses):
+            try:
+                # ViewLogicベーススコア（馬の基本スコア）
+                horse_data = self.data_manager.get_horse_data(horse_name)
+                base_score = 50.0  # デフォルトスコア
+                
+                if horse_data and 'running_style' in horse_data:
+                    style_data = horse_data['running_style']
+                    # スタイル評価から基本点を算出
+                    if isinstance(style_data, dict):
+                        confidence = style_data.get('confidence', 0.5)
+                        base_score = 50 + (confidence * 30)  # 50-80点の範囲
+                
+                # 騎手スコア加算
+                jockey_bonus = 0
+                if i < len(jockeys) and self.jockey_manager.is_loaded():
+                    jockey_name = self._normalize_jockey_name(jockeys[i])
+                    jockey_data = self.jockey_manager.get_jockey_data(jockey_name)
+                    if jockey_data and isinstance(jockey_data, dict):
+                        overall_stats = jockey_data.get('overall_stats', {})
+                        fukusho_rate = overall_stats.get('overall_fukusho_rate', 0)
+                        jockey_bonus = (fukusho_rate / 100) * 20  # 最大20点加算
+                
+                # 枠順ボーナス（内枠有利など）
+                post_bonus = 0
+                if i < len(posts):
+                    post = posts[i]
+                    if 1 <= post <= 6:
+                        post_bonus = 5
+                    elif 7 <= post <= 12:
+                        post_bonus = 2
+                    # 外枠（13-18）は加算なし
+                
+                # 最終スコア
+                total_score = base_score + jockey_bonus + post_bonus
+                
+                horse_scores[horse_name] = {
+                    'total_score': min(total_score, 100),  # 100点上限
+                    'base_score': base_score,
+                    'jockey_bonus': jockey_bonus,
+                    'post_bonus': post_bonus,
+                    'jockey': jockeys[i] if i < len(jockeys) else '不明',
+                    'post': posts[i] if i < len(posts) else 0
+                }
+                
+            except Exception as e:
+                logger.error(f"馬{horse_name}のスコア計算エラー: {e}")
+                horse_scores[horse_name] = {
+                    'total_score': 50.0,
+                    'base_score': 50.0,
+                    'jockey_bonus': 0,
+                    'post_bonus': 0,
+                    'jockey': jockeys[i] if i < len(jockeys) else '不明',
+                    'post': posts[i] if i < len(posts) else 0
+                }
+        
+        return horse_scores
+    
+    def _find_surprise_candidate(self, sorted_horses: List, race_data: Dict[str, Any]) -> Dict:
+        """穴馬候補を探す"""
+        if len(sorted_horses) < 6:
+            return None
+            
+        # 中位から下位の馬（4-8位）で特殊条件のある馬を探す
+        candidates = sorted_horses[3:8] if len(sorted_horses) >= 8 else sorted_horses[3:]
+        
+        for horse_name, horse_data in candidates:
+            # 騎手が好調
+            jockey = horse_data.get('jockey', '')
+            if self._is_hot_jockey(jockey):
+                return {
+                    'horse': horse_name,
+                    'reason': f'{jockey}騎手の好調'
+                }
+            
+            # 内枠で逃げ・先行
+            if horse_data.get('post', 0) <= 6:
+                horse_viewlogic_data = self.data_manager.get_horse_data(horse_name)
+                if horse_viewlogic_data and 'running_style' in horse_viewlogic_data:
+                    style_data = horse_viewlogic_data['running_style']
+                    if isinstance(style_data, dict) and style_data.get('style') in ['逃げ', '先行']:
+                        return {
+                            'horse': horse_name,
+                            'reason': f'内枠{horse_data["post"]}番からの{style_data["style"]}'
+                        }
+        
+        # 該当なしの場合は6位の馬を返す
+        if len(sorted_horses) >= 6:
+            return {
+                'horse': sorted_horses[5][0],
+                'reason': '中穴候補'
+            }
+        
+        return None
+    
+    def _get_surprise_reason(self, horse_name: str, race_data: Dict[str, Any]) -> str:
+        """穴馬の理由を取得"""
+        horse_viewlogic_data = self.data_manager.get_horse_data(horse_name)
+        if horse_viewlogic_data and 'running_style' in horse_viewlogic_data:
+            style_data = horse_viewlogic_data['running_style']
+            if isinstance(style_data, dict):
+                return f"{style_data.get('style', '不明')}タイプの穴馬"
+        return "データ不足による穴馬"
+    
+    def _is_hot_jockey(self, jockey_name: str) -> bool:
+        """騎手が好調かどうか判定"""
+        if not jockey_name or not self.jockey_manager.is_loaded():
+            return False
+            
+        normalized_name = self._normalize_jockey_name(jockey_name)
+        jockey_data = self.jockey_manager.get_jockey_data(normalized_name)
+        
+        if jockey_data and isinstance(jockey_data, dict):
+            overall_stats = jockey_data.get('overall_stats', {})
+            fukusho_rate = overall_stats.get('overall_fukusho_rate', 0)
+            return fukusho_rate > 40  # 40%以上を好調とみなす
+        
+        return False
 
     # =====================================
     # ViewLogic傾向分析：4項目分析メソッド群

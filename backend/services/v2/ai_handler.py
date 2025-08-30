@@ -35,7 +35,7 @@ class V2AIHandler:
         self.AI_KEYWORDS = {
             'imlogic': ['分析', '評価', 'IMLogic', 'IM', 'アイエム'],
             'viewlogic_trend': ['傾向', 'トレンド', '統計', 'データ', '過去', 'コース傾向', '騎手成績', '血統', '枠順'],
-            'viewlogic_opinion': ['見解', '意見', '予想', '推奨', 'おすすめ'],
+            'viewlogic_recommendation': ['推奨', 'おすすめ', '買い目', '馬券', '予想'],
             'viewlogic_flow': ['展開', 'ペース', '逃げ', '先行', '差し', '追込', '脚質', 'ハイペース', 'スローペース', '流れ'],
             'dlogic': ['d-logic', 'ディーロジック', 'D-Logic', 'Dロジック', '指数', 'スコア', '12項目', '評価点'],
             'ilogic': ['i-logic', 'ilogic', 'アイロジック', 'I-Logic', 'Iロジック', '騎手', '総合', 'レースアナリシス', 'アナリシス']
@@ -73,10 +73,10 @@ class V2AIHandler:
             if keyword.lower() in message_lower:
                 return ('ilogic', 'analysis')
         
-        # ViewLogic見解
-        for keyword in self.AI_KEYWORDS['viewlogic_opinion']:
+        # ViewLogic推奨
+        for keyword in self.AI_KEYWORDS['viewlogic_recommendation']:
             if keyword in message_lower:
-                return ('viewlogic', 'opinion')
+                return ('viewlogic', 'recommendation')
         
         # デフォルトはIMLogic分析
         return ('imlogic', 'analysis')
@@ -373,34 +373,31 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     logger.error(f"ViewLogic傾向分析中にエラー: {e}")
                     return (f"傾向分析中にエラーが発生しました: {str(e)}", None)
                     
-            elif sub_type == 'opinion':
-                # 見解（当日傾向として実装）
-                import datetime
-                today = datetime.datetime.now().strftime('%Y-%m-%d')
-                
-                result = viewlogic_engine.analyze_daily_trend(
-                    date=today,
-                    venue=venue
+            elif sub_type == 'recommendation':
+                # 推奨馬券（馬券推奨として実装）
+                result = viewlogic_engine.recommend_betting_tickets(
+                    race_data=race_data
                 )
                 
                 if result['status'] == 'success':
-                    content = self._format_daily_trend(result)
+                    content = self._format_betting_recommendations(result)
                     return (content, result)
                 else:
-                    # フォールバック: 基本的な見解を提供
+                    # フォールバック: 基本的な推奨を提供
                     return (f"""
-🔮 ViewLogic見解
+🎯 ViewLogic推奨馬券
 {venue} {race_number}R
 
-本日の傾向データは限定的ですが、以下の点に注目してください：
-• 脚質のバランスを確認
-• 騎手の調子を重視
-• 枠順の有利不利を考慮
+申し訳ございません。現在、推奨馬券の生成ができません。
+以下の分析機能をご利用ください：
 
-詳細な分析には「展開予想」または「傾向分析」をご利用ください。
+• 「展開予想」- レースの流れを予想
+• 「傾向分析」- コース・騎手成績を分析
+
+これらの結果を参考に馬券をご検討ください。
 """, None)
             else:
-                return ("ViewLogic機能をご利用いただきありがとうございます。「展開」「傾向」「見解」のいずれかをお試しください。", None)
+                return ("ViewLogic機能をご利用いただきありがとうございます。「展開」「傾向」「推奨」のいずれかをお試しください。", None)
                 
         except ImportError as e:
             logger.error(f"ViewLogicエンジンのインポートエラー: {e}")
@@ -1207,6 +1204,69 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             logger.error(f"I-Logic結果フォーマットエラー: {e}")
             return "I-Logic分析結果の表示中にエラーが発生しました。"
     
+    def _format_betting_recommendations(self, result: Dict[str, Any]) -> str:
+        """
+        ViewLogic馬券推奨結果をフォーマット
+        """
+        try:
+            lines = []
+            lines.append("🎯 ViewLogic推奨馬券")
+            lines.append("")
+            
+            venue = result.get('venue', '不明')
+            total_horses = result.get('total_horses', 0)
+            recommendations = result.get('recommendations', [])
+            
+            lines.append(f"**開催場**: {venue}")
+            lines.append(f"**出走頭数**: {total_horses}頭")
+            lines.append("")
+            
+            if not recommendations:
+                lines.append("⚠️ 推奨馬券を生成できませんでした。")
+                return "\n".join(lines)
+            
+            lines.append("### 推奨馬券")
+            
+            for i, rec in enumerate(recommendations, 1):
+                rec_type = rec.get('type', '不明')
+                ticket_type = rec.get('ticket_type', '馬券')
+                horses = rec.get('horses', [])
+                confidence = rec.get('confidence', 0)
+                investment = rec.get('investment', 0)
+                reason = rec.get('reason', '')
+                
+                # 推奨馬券のアイコン
+                if rec_type == '本命':
+                    icon = '🎯'
+                elif rec_type == '対抗':
+                    icon = '💪'
+                elif rec_type == '穴狙い':
+                    icon = '⚡'
+                else:
+                    icon = '🎪'
+                
+                lines.append(f"{icon} **{rec_type}** (信頼度: {confidence}%)")
+                lines.append(f"   {ticket_type}: {' × '.join(horses)}")
+                lines.append(f"   投資額: {investment:,}円")
+                if reason:
+                    lines.append(f"   理由: {reason}")
+                lines.append("")
+            
+            # 総投資額
+            total_investment = sum(rec.get('investment', 0) for rec in recommendations)
+            lines.append(f"**総投資額**: {total_investment:,}円")
+            
+            lines.append("")
+            lines.append("---")
+            lines.append("※ ViewLogicナレッジファイルと騎手データを基にした推奨馬券です")
+            lines.append("※ 投資は自己責任でお願いします")
+            
+            return "\n".join(lines)
+            
+        except Exception as e:
+            logger.error(f"馬券推奨フォーマットエラー: {e}")
+            return "馬券推奨結果の表示中にエラーが発生しました。"
+    
     def _format_dlogic_batch_result(self, dlogic_result: Dict[str, Any], race_data: Dict[str, Any]) -> str:
         """
         D-Logicバッチ計算結果をフォーマット
@@ -1384,3 +1444,66 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         except Exception as e:
             logger.error(f"I-Logic結果フォーマットエラー: {e}")
             return "I-Logic分析結果の表示中にエラーが発生しました。"
+    
+    def _format_betting_recommendations(self, result: Dict[str, Any]) -> str:
+        """
+        ViewLogic馬券推奨結果をフォーマット
+        """
+        try:
+            lines = []
+            lines.append("🎯 ViewLogic推奨馬券")
+            lines.append("")
+            
+            venue = result.get('venue', '不明')
+            total_horses = result.get('total_horses', 0)
+            recommendations = result.get('recommendations', [])
+            
+            lines.append(f"**開催場**: {venue}")
+            lines.append(f"**出走頭数**: {total_horses}頭")
+            lines.append("")
+            
+            if not recommendations:
+                lines.append("⚠️ 推奨馬券を生成できませんでした。")
+                return "\n".join(lines)
+            
+            lines.append("### 推奨馬券")
+            
+            for i, rec in enumerate(recommendations, 1):
+                rec_type = rec.get('type', '不明')
+                ticket_type = rec.get('ticket_type', '馬券')
+                horses = rec.get('horses', [])
+                confidence = rec.get('confidence', 0)
+                investment = rec.get('investment', 0)
+                reason = rec.get('reason', '')
+                
+                # 推奨馬券のアイコン
+                if rec_type == '本命':
+                    icon = '🎯'
+                elif rec_type == '対抗':
+                    icon = '💪'
+                elif rec_type == '穴狙い':
+                    icon = '⚡'
+                else:
+                    icon = '🎪'
+                
+                lines.append(f"{icon} **{rec_type}** (信頼度: {confidence}%)")
+                lines.append(f"   {ticket_type}: {' × '.join(horses)}")
+                lines.append(f"   投資額: {investment:,}円")
+                if reason:
+                    lines.append(f"   理由: {reason}")
+                lines.append("")
+            
+            # 総投資額
+            total_investment = sum(rec.get('investment', 0) for rec in recommendations)
+            lines.append(f"**総投資額**: {total_investment:,}円")
+            
+            lines.append("")
+            lines.append("---")
+            lines.append("※ ViewLogicナレッジファイルと騎手データを基にした推奨馬券です")
+            lines.append("※ 投資は自己責任でお願いします")
+            
+            return "\n".join(lines)
+            
+        except Exception as e:
+            logger.error(f"馬券推奨フォーマットエラー: {e}")
+            return "馬券推奨結果の表示中にエラーが発生しました。"

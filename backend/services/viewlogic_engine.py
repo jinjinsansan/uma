@@ -1432,19 +1432,25 @@ class ViewLogicEngine:
         if not jockeys or not self.jockey_manager.is_loaded():
             return jockey_stats
         
-        # 各騎手の成績を取得
+        # 各騎手の成績を取得（正規化してから検索）
         for jockey_name in jockeys:
-            jockey_data = self.jockey_manager.get_jockey_data(jockey_name)
-            if jockey_data:
+            # 騎手名を正規化
+            normalized_name = self._normalize_jockey_name(jockey_name)
+            jockey_data = self.jockey_manager.get_jockey_data(normalized_name)
+            
+            # jockey_dataがdictであることを確認
+            if jockey_data and isinstance(jockey_data, dict):
                 # 騎手の総合成績を取得
                 overall_stats = jockey_data.get('overall_stats', {})
                 if overall_stats:
                     jockey_stats.append({
-                        'name': jockey_name,
+                        'name': jockey_name,  # 元の名前を表示用に使用
                         'results': f"{overall_stats.get('total_races_analyzed', 0)}戦",
                         'fukusho_rate': overall_stats.get('overall_fukusho_rate', 0) / 100,  # パーセントを小数に
                         'venue_course_stats': jockey_data.get('venue_course_stats', {})
                     })
+            else:
+                logger.warning(f"騎手データが見つからない、または無効: {jockey_name} → {normalized_name}")
         
         # 複勝率順にソート
         jockey_stats.sort(key=lambda x: x['fukusho_rate'], reverse=True)
@@ -1454,8 +1460,9 @@ class ViewLogicEngine:
     def _predict_post_trend(self, venue: str, jockeys: List[str] = None) -> Dict:
         """開催場の枠順傾向を予想（騎手ナレッジを活用）"""
         if jockeys and self.jockey_manager.is_loaded():
-            # 騎手リストから枠順別複勝率を取得
-            jockey_post_stats = self.jockey_manager.get_jockey_post_position_fukusho_rates(jockeys)
+            # 騎手名を正規化してから枠順別複勝率を取得
+            normalized_jockeys = [self._normalize_jockey_name(j) for j in jockeys]
+            jockey_post_stats = self.jockey_manager.get_jockey_post_position_fukusho_rates(normalized_jockeys)
             
             # 集計
             aggregated_stats = {
@@ -1782,78 +1789,11 @@ class ViewLogicEngine:
             return {}
         
         try:
-            # 騎手名を4文字に正規化（騎手ナレッジファイルの形式に合わせる）
+            # 騎手名を正規化（騎手ナレッジファイルの形式に合わせる）
             normalized_jockeys = []
             logger.info(f"傾向分析に使用する騎手名（元データ）: {valid_jockeys}")
             for jockey in valid_jockeys:
-                # 既存のスペースを削除
-                jockey_clean = jockey.strip().replace(' ', '').replace('　', '')
-                
-                # 特定の騎手名のマッピング（略称→騎手ナレッジファイルでの正確な名前）
-                special_mappings = {
-                    'ルメール': 'ルメール',
-                    'Cルメール': 'ルメール',
-                    'C.ルメール': 'ルメール',
-                    '武豊': '武豊　　',  # 全角スペース2つ付き
-                    '武豊　': '武豊　　',  # 全角スペース1つの場合も対応
-                    '川田': '川田将雅',
-                    '川田将': '川田将雅',
-                    '福永': '福永祐一',
-                    '横山武': '横山武史',
-                    '横山和': '横山和生',
-                    '松山': '松山弘平',
-                    '戸崎': '戸崎圭太',
-                    '岩田康': '岩田康誠',
-                    '岩田望': '岩田望来',
-                    '田辺': '田辺裕信',
-                    '藤岡佑': '藤岡佑介',
-                    '藤岡康': '藤岡康太',
-                    'ムーア': 'Ｒ．ムー',
-                    'Moore': 'Ｒ．ムー',
-                    'Rムーア': 'Ｒ．ムー',
-                    # 新潟4R騎手のマッピング
-                    '菅原隆': '菅原隆一',
-                    '水沼': '水沼元輝',
-                    '遠藤': '遠藤健太',  # または遠藤汰月
-                    '石田': '石田拓郎',
-                    '津村': '津村明秀',
-                    '木幡巧': '木幡巧也',
-                    '菅原明': '菅原明良',
-                    '原': '原優介',  # 複数候補あるが原優介と仮定
-                    '木幡初': '木幡初也',
-                    '上里': '上里直汰',
-                    '佐藤': '佐藤友則',  # 複数候補
-                    '武藤': '武藤雅　',  # 全角スペース1つ付き
-                    '団野': '団野大成',
-                    '岩部': '岩部純二'
-                }
-                
-                # マッピングから探す
-                mapped_name = None
-                for key, value in special_mappings.items():
-                    if key in jockey_clean:
-                        mapped_name = value
-                        break
-                
-                if mapped_name:
-                    jockey_clean = mapped_name
-                
-                # 4文字に正規化（騎手ナレッジファイルの形式に合わせる）
-                if len(jockey_clean) == 2:
-                    # 2文字の場合は2つスペースを追加（武豊　　のように）
-                    jockey_normalized = jockey_clean + '　　'
-                elif len(jockey_clean) == 3:
-                    # 3文字の場合は1つスペースを追加（吉田豊　のように）
-                    jockey_normalized = jockey_clean + '　'
-                elif len(jockey_clean) < 4:
-                    # その他短い場合は全角スペースで4文字に埋める
-                    jockey_normalized = jockey_clean + '　' * (4 - len(jockey_clean))
-                elif len(jockey_clean) > 4:
-                    # 4文字を超える場合は最初の4文字
-                    jockey_normalized = jockey_clean[:4]
-                else:
-                    jockey_normalized = jockey_clean
-                
+                jockey_normalized = self._normalize_jockey_name(jockey)
                 normalized_jockeys.append(jockey_normalized)
             
             logger.info(f"正規化後の騎手名: {normalized_jockeys}")
@@ -2054,22 +1994,46 @@ class ViewLogicEngine:
             return []
 
     def _normalize_jockey_name(self, name: str) -> str:
-        """騎手名を4文字に正規化（騎手ナレッジファイルの形式に合わせる）"""
+        """騎手名を騎手ナレッジファイルの形式に正規化"""
         if not name:
             return ""
         
         # 既存のスペースを削除
         name_clean = name.strip().replace(' ', '').replace('　', '')
         
-        # 特定の騎手名のマッピング（略称→騎手ナレッジファイルでの正確な名前）
+        # jockey_managerが利用可能で、データがロードされている場合
+        if self.jockey_manager and self.jockey_manager.is_loaded():
+            # 動的に騎手名を検索
+            # 完全一致を最初に試す
+            for full_name in self.jockey_manager.jockey_data.keys():
+                clean_full = full_name.strip().replace('　', '').replace(' ', '')
+                if clean_full == name_clean:
+                    return full_name
+            
+            # 部分一致（姓のみ等）を試す
+            # 2-3文字の場合は姓として扱う
+            if len(name_clean) <= 3:
+                candidates = []
+                for full_name in self.jockey_manager.jockey_data.keys():
+                    clean_full = full_name.strip().replace('　', '').replace(' ', '')
+                    if clean_full.startswith(name_clean):
+                        candidates.append(full_name)
+                
+                # 候補が1つだけなら確定
+                if len(candidates) == 1:
+                    return candidates[0]
+                # 複数候補がある場合は、より一般的な騎手を優先
+                # （ここでは最初の候補を返す）
+                elif candidates:
+                    return candidates[0]
+        
+        # フォールバック: 静的マッピング
         special_mappings = {
             'ルメール': 'ルメール',
             'Cルメール': 'ルメール',
             'C.ルメール': 'ルメール',
-            '武豊': '武豊　　',  # 全角スペース2つ付き
-            '武豊　': '武豊　　',  # 全角スペース1つの場合も対応
+            '武豊': '武豊　　',
             '川田': '川田将雅',
-            '川田将': '川田将雅',
             '福永': '福永祐一',
             '横山武': '横山武史',
             '横山和': '横山和生',
@@ -2080,20 +2044,31 @@ class ViewLogicEngine:
             '田辺': '田辺裕信',
             '藤岡佑': '藤岡佑介',
             '藤岡康': '藤岡康太',
-            '吉田豊': '吉田豊　',  # 全角スペース1つ付き
+            '吉田豊': '吉田豊　',
             '吉田隼': '吉田隼人',
-            'ムーア': 'Ｒ．ムー',
-            'Moore': 'Ｒ．ムー',
-            'Rムーア': 'Ｒ．ムー'
+            '津村': '津村明秀',
+            '古川': '古川吉洋',
+            '大野': '大野拓弥',
+            '石川': '石川裕紀',  # 石川裕紀人の可能性が高い
+            '野中': '野中悠太',
+            '菅原': '菅原明良',
+            '木幡': '木幡初也',
+            '柴田': '柴田大知',
+            '坂井': '坂井瑠星',
+            '佐々木': '佐々木大',  # 佐々木大輔の可能性
+            '丸山': '丸山元気',
+            '石橋': '石橋脩　',
+            '菊沢': '菊沢一樹',
+            '水沼': '水沼元輝',
+            '遠藤': '遠藤健太',
+            '石田': '石田拓郎',
         }
         
         # マッピングから探す
-        for key, value in special_mappings.items():
-            if key in name_clean:
-                name_clean = value
-                break
+        if name_clean in special_mappings:
+            return special_mappings[name_clean]
         
-        # 4文字に正規化（短い場合は全角スペースで埋める）
+        # 見つからない場合は元の名前を4文字に正規化
         if len(name_clean) < 4:
             # 全角スペースで4文字に埋める
             normalized = name_clean + '　' * (4 - len(name_clean))

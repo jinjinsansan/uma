@@ -1033,20 +1033,19 @@ class ViewLogicEngine:
             if progress_callback:
                 progress_callback("ViewLogic傾向分析を開始しています...", 10)
             
-            # 1. 出場馬の該当コース成績複勝率を分析
+            # 1. 出場馬の該当コース成績複勝率を分析（ViewLogicナレッジファイル使用）
             if progress_callback:
-                progress_callback(f"出場馬の{course_key}での成績を分析中...", 25)
+                progress_callback(f"出場馬の{course_key}での成績を分析中...", 30)
             horse_course_stats = self._analyze_horses_course_performance(horses, venue, distance, track_type)
             
             # 2. 騎手の枠順別複勝率を分析（騎手ナレッジファイル使用、枠番データ付き）
             if progress_callback:
-                progress_callback(f"騎手{len(jockeys)}名の枠順別成績を分析中...", 60)
+                progress_callback(f"騎手{len(jockeys)}名の枠順別成績を分析中...", 70)
             jockey_post_stats = self._analyze_jockeys_post_performance(jockeys, posts)
             
-            # 3. 騎手の該当コース成績複勝率を分析
-            if progress_callback:
-                progress_callback(f"騎手の{course_key}での成績を分析中...", 85)
-            jockey_course_stats = self._analyze_jockeys_course_performance(jockeys, venue, distance, track_type)
+            # 3. 騎手の該当コース成績は将来実装（騎手専用ナレッジファイル作成後）
+            # 現在は空のリストを返す
+            jockey_course_stats = []
             
             # プログレス報告: 分析完了
             if progress_callback:

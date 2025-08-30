@@ -601,34 +601,72 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             
             # jockey_post_dataの型チェック
             if jockey_post_data and isinstance(jockey_post_data, dict):
-                # 枠順カテゴリ別の平均を計算
-                position_averages = {'内枠（1-6）': [], '中枠（7-12）': [], '外枠（13-18）': []}
-                
+                # 各騎手の個別成績を表示
+                jockey_count = 0
                 for jockey_name, post_stats in jockey_post_data.items():
                     # post_statsの型チェック
                     if not isinstance(post_stats, dict):
                         logger.error(f"騎手 {jockey_name} のpost_statsが辞書ではありません: type={type(post_stats)}")
                         continue
                     
-                    # all_post_statsを探す
-                    all_stats = post_stats.get('all_post_stats', {})
-                    if not isinstance(all_stats, dict):
-                        logger.error(f"騎手 {jockey_name} のall_post_statsが辞書ではありません: type={type(all_stats)}")
-                        continue
+                    # 今回の枠番情報を取得
+                    assigned_post = post_stats.get('assigned_post')
+                    post_category = post_stats.get('post_category')
                     
-                    for position, stats in all_stats.items():
-                        if not isinstance(stats, dict):
-                            logger.error(f"騎手 {jockey_name} の {position} statsが辞書ではありません: type={type(stats)}")
-                            continue
-                        if stats.get('race_count', 0) > 0:
-                            position_averages[position].append(stats.get('fukusho_rate', 0))
-                
-                for position, rates in position_averages.items():
-                    if rates:
-                        avg_rate = sum(rates) / len(rates)
-                        lines.append(f"• {position}: 平均複勝率{avg_rate:.1f}% ({len(rates)}名)")
+                    # 該当する枠番での成績を取得
+                    if assigned_post and post_category:
+                        # assigned_post_statsがあればそれを使用、なければall_post_statsから取得
+                        assigned_stats = post_stats.get('assigned_post_stats')
+                        if not assigned_stats and post_category:
+                            all_stats = post_stats.get('all_post_stats', {})
+                            if isinstance(all_stats, dict):
+                                assigned_stats = all_stats.get(post_category, {})
+                        
+                        if assigned_stats and isinstance(assigned_stats, dict):
+                            race_count = assigned_stats.get('race_count', 0)
+                            fukusho_rate = assigned_stats.get('fukusho_rate', 0.0)
+                            
+                            if race_count > 0:
+                                jockey_count += 1
+                                lines.append(f"{jockey_count}. **{jockey_name}**（{assigned_post}枠）: {race_count}戦 複勝率{fukusho_rate*100:.1f}%")
+                            else:
+                                jockey_count += 1
+                                lines.append(f"{jockey_count}. **{jockey_name}**（{assigned_post}枠）: データなし")
+                        else:
+                            jockey_count += 1
+                            lines.append(f"{jockey_count}. **{jockey_name}**（{assigned_post}枠）: データなし")
                     else:
-                        lines.append(f"• {position}: データなし")
+                        # 枠番情報がない場合は全体の成績を表示
+                        all_stats = post_stats.get('all_post_stats', {})
+                        if isinstance(all_stats, dict):
+                            total_races = 0
+                            total_fukusho = 0
+                            for category, stats in all_stats.items():
+                                if isinstance(stats, dict):
+                                    races = stats.get('race_count', 0)
+                                    rate = stats.get('fukusho_rate', 0.0)
+                                    if races > 0:
+                                        total_races += races
+                                        total_fukusho += races * rate
+                            
+                            if total_races > 0:
+                                avg_fukusho = total_fukusho / total_races
+                                jockey_count += 1
+                                lines.append(f"{jockey_count}. **{jockey_name}**: 全体{total_races}戦 複勝率{avg_fukusho*100:.1f}%")
+                            else:
+                                jockey_count += 1
+                                lines.append(f"{jockey_count}. **{jockey_name}**: データなし")
+                        else:
+                            jockey_count += 1
+                            lines.append(f"{jockey_count}. **{jockey_name}**: データなし")
+                
+                # 完結メッセージを追加
+                if jockey_count > 0:
+                    lines.append("")
+                    lines.append(f"以上が出場騎手{jockey_count}名の枠順別成績です。")
+                else:
+                    lines.append("出場騎手の枠順別データがありません。")
+                    
             elif jockey_post_data and not isinstance(jockey_post_data, dict):
                 logger.error(f"jockey_post_dataが辞書ではありません: type={type(jockey_post_data)}")
                 lines.append("• 枠順別データの取得に失敗しました")

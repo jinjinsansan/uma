@@ -2617,3 +2617,205 @@ class ViewLogicEngine:
         except Exception as e:
             logger.error(f"傾向インサイト生成エラー: {e}")
             return ["実データに基づく傾向分析を実施"]
+    
+    def get_horse_history(self, horse_name: str) -> Dict[str, Any]:
+        """
+        馬の過去データを取得（新機能）
+        ViewLogicナレッジファイルから直近5走のデータを返す
+        
+        Args:
+            horse_name: 馬名
+            
+        Returns:
+            {
+                'status': 'success' or 'error',
+                'horse_name': str,
+                'races': List[Dict],  # 直近5走のデータ
+                'running_style': Dict,  # 脚質情報
+                'message': str
+            }
+        """
+        try:
+            # ViewLogicナレッジファイルから馬データを取得
+            horse_data = self.data_manager.get_horse_data(horse_name)
+            
+            if not horse_data:
+                return {
+                    'status': 'error',
+                    'message': f'{horse_name}のデータが見つかりませんでした'
+                }
+            
+            # 直近5走のデータを取得
+            races = horse_data.get('races', [])
+            recent_races = races[:5] if len(races) >= 5 else races
+            
+            # 各レースの重要データのみ抽出（モバイル向け簡略化）
+            formatted_races = []
+            for race in recent_races:
+                formatted_race = {
+                    '開催日': f"{race.get('KAISAI_NEN', '')}/{race.get('KAISAI_GAPPI', '')}",
+                    '競馬場': self._get_venue_name(race.get('KEIBAJO_CODE', '')),
+                    'レース': f"{race.get('RACE_BANGO', '')}R",
+                    '着順': race.get('KAKUTEI_CHAKUJUN', ''),
+                    'タイム': race.get('SOHA_TIME', ''),
+                    '上り': race.get('KOHAN_3F', ''),
+                    '人気': race.get('TANSHO_NINKIJUN', ''),
+                    '騎手': race.get('KISHUMEI_RYAKUSHO', ''),
+                    '距離': f"{race.get('KYORI', '')}m",
+                    '馬場': self._get_track_condition(race.get('BABA_JOTAI', '')),
+                    '頭数': race.get('TOSU', ''),
+                    '馬体重': race.get('BATAIJU', ''),
+                    'コーナー': f"{race.get('CORNER1_JUNI', '')}-{race.get('CORNER2_JUNI', '')}-{race.get('CORNER3_JUNI', '')}-{race.get('CORNER4_JUNI', '')}"
+                }
+                formatted_races.append(formatted_race)
+            
+            return {
+                'status': 'success',
+                'horse_name': horse_name,
+                'races': formatted_races,
+                'running_style': horse_data.get('running_style', {}),
+                'total_races': horse_data.get('total_races', len(races)),
+                'message': f'{horse_name}の直近{len(formatted_races)}走のデータを取得しました'
+            }
+            
+        except Exception as e:
+            logger.error(f"馬の過去データ取得エラー: {e}")
+            return {
+                'status': 'error',
+                'message': f'データ取得中にエラーが発生しました: {str(e)}'
+            }
+    
+    def get_jockey_history(self, jockey_name: str) -> Dict[str, Any]:
+        """
+        騎手の過去データを取得（新機能）
+        騎手ナレッジファイルから直近5走のデータを返す
+        
+        Args:
+            jockey_name: 騎手名
+            
+        Returns:
+            {
+                'status': 'success' or 'error',
+                'jockey_name': str,
+                'recent_rides': List[Dict],  # 直近5走のデータ
+                'statistics': Dict,  # 統計情報
+                'message': str
+            }
+        """
+        try:
+            # 騎手ナレッジファイルから騎手データを取得
+            if not self.jockey_manager.is_loaded():
+                return {
+                    'status': 'error',
+                    'message': '騎手データが読み込まれていません'
+                }
+            
+            # 騎手名を正規化（動的検索＋静的マッピング）
+            normalized_name = self._normalize_jockey_name(jockey_name)
+            jockey_data = self.jockey_manager.get_jockey_data(normalized_name)
+            
+            if not jockey_data:
+                return {
+                    'status': 'error',
+                    'message': f'{jockey_name}騎手のデータが見つかりませんでした'
+                }
+            
+            # 騎手データから最近の成績を構築
+            recent_rides = []
+            
+            # venue_course_statsから直近のデータを抽出（上位5件）
+            if 'venue_course_stats' in jockey_data:
+                count = 0
+                for venue_distance, stats in jockey_data['venue_course_stats'].items():
+                    if count >= 5:
+                        break
+                    
+                    # venue_distanceを分解（例: "東京_2000" -> "東京", "2000m"）
+                    parts = venue_distance.split('_')
+                    venue = parts[0] if parts else '不明'
+                    distance = f"{parts[1]}m" if len(parts) > 1 else '不明'
+                    
+                    # 勝率・複勝率の正規化（すでに%形式の場合は100倍しない）
+                    win_rate = stats.get('win_rate', 0)
+                    fukusho_rate = stats.get('fukusho_rate', 0)
+                    
+                    # 値が1以下なら小数形式（0.25 = 25%）、1より大きければすでに%形式
+                    win_rate_display = f"{win_rate*100:.1f}%" if win_rate <= 1 else f"{win_rate:.1f}%"
+                    fukusho_rate_display = f"{fukusho_rate*100:.1f}%" if fukusho_rate <= 1 else f"{fukusho_rate:.1f}%"
+                    
+                    recent_ride = {
+                        '競馬場': venue,
+                        '距離': distance,
+                        '出走数': stats.get('total_runs', 0),
+                        '勝利': stats.get('wins', 0),
+                        '複勝': stats.get('fukusho', 0),
+                        '勝率': win_rate_display,
+                        '複勝率': fukusho_rate_display
+                    }
+                    recent_rides.append(recent_ride)
+                    count += 1
+            
+            # 全体統計（複勝率の正規化）
+            overall_fukusho_rate = jockey_data.get('overall_stats', {}).get('overall_fukusho_rate', 0)
+            overall_rate_display = f"{overall_fukusho_rate*100:.1f}%" if overall_fukusho_rate <= 1 else f"{overall_fukusho_rate:.1f}%"
+            
+            statistics = {
+                '総出走数': jockey_data.get('overall_stats', {}).get('total_races_analyzed', 0),
+                '総合複勝率': overall_rate_display
+            }
+            
+            # 馬場状態別成績（複勝率の正規化）
+            if 'track_condition_stats' in jockey_data:
+                track_stats = []
+                for condition, stats in jockey_data['track_condition_stats'].items():
+                    fukusho_rate = stats.get('fukusho_rate', 0)
+                    rate_display = f"{fukusho_rate*100:.1f}%" if fukusho_rate <= 1 else f"{fukusho_rate:.1f}%"
+                    track_stats.append({
+                        '馬場': self._get_track_condition(condition),
+                        '複勝率': rate_display
+                    })
+                statistics['馬場別成績'] = track_stats
+            
+            # 枠順別成績（複勝率の正規化）
+            if 'post_position_stats' in jockey_data:
+                post_stats = []
+                for position, stats in jockey_data['post_position_stats'].items():
+                    fukusho_rate = stats.get('fukusho_rate', 0)
+                    rate_display = f"{fukusho_rate*100:.1f}%" if fukusho_rate <= 1 else f"{fukusho_rate:.1f}%"
+                    post_stats.append({
+                        '枠': position,
+                        '複勝率': rate_display
+                    })
+                statistics['枠順別成績'] = post_stats
+            
+            return {
+                'status': 'success',
+                'jockey_name': jockey_name,
+                'recent_rides': recent_rides,
+                'statistics': statistics,
+                'message': f'{jockey_name}騎手の成績データを取得しました'
+            }
+            
+        except Exception as e:
+            logger.error(f"騎手の過去データ取得エラー: {e}")
+            return {
+                'status': 'error',
+                'message': f'データ取得中にエラーが発生しました: {str(e)}'
+            }
+    
+    def _get_venue_name(self, code: str) -> str:
+        """競馬場コードから名称を取得"""
+        venue_map = {
+            '01': '札幌', '02': '函館', '03': '福島', '04': '新潟',
+            '05': '東京', '06': '中山', '07': '中京', '08': '京都',
+            '09': '阪神', '10': '小倉'
+        }
+        return venue_map.get(str(code), '不明')
+    
+    def _get_track_condition(self, code: str) -> str:
+        """馬場状態コードから名称を取得"""
+        condition_map = {
+            '1': '良', '2': '稍重', '3': '重', '4': '不良',
+            1: '良', 2: '稍重', 3: '重', 4: '不良'
+        }
+        return condition_map.get(code, str(code))

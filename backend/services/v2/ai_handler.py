@@ -37,6 +37,7 @@ class V2AIHandler:
             'viewlogic_trend': ['傾向', 'トレンド', '統計', 'データ', '過去', 'コース傾向', '騎手成績', '血統', '枠順'],
             'viewlogic_recommendation': ['推奨', 'おすすめ', '買い目', '馬券', '予想'],
             'viewlogic_flow': ['展開', 'ペース', '逃げ', '先行', '差し', '追込', '脚質', 'ハイペース', 'スローペース', '流れ'],
+            'viewlogic_history': ['過去データ', '直近', '前走', '戦績', '成績', '最近のレース', '過去のレース'],  # 新規追加
             'dlogic': ['d-logic', 'ディーロジック', 'D-Logic', 'Dロジック', '指数', 'スコア', '12項目', '評価点'],
             'ilogic': ['i-logic', 'ilogic', 'アイロジック', 'I-Logic', 'Iロジック', '騎手', '総合', 'レースアナリシス', 'アナリシス']
         }
@@ -53,12 +54,98 @@ class V2AIHandler:
         """
         message_lower = message.lower()
         
-        # D-Logic分析
-        for keyword in self.AI_KEYWORDS['dlogic']:
-            if keyword.lower() in message_lower:
-                return ('dlogic', 'analysis')
+        # 特定のAIキーワードを最優先で判定（他のキーワードより優先）
+        # D-Logic分析（明示的な指定を最優先）
+        if 'd-logic' in message_lower or 'dlogic' in message_lower or 'ディーロジック' in message:
+            return ('dlogic', 'analysis')
         
-        # ViewLogic展開予想（最優先）
+        # IMLogic分析（明示的な指定を優先）
+        if 'imlogic' in message_lower or 'アイエムロジック' in message:
+            return ('imlogic', 'analysis')
+        
+        # 「馬70騎手30」などのIMLogic特有のパターン
+        if '馬' in message and '騎手' in message and ('％' in message or '%' in message or '分析' in message):
+            return ('imlogic', 'analysis')
+        
+        # ViewLogic過去データ（馬名・騎手名が含まれる場合を優先）
+        # レースデータから馬名と騎手名を取得して判定に使用
+        if hasattr(self, 'current_race_data'):
+            horses = self.current_race_data.get('horses', [])
+            jockeys = self.current_race_data.get('jockeys', [])
+            
+            # 馬名が含まれているかチェック
+            for horse in horses:
+                if horse in message:
+                    # 過去データ関連のキーワードもあるか、または馬名だけでも反応
+                    for keyword in self.AI_KEYWORDS['viewlogic_history']:
+                        if keyword in message_lower:
+                            return ('viewlogic', 'history')
+                    # 馬名だけでも反応（ただし他のAIキーワードがない場合）
+                    if not any(kw in message_lower for kw_list in [
+                        self.AI_KEYWORDS['dlogic'], 
+                        self.AI_KEYWORDS['imlogic'],
+                        self.AI_KEYWORDS['ilogic'],
+                        self.AI_KEYWORDS['viewlogic_flow'],
+                        self.AI_KEYWORDS['viewlogic_trend'],
+                        self.AI_KEYWORDS['viewlogic_recommendation']
+                    ] for kw in kw_list):
+                        return ('viewlogic', 'history')
+            
+            # 騎手名が含まれているかチェック（部分一致と短縮名対応）
+            for jockey in jockeys:
+                if jockey:
+                    # フルネームでの一致
+                    if jockey in message:
+                        for keyword in self.AI_KEYWORDS['viewlogic_history']:
+                            if keyword in message_lower:
+                                return ('viewlogic', 'history')
+                        # 騎手名だけでも反応
+                        if not any(kw in message_lower for kw_list in [
+                            self.AI_KEYWORDS['dlogic'], 
+                            self.AI_KEYWORDS['imlogic'],
+                            self.AI_KEYWORDS['ilogic'],
+                            self.AI_KEYWORDS['viewlogic_flow'],
+                            self.AI_KEYWORDS['viewlogic_trend'],
+                            self.AI_KEYWORDS['viewlogic_recommendation']
+                        ] for kw in kw_list):
+                            return ('viewlogic', 'history')
+                    
+                    # 短縮名での一致（例：川田将雅 → 川田、C.ルメール → ルメール）
+                    if len(jockey) >= 2:
+                        short_name = jockey[:2]  # 最初の2文字
+                        if short_name in message:
+                            for keyword in self.AI_KEYWORDS['viewlogic_history']:
+                                if keyword in message_lower:
+                                    return ('viewlogic', 'history')
+                            # 短縮名だけでも反応
+                            if not any(kw in message_lower for kw_list in [
+                                self.AI_KEYWORDS['dlogic'], 
+                                self.AI_KEYWORDS['imlogic'],
+                                self.AI_KEYWORDS['ilogic'],
+                                self.AI_KEYWORDS['viewlogic_flow'],
+                                self.AI_KEYWORDS['viewlogic_trend'],
+                                self.AI_KEYWORDS['viewlogic_recommendation']
+                            ] for kw in kw_list):
+                                return ('viewlogic', 'history')
+                    
+                    # 外国人騎手の場合（C.ルメール → ルメール）
+                    if '.' in jockey:
+                        last_part = jockey.split('.')[-1]
+                        if last_part in message:
+                            for keyword in self.AI_KEYWORDS['viewlogic_history']:
+                                if keyword in message_lower:
+                                    return ('viewlogic', 'history')
+                            if not any(kw in message_lower for kw_list in [
+                                self.AI_KEYWORDS['dlogic'], 
+                                self.AI_KEYWORDS['imlogic'],
+                                self.AI_KEYWORDS['ilogic'],
+                                self.AI_KEYWORDS['viewlogic_flow'],
+                                self.AI_KEYWORDS['viewlogic_trend'],
+                                self.AI_KEYWORDS['viewlogic_recommendation']
+                            ] for kw in kw_list):
+                                return ('viewlogic', 'history')
+        
+        # ViewLogic展開予想（優先度高）
         for keyword in self.AI_KEYWORDS['viewlogic_flow']:
             if keyword in message_lower:
                 return ('viewlogic', 'flow')
@@ -77,6 +164,20 @@ class V2AIHandler:
         for keyword in self.AI_KEYWORDS['viewlogic_recommendation']:
             if keyword in message_lower:
                 return ('viewlogic', 'recommendation')
+        
+        # その他のD-Logicキーワード
+        for keyword in self.AI_KEYWORDS['dlogic']:
+            if keyword.lower() in message_lower:
+                return ('dlogic', 'analysis')
+        
+        # その他のIMLogicキーワード
+        for keyword in self.AI_KEYWORDS['imlogic']:
+            if keyword.lower() in message_lower:
+                return ('imlogic', 'analysis')
+        
+        # 「標準分析」はD-Logicとして扱う
+        if '標準' in message_lower and '分析' in message_lower:
+            return ('dlogic', 'analysis')
         
         # デフォルトはIMLogic分析
         return ('imlogic', 'analysis')
@@ -396,6 +497,50 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
 
 これらの結果を参考に馬券をご検討ください。
 """, None)
+            
+            elif sub_type == 'history':
+                # 過去データ表示（新機能）
+                # メッセージから馬名または騎手名を抽出
+                horses = race_data.get('horses', [])
+                jockeys = race_data.get('jockeys', [])
+                
+                # 馬名チェック
+                target_horse = None
+                for horse in horses:
+                    if horse in message:
+                        target_horse = horse
+                        break
+                
+                # 騎手名チェック
+                target_jockey = None
+                if not target_horse:
+                    for jockey in jockeys:
+                        if jockey and jockey in message:
+                            target_jockey = jockey
+                            break
+                
+                if target_horse:
+                    # 馬の過去データ取得
+                    result = viewlogic_engine.get_horse_history(target_horse)
+                    if result['status'] == 'success':
+                        content = self._format_horse_history(result, target_horse)
+                        return (content, result)
+                    else:
+                        return (f"{target_horse}の過去データが見つかりませんでした。", None)
+                
+                elif target_jockey:
+                    # 騎手の過去データ取得
+                    result = viewlogic_engine.get_jockey_history(target_jockey)
+                    if result['status'] == 'success':
+                        content = self._format_jockey_history(result, target_jockey)
+                        return (content, result)
+                    else:
+                        return (f"{target_jockey}騎手の過去データが見つかりませんでした。", None)
+                
+                else:
+                    # 馬名も騎手名も見つからない場合
+                    example_horse = horses[0] if horses else 'ドウデュース'
+                    return (f"出走馬または騎手の名前を指定してください。例：「{example_horse}の過去データ」", None)
             else:
                 return ("ViewLogic機能をご利用いただきありがとうございます。「展開」「傾向」「推奨」のいずれかをお試しください。", None)
                 
@@ -810,6 +955,9 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 'analysis_data': dict  # 分析データ（あれば）
             }
         """
+        # レースデータを保持（determine_ai_typeで使用）
+        self.current_race_data = race_data
+        
         # AI タイプの決定
         if ai_type:
             determined_ai = ai_type
@@ -1583,3 +1731,122 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             import traceback
             traceback.print_exc()
             return "馬券推奨結果の表示中にエラーが発生しました。"
+    
+    def _format_horse_history(self, result: Dict[str, Any], horse_name: str) -> str:
+        """馬の過去データをモバイル最適化フォーマットで表示"""
+        lines = []
+        lines.append(f"🏇 **{horse_name} 過去戦績**")
+        lines.append("")
+        
+        if result["status"] == "success" and result["races"]:
+            races = result["races"]
+            lines.append(f"📊 **直近{len(races)}戦のデータ**")
+            lines.append("")
+            
+            for i, race in enumerate(races, 1):
+                # レース基本情報
+                race_date = race.get("開催日", "不明")
+                venue = race.get("競馬場", "不明")
+                distance = race.get("距離", "不明")
+                track = race.get("馬場", "良")
+                
+                lines.append(f"**{i}. {race_date} {venue}**")
+                lines.append(f"　距離: {distance} / 馬場: {track}")
+                
+                # 成績情報
+                chakujun = race.get("着順", "-")
+                time_result = race.get("タイム", "-")
+                agari = race.get("上り", "-")
+                popularity = race.get("人気", "-")
+                
+                lines.append(f"　着順: **{chakujun}着** / 人気: {popularity}")
+                lines.append(f"　タイム: {time_result} / 上り: {agari}")
+                lines.append("")
+            
+            # 統計情報
+            total_races = result.get("total_races", len(races))
+            if total_races > 0:
+                lines.append("📈 **戦績サマリー**")
+                lines.append(f"　総戦数: {total_races}戦")
+                
+                # 着順分析
+                win_count = sum(1 for r in races if r.get("着順") == "1")
+                place_count = sum(1 for r in races if r.get("着順") in ["1", "2", "3"])
+                
+                if len(races) > 0:
+                    win_rate = (win_count / len(races)) * 100
+                    place_rate = (place_count / len(races)) * 100
+                    lines.append(f"　勝率: {win_rate:.1f}% ({win_count}/{len(races)})")
+                    lines.append(f"　複勝率: {place_rate:.1f}% ({place_count}/{len(races)})")
+        
+        else:
+            lines.append("❌ **データが見つかりません**")
+            lines.append(f"　{horse_name}の過去戦績データが存在しないか、")
+            lines.append("　データベースから取得できませんでした。")
+        
+        return "\n".join(lines)
+    
+    def _format_jockey_history(self, result: Dict[str, Any], jockey_name: str) -> str:
+        """騎手の過去データをモバイル最適化フォーマットで表示"""
+        lines = []
+        lines.append(f"👤 **{jockey_name}騎手 データ**")
+        lines.append("")
+        
+        if result["status"] == "success" and result.get("statistics"):
+            stats = result["statistics"]
+            
+            # recent_ridesからデータ表示
+            if result.get("recent_rides"):
+                lines.append("🏟️ **競馬場・距離別成績（直近5戦）**")
+                recent_rides = result["recent_rides"]
+                
+                for ride in recent_rides:
+                    venue = ride.get("競馬場", "不明")
+                    distance = ride.get("距離", "不明")
+                    runs = ride.get("出走数", 0)
+                    fukusho_rate = ride.get("複勝率", "0%")
+                    
+                    lines.append(f"　{venue}{distance}: {runs}戦 複勝率{fukusho_rate}")
+                
+                lines.append("")
+            
+            # 統計情報から馬場状態別成績
+            if stats.get("馬場別成績"):
+                lines.append("🌧️ **馬場状態別成績（直近5戦）**")
+                track_stats = stats["馬場別成績"]
+                
+                for track_data in track_stats:
+                    condition = track_data.get("馬場", "不明")
+                    rate = track_data.get("複勝率", "0%")
+                    lines.append(f"　{condition}: 複勝率{rate}")
+                
+                lines.append("")
+            
+            # 枠順別成績
+            if stats.get("枠順別成績"):
+                lines.append("🎯 **枠順別成績（直近5戦）**")
+                post_stats = stats["枠順別成績"]
+                
+                for post_data in post_stats:
+                    post = post_data.get("枠", "不明")
+                    rate = post_data.get("複勝率", "0%")
+                    lines.append(f"　{post}枠: 複勝率{rate}")
+                
+                lines.append("")
+            
+            # 総合統計
+            total_races = stats.get("総出走数", 0)
+            overall_rate = stats.get("総合複勝率", "0%")
+            
+            lines.append("📈 **総合成績**")
+            lines.append(f"　分析対象: {total_races}戦")
+            if total_races > 0:
+                lines.append(f"　総合複勝率: {overall_rate}")
+
+        
+        else:
+            lines.append("❌ **データが見つかりません**")
+            lines.append(f"　{jockey_name}騎手のデータが存在しないか、")
+            lines.append("　データベースから取得できませんでした。")
+        
+        return "\n".join(lines)

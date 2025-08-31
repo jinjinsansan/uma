@@ -521,9 +521,9 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 
                 # プログレスバー表示用のメッセージを最初に返す
                 if target_horse:
-                    progress_message = f"ViewLogic過去データを取得中...\n{target_horse}の履歴を検索しています..."
+                    progress_message = "ViewLogic過去データを取得中...\n" + target_horse + "の履歴を検索しています..."
                 elif target_jockey:
-                    progress_message = f"ViewLogic過去データを取得中...\n{target_jockey}騎手の履歴を検索しています..."
+                    progress_message = "ViewLogic過去データを取得中...\n" + target_jockey + "騎手の履歴を検索しています..."
                 else:
                     return ("分析対象の馬名または騎手名が見つかりませんでした。", None)
                 

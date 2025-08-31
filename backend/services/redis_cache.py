@@ -56,11 +56,20 @@ class RedisCache:
                 )
                 # 接続テスト
                 self.client.ping()
-                logger.info(f"Connected to Redis via URL: {redis_url.split('@')[1] if '@' in redis_url else redis_url}")
+                # URLからhost/portを抽出（表示用）
+                if '@' in redis_url:
+                    self.host = redis_url.split('@')[1].split(':')[0]
+                else:
+                    self.host = redis_url.replace('redis://', '').split(':')[0]
+                self.port = 6379  # デフォルトポート
+                logger.info(f"Connected to Redis via URL: {self.host}:{self.port}")
                 return
             except Exception as e:
                 logger.error(f"Failed to connect via REDIS_URL: {e}")
                 self.client = None
+                # フォールバックのためhost/portを設定
+                self.host = 'localhost'
+                self.port = 6379
                 return
         
         # 個別パラメータから設定を取得

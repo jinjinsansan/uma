@@ -48,12 +48,8 @@ class RedisCache:
                     redis_url,
                     decode_responses=decode_responses,
                     max_connections=50,
-                    socket_keepalive=True,
-                    socket_keepalive_options={
-                        1: 1,  # TCP_KEEPIDLE
-                        2: 1,  # TCP_KEEPINTVL
-                        3: 5,  # TCP_KEEPCNT
-                    }
+                    socket_keepalive=True
+                    # socket_keepalive_optionsは環境依存のため削除
                 )
                 # 接続テスト
                 self.client.ping()
@@ -87,12 +83,8 @@ class RedisCache:
             'db': db,
             'decode_responses': decode_responses,
             'max_connections': 50,
-            'socket_keepalive': True,
-            'socket_keepalive_options': {
-                1: 1,  # TCP_KEEPIDLE
-                2: 1,  # TCP_KEEPINTVL
-                3: 5,  # TCP_KEEPCNT
-            }
+            'socket_keepalive': True
+            # socket_keepalive_optionsは環境依存のため削除
         }
         
         if self.password:

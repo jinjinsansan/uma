@@ -41,6 +41,7 @@ class RedisCache:
         # REDIS_URL環境変数があれば優先的に使用
         redis_url = os.getenv('REDIS_URL')
         if redis_url:
+            logger.info(f"Attempting to connect to Redis with URL: {redis_url.split('@')[0] if '@' in redis_url else redis_url}...")
             # URLから接続
             try:
                 self.client = redis.from_url(
@@ -65,7 +66,9 @@ class RedisCache:
                 logger.info(f"Connected to Redis via URL: {self.host}:{self.port}")
                 return
             except Exception as e:
+                import traceback
                 logger.error(f"Failed to connect via REDIS_URL: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
                 self.client = None
                 # フォールバックのためhost/portを設定
                 self.host = 'localhost'

@@ -1871,19 +1871,24 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         if result["status"] == "success" and result.get("statistics"):
             stats = result["statistics"]
             
-            # recent_ridesからデータ表示
+            # recent_ridesからデータ表示（出走数が0でない場合のみ表示）
             if result.get("recent_rides"):
                 lines.append("🏟️ **競馬場・距離別成績（直近5戦）**")
-                recent_rides = result["recent_rides"]
+                displayed_any = False
                 
-                for ride in recent_rides:
+                for ride in result["recent_rides"]:
                     venue = ride.get("競馬場", "不明")
                     distance = ride.get("距離", "不明")
                     runs = ride.get("出走数", 0)
-                    fukusho_rate = ride.get("複勝率", "0%")
+                    fukusho_rate = ride.get("複勝率", "0.0%")
                     
-                    lines.append(f"　{venue}{distance}: {runs}戦 複勝率{fukusho_rate}")
+                    # 出走数が0でない場合のみ表示
+                    if runs > 0:
+                        lines.append(f"　{venue}{distance}: {runs}戦 複勝率{fukusho_rate}")
+                        displayed_any = True
                 
+                if not displayed_any:
+                    lines.append("　データなし")
                 lines.append("")
             
             # 統計情報から馬場状態別成績
@@ -1891,10 +1896,16 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 lines.append("🌧️ **馬場状態別成績（直近5戦）**")
                 track_stats = stats["馬場別成績"]
                 
+                # 重複を除去して表示
+                seen_conditions = set()
                 for track_data in track_stats:
                     condition = track_data.get("馬場", "不明")
-                    rate = track_data.get("複勝率", "0%")
-                    lines.append(f"　{condition}: 複勝率{rate}")
+                    rate = track_data.get("複勝率", "0.0%")
+                    
+                    # 「平地・芝」など同じ条件は1回だけ表示
+                    if condition not in seen_conditions:
+                        lines.append(f"　{condition}: 複勝率{rate}")
+                        seen_conditions.add(condition)
                 
                 lines.append("")
             
@@ -1905,14 +1916,14 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 
                 for post_data in post_stats:
                     post = post_data.get("枠", "不明")
-                    rate = post_data.get("複勝率", "0%")
-                    lines.append(f"　{post}枠: 複勝率{rate}")
+                    rate = post_data.get("複勝率", "0.0%")
+                    lines.append(f"　{post}: 複勝率{rate}")
                 
                 lines.append("")
             
             # 総合統計
             total_races = stats.get("総出走数", 0)
-            overall_rate = stats.get("総合複勝率", "0%")
+            overall_rate = stats.get("総合複勝率", "0.0%")
             
             lines.append("📈 **総合成績**")
             lines.append(f"　分析対象: {total_races}戦")

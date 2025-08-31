@@ -2730,26 +2730,26 @@ class ViewLogicEngine:
                     if count >= 5:
                         break
                     
-                    # venue_distanceを分解（例: "東京_2000" -> "東京", "2000m"）
-                    parts = venue_distance.split('_')
-                    venue = parts[0] if parts else '不明'
-                    distance = f"{parts[1]}m" if len(parts) > 1 else '不明'
+                    # venue_distanceを分解（例: "中山_2500m" -> "中山", "2500m"）
+                    if '_' in venue_distance:
+                        parts = venue_distance.split('_')
+                        venue = parts[0]
+                        distance = parts[1] if len(parts) > 1 else '不明'
+                    else:
+                        venue = '不明'
+                        distance = venue_distance
                     
-                    # 勝率・複勝率の正規化（すでに%形式の場合は100倍しない）
-                    win_rate = stats.get('win_rate', 0)
+                    # 出走数を取得（race_countフィールドを使用）
+                    race_count = stats.get('race_count', 0)
+                    
+                    # 複勝率の取得と表示形式の調整
                     fukusho_rate = stats.get('fukusho_rate', 0)
-                    
-                    # 値が1以下なら小数形式（0.25 = 25%）、1より大きければすでに%形式
-                    win_rate_display = f"{win_rate*100:.1f}%" if win_rate <= 1 else f"{win_rate:.1f}%"
-                    fukusho_rate_display = f"{fukusho_rate*100:.1f}%" if fukusho_rate <= 1 else f"{fukusho_rate:.1f}%"
+                    fukusho_rate_display = f"{fukusho_rate:.1f}%" if fukusho_rate > 1 else f"{fukusho_rate*100:.1f}%"
                     
                     recent_ride = {
                         '競馬場': venue,
                         '距離': distance,
-                        '出走数': stats.get('total_runs', 0),
-                        '勝利': stats.get('wins', 0),
-                        '複勝': stats.get('fukusho', 0),
-                        '勝率': win_rate_display,
+                        '出走数': race_count,
                         '複勝率': fukusho_rate_display
                     }
                     recent_rides.append(recent_ride)
@@ -2757,33 +2757,48 @@ class ViewLogicEngine:
             
             # 全体統計（複勝率の正規化）
             overall_fukusho_rate = jockey_data.get('overall_stats', {}).get('overall_fukusho_rate', 0)
-            overall_rate_display = f"{overall_fukusho_rate*100:.1f}%" if overall_fukusho_rate <= 1 else f"{overall_fukusho_rate:.1f}%"
+            overall_rate_display = f"{overall_fukusho_rate:.1f}%" if overall_fukusho_rate > 1 else f"{overall_fukusho_rate*100:.1f}%"
             
             statistics = {
                 '総出走数': jockey_data.get('overall_stats', {}).get('total_races_analyzed', 0),
                 '総合複勝率': overall_rate_display
             }
             
-            # 馬場状態別成績（複勝率の正規化）
+            # 馬場状態別成績（「不明(数字)」形式のキーを処理）
             if 'track_condition_stats' in jockey_data:
                 track_stats = []
                 for condition, stats in jockey_data['track_condition_stats'].items():
+                    # 「不明(17)」のような形式から数字を抽出
+                    if '(' in condition and ')' in condition:
+                        # 括弧内の数字を取得
+                        code = condition.split('(')[1].split(')')[0]
+                        track_name = self._get_track_condition_from_code(code)
+                    else:
+                        track_name = self._get_track_condition(condition)
+                    
                     fukusho_rate = stats.get('fukusho_rate', 0)
-                    rate_display = f"{fukusho_rate*100:.1f}%" if fukusho_rate <= 1 else f"{fukusho_rate:.1f}%"
+                    rate_display = f"{fukusho_rate:.1f}%" if fukusho_rate > 1 else f"{fukusho_rate*100:.1f}%"
                     track_stats.append({
-                        '馬場': self._get_track_condition(condition),
+                        '馬場': track_name,
                         '複勝率': rate_display
                     })
                 statistics['馬場別成績'] = track_stats
             
-            # 枠順別成績（複勝率の正規化）
+            # 枠順別成績（「枠4」のような形式を処理）
             if 'post_position_stats' in jockey_data:
                 post_stats = []
                 for position, stats in jockey_data['post_position_stats'].items():
+                    # 「枠4」から数字だけを抽出
+                    if '枠' in position:
+                        position_num = position.replace('枠', '')
+                        display_position = f"{position_num}枠"
+                    else:
+                        display_position = position
+                    
                     fukusho_rate = stats.get('fukusho_rate', 0)
-                    rate_display = f"{fukusho_rate*100:.1f}%" if fukusho_rate <= 1 else f"{fukusho_rate:.1f}%"
+                    rate_display = f"{fukusho_rate:.1f}%" if fukusho_rate > 1 else f"{fukusho_rate*100:.1f}%"
                     post_stats.append({
-                        '枠': position,
+                        '枠': display_position,
                         '複勝率': rate_display
                     })
                 statistics['枠順別成績'] = post_stats
@@ -2800,9 +2815,28 @@ class ViewLogicEngine:
             logger.error(f"騎手の過去データ取得エラー: {e}")
             return {
                 'status': 'error',
-                'message': f'データ取得中にエラーが発生しました: {str(e)}'
+                'message': f'騎手データの取得中にエラーが発生しました: {str(e)}'
             }
     
+    def _get_track_condition_from_code(self, code: str) -> str:
+        """馬場状態コードから名称を取得（JVDataコード対応）"""
+        # JVDataのトラックコード（枠内の位置情報として誤用されている可能性）
+        track_codes = {
+            '10': '平地・芝', '11': '平地・ダート', '12': '平地・芝ダート',
+            '17': '平地・芝', '18': '平地・ダート', '19': '平地・芝外',
+            '20': '平地・直線芝', '21': '平地・直線ダート',
+            '22': '平地・芝外→内', '23': '平地・芝内→外', '24': '平地・芝内2周',
+            '51': '障害・芝', '52': '障害・ダート', '53': '障害・芝ダート',
+            '54': '障害・直線', '55': '障害・芝外', '56': '障害・芝外→内',
+            '57': '障害・芝内→外', '58': '障害・芝内2周', '59': '障害・芝外2周'
+        }
+        # もしトラックコードならそれを返す
+        if code in track_codes:
+            return track_codes[code]
+        # それ以外は馬場状態として扱う
+        return self._get_track_condition(code)
+    
+    def _normalize_jockey_name(self, jockey_name: str) -> str:
     def _get_venue_name(self, code: str) -> str:
         """競馬場コードから名称を取得"""
         venue_map = {

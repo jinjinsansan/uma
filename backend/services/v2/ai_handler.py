@@ -1836,9 +1836,9 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 lines.append("📈 **戦績サマリー**")
                 lines.append(f"　総戦数: {total_races}戦")
                 
-                # 着順分析（文字列としての比較に対応）
-                win_count = sum(1 for r in races if str(r.get("着順", "")) == "1")
-                place_count = sum(1 for r in races if str(r.get("着順", "")) in ["1", "2", "3"])
+                # 着順分析（整数型と文字列型の両方に対応）
+                win_count = sum(1 for r in races if str(r.get("着順", "")) == "1" or r.get("着順") == 1)
+                place_count = sum(1 for r in races if str(r.get("着順", "")) in ["1", "2", "3"] or r.get("着順") in [1, 2, 3])
                 
                 # 着順データがある場合のみ勝率・複勝率を計算
                 valid_races = [r for r in races if r.get("着順") and str(r.get("着順", "")).isdigit()]

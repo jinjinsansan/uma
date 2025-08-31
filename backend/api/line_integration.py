@@ -564,10 +564,11 @@ async def complete_referral(request: Request):
         if not user_email:
             raise HTTPException(status_code=400, detail="user_email is required")
         
-        # 特定の問題ユーザーを完全ブロック
-        if user_email == "miraiakajiproject@gmail.com":
-            logger.warning(f"Blocked problematic user: {user_email}")
-            return {"status": "blocked", "message": "Account temporarily suspended due to abnormal activity"}
+        # ブロックされたユーザーのチェック（referral_count = -9999）
+        blocked_check = supabase.table('users').select('referral_count').eq('email', user_email).execute()
+        if blocked_check.data and blocked_check.data[0].get('referral_count') == -9999:
+            logger.warning(f"Blocked user attempted API access: {user_email}")
+            return {"status": "blocked", "message": "Account suspended due to abnormal activity"}
         
         # レート制限チェック（1分間に3回まで）
         now = time.time()

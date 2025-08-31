@@ -1166,19 +1166,28 @@ class ViewLogicEngine:
             # まずViewLogic展開予想を実行して上位5頭を取得
             flow_result = self.predict_race_flow_advanced(race_data)
             
-            # 展開予想の上位5頭を取得
+            # 展開予想の上位5頭を取得（race_simulationのfinishから取得）
             top_5_horses = []
-            if flow_result and 'prediction' in flow_result:
-                prediction_result = flow_result['prediction']
-                if 'predicted_result' in prediction_result:
-                    # 上位5頭を抽出
-                    for rank_info in prediction_result['predicted_result']:
+            if flow_result and flow_result.get('status') == 'success':
+                # race_simulationのfinishから上位5頭を取得
+                if 'race_simulation' in flow_result and 'finish' in flow_result['race_simulation']:
+                    finish_order = flow_result['race_simulation']['finish']
+                    logger.info(f"展開予想結果（finish）: {finish_order[:5]}")
+                    # 既にpositionでソート済みなので、先頭から5頭取得
+                    for horse_info in finish_order[:5]:
+                        horse_name = horse_info.get('horse_name')
+                        if horse_name and horse_name in horses:
+                            top_5_horses.append(horse_name)
+                    logger.info(f"展開予想上位5頭: {top_5_horses}")
+                            
+                # もし上記で取得できなければ、旧形式を試す（後方互換性のため）
+                elif 'prediction' in flow_result and 'predicted_result' in flow_result['prediction']:
+                    logger.info("旧形式での展開予想結果取得を試行")
+                    for rank_info in flow_result['prediction']['predicted_result']:
                         if '位' in rank_info:
-                            # "1位: 馬名 (確率%)" 形式から馬名を抽出
                             parts = rank_info.split(':')
                             if len(parts) >= 2:
                                 horse_part = parts[1].strip()
-                                # 括弧の前までが馬名
                                 horse_name = horse_part.split('(')[0].strip()
                                 if horse_name in horses:
                                     top_5_horses.append(horse_name)

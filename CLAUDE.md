@@ -36,6 +36,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **将来**: Supabase 等のクラウドストレージへ移行
 - **現在**: PC常時稼働で運用
 
+## 🏇 騎手名マッピングシステム (2025-01-31 追加)
+
+### 問題の背景
+netkeiba.comは騎手名を最大3文字までしか表示しません（例：「北村友」「岩田望」「松山」）。
+しかし、騎手ナレッジファイルには正式名で保存されています（例：「北村友一」「岩田望来」「松山弘平」）。
+
+### 解決策
+`services/jockey_name_mapper.py`を作成し、3文字騎手名を正式名に自動変換：
+
+```python
+# 使用例
+from services.jockey_name_mapper import normalize_jockey_name
+
+normalize_jockey_name('北村友')   # → '北村友一'
+normalize_jockey_name('岩田望')   # → '岩田望来'
+normalize_jockey_name('松山')     # → '松山弘平'
+```
+
+### 適用状況
+- ✅ **IMLogicエンジン**: 実装済み（services/imlogic_engine.py line 24-25）
+- ✅ **ViewLogicエンジン**: 実装済み（services/viewlogic_engine.py _normalize_jockey_name内）
+- ✅ **レースアナリシスV2**: 実装済み
+
+### 重要な注意事項
+- 新しいAI機能を追加する際は、必ず`jockey_name_mapper`を使用すること
+- 騎手名が取得できない場合は、まずマッパーに騎手が登録されているか確認
+- マッパーには主要な騎手約100名が登録済み
+
 ## 🚀 V2システム実装状況 (2025-08-27 更新)
 
 ### 実装完成度: 85%（マイページ実装待ち）

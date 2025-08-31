@@ -46,6 +46,9 @@ from api.v2.chat import router as v2_chat_router
 from api.v2.imlogic_settings import router as v2_imlogic_settings_router
 from api.v2.cleanup_settings import router as v2_cleanup_router
 
+# 非同期処理とキャッシュ
+from api.async_endpoints import router as async_router
+
 app = FastAPI(title="Dロジック競馬予想AI", version="2.0.0")
 
 # CORS設定（環境変数で動的に設定可能）
@@ -186,6 +189,9 @@ app.include_router(batch_dlogic_router, tags=["Batch D-Logic Analysis"])
 app.include_router(race_analysis_v2_router, prefix="/api/race-analysis-v2", tags=["Race Analysis V2"])
 app.include_router(jockey_data_router, prefix="/api", tags=["Jockey Data"])
 app.include_router(archive_races_router, tags=["Archive Races"])
+
+# 非同期処理とキャッシュ管理
+app.include_router(async_router, prefix="/api", tags=["Async Processing"])
 
 # Logic Chat V2の新しいルーターを追加（既存システムに影響なし）
 from api.v2 import logic_chat, imlogic_settings, logic_chat_test

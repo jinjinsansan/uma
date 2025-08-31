@@ -2,12 +2,25 @@
 """
 キャッシュサービス
 OpenAI APIとD-Logic分析結果をキャッシュして負荷軽減
+Redis統合版 - Redisが利用可能な場合は優先的に使用
 """
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 import hashlib
 import json
 from functools import lru_cache
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Redisキャッシュをインポート（利用可能な場合）
+try:
+    from services.redis_cache import get_redis_cache, RedisCache
+    REDIS_AVAILABLE = True
+    logger.info("Redis cache module loaded successfully")
+except ImportError:
+    REDIS_AVAILABLE = False
+    logger.warning("Redis cache not available, using memory cache only")
 
 class CacheService:
     """メモリベースのキャッシュサービス"""
@@ -16,6 +29,20 @@ class CacheService:
         self.cache: Dict[str, Dict[str, Any]] = {}
         self.hit_count = 0
         self.miss_count = 0
+        
+        # Redisクライアントを初期化（利用可能な場合）
+        self.redis_cache: Optional[RedisCache] = None
+        if REDIS_AVAILABLE:
+            try:
+                self.redis_cache = get_redis_cache()
+                if self.redis_cache.is_connected():
+                    logger.info("Redis cache connected successfully")
+                else:
+                    logger.warning("Redis cache not connected, using memory cache")
+                    self.redis_cache = None
+            except Exception as e:
+                logger.error(f"Failed to initialize Redis cache: {e}")
+                self.redis_cache = None
         
         # TTL設定（用途別）
         self.ttl_settings = {
@@ -42,9 +69,22 @@ class CacheService:
         return f"{prefix}:{hash_obj.hexdigest()}"
     
     def get(self, prefix: str, data: Any) -> Optional[Any]:
-        """キャッシュから取得"""
+        """キャッシュから取得（Redis優先）"""
         key = self._generate_key(prefix, data)
         
+        # Redisから取得を試みる
+        if self.redis_cache and self.redis_cache.is_connected():
+            try:
+                redis_key = f"dlogic:{key}"
+                value = self.redis_cache.get(redis_key)
+                if value is not None:
+                    self.hit_count += 1
+                    logger.debug(f"Redis cache hit for {redis_key}")
+                    return value
+            except Exception as e:
+                logger.warning(f"Redis get failed: {e}, falling back to memory cache")
+        
+        # メモリキャッシュから取得
         if key in self.cache:
             entry = self.cache[key]
             # 有効期限チェック
@@ -60,12 +100,24 @@ class CacheService:
         return None
     
     def set(self, prefix: str, data: Any, value: Any, ttl_override: Optional[timedelta] = None) -> None:
-        """キャッシュに保存"""
+        """キャッシュに保存（Redis優先）"""
         key = self._generate_key(prefix, data)
         
         # TTL決定
         ttl = ttl_override or self.ttl_settings.get(prefix, timedelta(hours=24))
         
+        # Redisに保存を試みる
+        if self.redis_cache and self.redis_cache.is_connected():
+            try:
+                redis_key = f"dlogic:{key}"
+                ttl_seconds = int(ttl.total_seconds())
+                success = self.redis_cache.set(redis_key, value, ttl=ttl_seconds)
+                if success:
+                    logger.debug(f"Saved to Redis cache: {redis_key}")
+            except Exception as e:
+                logger.warning(f"Redis set failed: {e}, saving to memory cache")
+        
+        # メモリキャッシュにも保存（フォールバック）
         self.cache[key] = {
             'value': value,
             'created_at': datetime.now(),

@@ -37,7 +37,7 @@ class V2AIHandler:
             'viewlogic_trend': ['傾向', 'トレンド', '統計', 'データ', '過去', 'コース傾向', '騎手成績', '血統', '枠順'],
             'viewlogic_recommendation': ['推奨', 'おすすめ', '買い目', '馬券', '予想'],
             'viewlogic_flow': ['展開', 'ペース', '逃げ', '先行', '差し', '追込', '脚質', 'ハイペース', 'スローペース', '流れ'],
-            'viewlogic_history': ['過去データ', '直近', '前走', '戦績', '成績', '最近のレース', '過去のレース'],  # 新規追加
+            'viewlogic_history': ['過去データ', '直近', '前走', '戦績', '成績', '最近のレース', '過去のレース', '５走', '5走', '使い方'],  # 新規追加
             'dlogic': ['d-logic', 'ディーロジック', 'D-Logic', 'Dロジック', '指数', 'スコア', '12項目', '評価点'],
             'ilogic': ['i-logic', 'ilogic', 'アイロジック', 'I-Logic', 'Iロジック', '騎手', '総合', 'レースアナリシス', 'アナリシス']
         }
@@ -499,6 +499,10 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
 """, None)
             
             elif sub_type == 'history':
+                # 使い方案内の判定
+                if '使い方' in message or 'ViewLogic５走の使い方' in message:
+                    return self._get_viewlogic_5race_guide(race_data), None
+                
                 # 過去データ表示（新機能）
                 # メッセージから馬名または騎手名を抽出
                 horses = race_data.get('horses', [])
@@ -1936,4 +1940,39 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             lines.append(f"　{jockey_name}騎手のデータが存在しないか、")
             lines.append("　データベースから取得できませんでした。")
         
-        return "\n".join(lines)
+        return "
+".join(lines)
+    
+    def _get_viewlogic_5race_guide(self, race_data: Dict[str, Any]) -> str:
+        """ViewLogic５走の使い方案内メッセージ"""
+        venue = race_data.get('venue', '')
+        race_number = race_data.get('race_number', '')
+        
+        lines = []
+        lines.append("🏇 **ViewLogic５走の使い方**")
+        lines.append("")
+        lines.append(f"**{venue}{race_number}R**に出走する**馬名**または**騎手名**を1つだけ入力してください。")
+        lines.append("")
+        lines.append("📊 **出力データ**")
+        lines.append("• ナレッジデータベースから**直近5走**の詳細データを表示")
+        lines.append("• レース結果、着順、タイム、条件等の履歴情報")
+        lines.append("• 成績分析（勝率、複勝率、平均着順）")
+        lines.append("")
+        lines.append("💡 **入力例**")
+        lines.append("• 馬名のみ：「ドウデュース」")
+        lines.append("• 騎手名のみ：「武豊」")
+        lines.append("• フルネーム：「北村友一の過去5走」")
+        lines.append("")
+        lines.append("⚠️ **注意事項**")
+        lines.append("• **1回の入力で1つの対象のみ**分析可能")
+        lines.append("• 複数の馬名や騎手名を同時に入力すると反応しません")
+        lines.append("• このレースに出走しない馬・騎手は分析できません")
+        lines.append("")
+        lines.append("🔄 **データ更新**")
+        lines.append("• ナレッジデータベースは**毎月第一月曜日**に更新")
+        lines.append("• 最新の競走結果が反映されています")
+        lines.append("")
+        lines.append("✨ さっそく馬名または騎手名を1つ入力して試してみてください！")
+        
+        return "
+".join(lines)

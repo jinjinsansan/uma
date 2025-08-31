@@ -1940,8 +1940,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             lines.append(f"　{jockey_name}騎手のデータが存在しないか、")
             lines.append("　データベースから取得できませんでした。")
         
-        return "
-".join(lines)
+        return "\n".join(lines)
     
     def _get_viewlogic_5race_guide(self, race_data: Dict[str, Any]) -> str:
         """ViewLogic５走の使い方案内メッセージ"""
@@ -1974,5 +1973,4 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         lines.append("")
         lines.append("✨ さっそく馬名または騎手名を1つ入力して試してみてください！")
         
-        return "
-".join(lines)
+        return "\n".join(lines)

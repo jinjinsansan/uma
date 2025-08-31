@@ -67,6 +67,10 @@ class V2AIHandler:
         if '馬' in message and '騎手' in message and ('％' in message or '%' in message or '分析' in message):
             return ('imlogic', 'analysis')
         
+        # ViewLogic５走の使い方案内（最優先）
+        if '使い方' in message and ('ViewLogic' in message or 'viewlogic' in message_lower or '５走' in message or '5走' in message):
+            return ('viewlogic', 'history')
+        
         # ViewLogic過去データ（馬名・騎手名が含まれる場合を優先）
         # レースデータから馬名と騎手名を取得して判定に使用
         if hasattr(self, 'current_race_data'):

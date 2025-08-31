@@ -2837,6 +2837,23 @@ class ViewLogicEngine:
         return self._get_track_condition(code)
     
     def _normalize_jockey_name(self, jockey_name: str) -> str:
+        """騎手名を正規化する"""
+        # 「騎手」を削除してスペースをトリム
+        normalized = jockey_name.replace('騎手', '').strip()
+        
+        # 静的マッピング（表記ゆれ対応）
+        static_mapping = {
+            'ルメール': 'Ｃ．ルメール',
+            'C.ルメール': 'Ｃ．ルメール',
+            'デムーロ': 'Ｍ．デムーロ',
+            'M.デムーロ': 'Ｍ．デムーロ'
+        }
+        
+        if normalized in static_mapping:
+            return static_mapping[normalized]
+        
+        return normalized
+    
     def _get_venue_name(self, code: str) -> str:
         """競馬場コードから名称を取得"""
         venue_map = {

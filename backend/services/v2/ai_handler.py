@@ -519,23 +519,36 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                             target_jockey = jockey
                             break
                 
+                # プログレスバー表示用のメッセージを最初に返す
+                if target_horse:
+                    progress_message = f"ViewLogic過去データを取得中...\n{target_horse}の履歴を検索しています..."
+                elif target_jockey:
+                    progress_message = f"ViewLogic過去データを取得中...\n{target_jockey}騎手の履歴を検索しています..."
+                else:
+                    return ("分析対象の馬名または騎手名が見つかりませんでした。", None)
+                
+                # 実際のデータ取得処理
                 if target_horse:
                     # 馬の過去データ取得
                     result = viewlogic_engine.get_horse_history(target_horse)
                     if result['status'] == 'success':
                         content = self._format_horse_history(result, target_horse)
-                        return (content, result)
+                        # プログレスメッセージと実際のコンテンツを結合
+                        full_content = f"{progress_message}\n\n{content}"
+                        return (full_content, result)
                     else:
-                        return (f"{target_horse}の過去データが見つかりませんでした。", None)
+                        return (f"{progress_message}\n\n{target_horse}の過去データが見つかりませんでした。", None)
                 
                 elif target_jockey:
                     # 騎手の過去データ取得
                     result = viewlogic_engine.get_jockey_history(target_jockey)
                     if result['status'] == 'success':
                         content = self._format_jockey_history(result, target_jockey)
-                        return (content, result)
+                        # プログレスメッセージと実際のコンテンツを結合
+                        full_content = f"{progress_message}\n\n{content}"
+                        return (full_content, result)
                     else:
-                        return (f"{target_jockey}騎手の過去データが見つかりませんでした。", None)
+                        return (f"{progress_message}\n\n{target_jockey}騎手の過去データが見つかりませんでした。", None)
                 
                 else:
                     # 馬名も騎手名も見つからない場合

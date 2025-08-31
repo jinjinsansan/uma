@@ -38,7 +38,32 @@ class RedisCache:
             decode_responses: 文字列として返すか
             connection_pool_kwargs: 接続プールの追加設定
         """
-        # 環境変数から設定を取得
+        # REDIS_URL環境変数があれば優先的に使用
+        redis_url = os.getenv('REDIS_URL')
+        if redis_url:
+            # URLから接続
+            try:
+                self.client = redis.from_url(
+                    redis_url,
+                    decode_responses=decode_responses,
+                    max_connections=50,
+                    socket_keepalive=True,
+                    socket_keepalive_options={
+                        1: 1,  # TCP_KEEPIDLE
+                        2: 1,  # TCP_KEEPINTVL
+                        3: 5,  # TCP_KEEPCNT
+                    }
+                )
+                # 接続テスト
+                self.client.ping()
+                logger.info(f"Connected to Redis via URL: {redis_url.split('@')[1] if '@' in redis_url else redis_url}")
+                return
+            except Exception as e:
+                logger.error(f"Failed to connect via REDIS_URL: {e}")
+                self.client = None
+                return
+        
+        # 個別パラメータから設定を取得
         self.host = host or os.getenv('REDIS_HOST', 'localhost')
         self.port = port or int(os.getenv('REDIS_PORT', '6379'))
         self.password = password or os.getenv('REDIS_PASSWORD')

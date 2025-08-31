@@ -565,10 +565,17 @@ async def complete_referral(request: Request):
             raise HTTPException(status_code=400, detail="user_email is required")
         
         # ブロックされたユーザーのチェック（referral_count = -9999）
-        blocked_check = supabase.table('users').select('referral_count').eq('email', user_email).execute()
-        if blocked_check.data and blocked_check.data[0].get('referral_count') == -9999:
-            logger.warning(f"Blocked user attempted API access: {user_email}")
-            return {"status": "blocked", "message": "Account suspended due to abnormal activity"}
+        # Supabaseクライアントを初期化
+        from supabase import create_client, Client
+        supabase_url = os.getenv('SUPABASE_URL')
+        supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+        
+        if supabase_url and supabase_key:
+            supabase: Client = create_client(supabase_url, supabase_key)
+            blocked_check = supabase.table('users').select('referral_count').eq('email', user_email).execute()
+            if blocked_check.data and blocked_check.data[0].get('referral_count') == -9999:
+                logger.warning(f"Blocked user attempted API access: {user_email}")
+                return {"status": "blocked", "message": "Account suspended due to abnormal activity"}
         
         # レート制限チェック（1分間に3回まで）
         now = time.time()

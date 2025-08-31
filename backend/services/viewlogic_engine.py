@@ -2841,16 +2841,22 @@ class ViewLogicEngine:
         # 「騎手」を削除してスペースをトリム
         normalized = jockey_name.replace('騎手', '').strip()
         
-        # 静的マッピング（表記ゆれ対応）
-        static_mapping = {
-            'ルメール': 'Ｃ．ルメール',
+        # jockey_name_mapper を使用して3文字騎手名を正規化
+        from services.jockey_name_mapper import normalize_jockey_name
+        normalized = normalize_jockey_name(normalized)
+        
+        # 外国人騎手の特殊対応（騎手ナレッジファイルの形式に合わせる）
+        special_mapping = {
+            'Ｃ．ルメール': 'Ｃ．ルメール',
             'C.ルメール': 'Ｃ．ルメール',
-            'デムーロ': 'Ｍ．デムーロ',
-            'M.デムーロ': 'Ｍ．デムーロ'
+            'ルメール': 'Ｃ．ルメール',
+            'Ｍ．デムーロ': 'Ｍ．デムーロ',
+            'M.デムーロ': 'Ｍ．デムーロ',
+            'デムーロ': 'Ｍ．デムーロ'
         }
         
-        if normalized in static_mapping:
-            return static_mapping[normalized]
+        if normalized in special_mapping:
+            return special_mapping[normalized]
         
         return normalized
     

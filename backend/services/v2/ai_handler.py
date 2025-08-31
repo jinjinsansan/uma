@@ -1206,7 +1206,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
     
     def _format_betting_recommendations(self, result: Dict[str, Any]) -> str:
         """
-        ViewLogic馬券推奨結果をフォーマット
+        ViewLogic馬券推奨結果をフォーマット（展開予想ベース）
         """
         try:
             lines = []
@@ -1215,56 +1215,94 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             
             venue = result.get('venue', '不明')
             total_horses = result.get('total_horses', 0)
+            top_5_horses = result.get('top_5_horses', [])
             recommendations = result.get('recommendations', [])
             
             lines.append(f"**開催場**: {venue}")
             lines.append(f"**出走頭数**: {total_horses}頭")
+            
+            # 展開予想の上位5頭を表示
+            if top_5_horses:
+                lines.append("")
+                lines.append("**🏇 ViewLogic展開予想 上位5頭**:")
+                for i, horse in enumerate(top_5_horses[:5], 1):
+                    lines.append(f"  {i}. {horse}")
+            
             lines.append("")
             
             if not recommendations:
                 lines.append("⚠️ 推奨馬券を生成できませんでした。")
                 return "\n".join(lines)
             
-            lines.append("### 推奨馬券")
+            lines.append("### 📋 推奨馬券")
+            lines.append("")
             
-            for i, rec in enumerate(recommendations, 1):
+            for rec in recommendations:
                 rec_type = rec.get('type', '不明')
                 ticket_type = rec.get('ticket_type', '馬券')
                 horses = rec.get('horses', [])
                 confidence = rec.get('confidence', 0)
                 investment = rec.get('investment', 0)
                 reason = rec.get('reason', '')
+                buy_type = rec.get('buy_type', '')
+                combinations = rec.get('combinations', 0)
                 
                 # 推奨馬券のアイコン
-                if rec_type == '本命':
-                    icon = '🎯'
-                elif rec_type == '対抗':
-                    icon = '💪'
-                elif rec_type == '穴狙い':
-                    icon = '⚡'
-                else:
-                    icon = '🎪'
+                icon_map = {
+                    '単勝': '🥇',
+                    '馬連BOX': '📦',
+                    '3連単流し': '🎯',
+                    'ワイド': '🌟',
+                    '3連複BOX': '💰'
+                }
+                icon = icon_map.get(rec_type, '🎪')
                 
-                lines.append(f"{icon} **{rec_type}** (信頼度: {confidence}%)")
-                lines.append(f"   {ticket_type}: {' × '.join(horses)}")
-                lines.append(f"   投資額: {investment:,}円")
+                lines.append(f"{icon} **{rec_type}**")
+                
+                # 馬名の表示（複雑な形式に対応）
+                if isinstance(horses, dict):
+                    # 流し買いの場合（3連単など）
+                    if '1着' in horses:
+                        lines.append(f"  【{ticket_type}】")
+                        lines.append(f"   1着: {', '.join(horses['1着'])}")
+                        lines.append(f"   2着: {', '.join(horses['2着'])}")  
+                        lines.append(f"   3着: {', '.join(horses['3着'])}")
+                    elif '軸' in horses:
+                        # ワイドの場合
+                        lines.append(f"  【{ticket_type}】 {horses['軸']} 軸")
+                        lines.append(f"   相手: {', '.join(horses['相手'])}")
+                elif isinstance(horses, list):
+                    # 通常のBOX買いまたは単勝
+                    if buy_type == 'BOX':
+                        lines.append(f"  【{ticket_type}BOX】 {' - '.join(horses)}")
+                    else:
+                        lines.append(f"  【{ticket_type}】 {' → '.join(horses)}")
+                
+                # 買い方詳細
+                if buy_type and combinations > 0:
+                    lines.append(f"   買い方: {buy_type} ({combinations}点買い)")
+                
+                lines.append(f"   💰 投資額: **{investment:,}円**")
+                lines.append(f"   📊 信頼度: {confidence}%")
                 if reason:
-                    lines.append(f"   理由: {reason}")
+                    lines.append(f"   💭 {reason}")
                 lines.append("")
             
             # 総投資額
             total_investment = sum(rec.get('investment', 0) for rec in recommendations)
-            lines.append(f"**総投資額**: {total_investment:,}円")
+            lines.append("---")
+            lines.append(f"💵 **総投資額**: {total_investment:,}円")
             
             lines.append("")
-            lines.append("---")
-            lines.append("※ ViewLogicナレッジファイルと騎手データを基にした推奨馬券です")
+            lines.append("※ ViewLogic展開予想の上位馬を基にした推奨馬券です")
             lines.append("※ 投資は自己責任でお願いします")
             
             return "\n".join(lines)
             
         except Exception as e:
             logger.error(f"馬券推奨フォーマットエラー: {e}")
+            import traceback
+            traceback.print_exc()
             return "馬券推奨結果の表示中にエラーが発生しました。"
     
     def _format_dlogic_batch_result(self, dlogic_result: Dict[str, Any], race_data: Dict[str, Any]) -> str:
@@ -1447,7 +1485,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
     
     def _format_betting_recommendations(self, result: Dict[str, Any]) -> str:
         """
-        ViewLogic馬券推奨結果をフォーマット
+        ViewLogic馬券推奨結果をフォーマット（展開予想ベース）
         """
         try:
             lines = []
@@ -1456,54 +1494,92 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             
             venue = result.get('venue', '不明')
             total_horses = result.get('total_horses', 0)
+            top_5_horses = result.get('top_5_horses', [])
             recommendations = result.get('recommendations', [])
             
             lines.append(f"**開催場**: {venue}")
             lines.append(f"**出走頭数**: {total_horses}頭")
+            
+            # 展開予想の上位5頭を表示
+            if top_5_horses:
+                lines.append("")
+                lines.append("**🏇 ViewLogic展開予想 上位5頭**:")
+                for i, horse in enumerate(top_5_horses[:5], 1):
+                    lines.append(f"  {i}. {horse}")
+            
             lines.append("")
             
             if not recommendations:
                 lines.append("⚠️ 推奨馬券を生成できませんでした。")
                 return "\n".join(lines)
             
-            lines.append("### 推奨馬券")
+            lines.append("### 📋 推奨馬券")
+            lines.append("")
             
-            for i, rec in enumerate(recommendations, 1):
+            for rec in recommendations:
                 rec_type = rec.get('type', '不明')
                 ticket_type = rec.get('ticket_type', '馬券')
                 horses = rec.get('horses', [])
                 confidence = rec.get('confidence', 0)
                 investment = rec.get('investment', 0)
                 reason = rec.get('reason', '')
+                buy_type = rec.get('buy_type', '')
+                combinations = rec.get('combinations', 0)
                 
                 # 推奨馬券のアイコン
-                if rec_type == '本命':
-                    icon = '🎯'
-                elif rec_type == '対抗':
-                    icon = '💪'
-                elif rec_type == '穴狙い':
-                    icon = '⚡'
-                else:
-                    icon = '🎪'
+                icon_map = {
+                    '単勝': '🥇',
+                    '馬連BOX': '📦',
+                    '3連単流し': '🎯',
+                    'ワイド': '🌟',
+                    '3連複BOX': '💰'
+                }
+                icon = icon_map.get(rec_type, '🎪')
                 
-                lines.append(f"{icon} **{rec_type}** (信頼度: {confidence}%)")
-                lines.append(f"   {ticket_type}: {' × '.join(horses)}")
-                lines.append(f"   投資額: {investment:,}円")
+                lines.append(f"{icon} **{rec_type}**")
+                
+                # 馬名の表示（複雑な形式に対応）
+                if isinstance(horses, dict):
+                    # 流し買いの場合（3連単など）
+                    if '1着' in horses:
+                        lines.append(f"  【{ticket_type}】")
+                        lines.append(f"   1着: {', '.join(horses['1着'])}")
+                        lines.append(f"   2着: {', '.join(horses['2着'])}")  
+                        lines.append(f"   3着: {', '.join(horses['3着'])}")
+                    elif '軸' in horses:
+                        # ワイドの場合
+                        lines.append(f"  【{ticket_type}】 {horses['軸']} 軸")
+                        lines.append(f"   相手: {', '.join(horses['相手'])}")
+                elif isinstance(horses, list):
+                    # 通常のBOX買いまたは単勝
+                    if buy_type == 'BOX':
+                        lines.append(f"  【{ticket_type}BOX】 {' - '.join(horses)}")
+                    else:
+                        lines.append(f"  【{ticket_type}】 {' → '.join(horses)}")
+                
+                # 買い方詳細
+                if buy_type and combinations > 0:
+                    lines.append(f"   買い方: {buy_type} ({combinations}点買い)")
+                
+                lines.append(f"   💰 投資額: **{investment:,}円**")
+                lines.append(f"   📊 信頼度: {confidence}%")
                 if reason:
-                    lines.append(f"   理由: {reason}")
+                    lines.append(f"   💭 {reason}")
                 lines.append("")
             
             # 総投資額
             total_investment = sum(rec.get('investment', 0) for rec in recommendations)
-            lines.append(f"**総投資額**: {total_investment:,}円")
+            lines.append("---")
+            lines.append(f"💵 **総投資額**: {total_investment:,}円")
             
             lines.append("")
-            lines.append("---")
-            lines.append("※ ViewLogicナレッジファイルと騎手データを基にした推奨馬券です")
+            lines.append("※ ViewLogic展開予想の上位馬を基にした推奨馬券です")
             lines.append("※ 投資は自己責任でお願いします")
             
             return "\n".join(lines)
             
         except Exception as e:
             logger.error(f"馬券推奨フォーマットエラー: {e}")
+            import traceback
+            traceback.print_exc()
             return "馬券推奨結果の表示中にエラーが発生しました。"

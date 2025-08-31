@@ -1141,7 +1141,7 @@ class ViewLogicEngine:
     
     def recommend_betting_tickets(self, race_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        馬券推奨機能 - ViewLogicデータを基に推奨馬券を生成
+        馬券推奨機能 - ViewLogic展開予想の上位5頭を基に推奨馬券を生成
         
         Args:
             race_data: レース情報（出走馬、騎手、枠番など）
@@ -1163,14 +1163,44 @@ class ViewLogicEngine:
                     'message': '推奨馬券の生成には最低3頭の出走馬が必要です。'
                 }
             
-            # ViewLogicの既存データを活用して馬券推奨を生成
-            recommendations = self._generate_betting_recommendations(race_data)
+            # まずViewLogic展開予想を実行して上位5頭を取得
+            flow_result = self.predict_race_flow_advanced(race_data)
+            
+            # 展開予想の上位5頭を取得
+            top_5_horses = []
+            if flow_result and 'prediction' in flow_result:
+                prediction_result = flow_result['prediction']
+                if 'predicted_result' in prediction_result:
+                    # 上位5頭を抽出
+                    for rank_info in prediction_result['predicted_result']:
+                        if '位' in rank_info:
+                            # "1位: 馬名 (確率%)" 形式から馬名を抽出
+                            parts = rank_info.split(':')
+                            if len(parts) >= 2:
+                                horse_part = parts[1].strip()
+                                # 括弧の前までが馬名
+                                horse_name = horse_part.split('(')[0].strip()
+                                if horse_name in horses:
+                                    top_5_horses.append(horse_name)
+                                    if len(top_5_horses) >= 5:
+                                        break
+            
+            # 上位馬が取得できない場合は従来の方法にフォールバック
+            if len(top_5_horses) < 3:
+                logger.warning("展開予想から十分な上位馬を取得できませんでした。従来の方法にフォールバック")
+                recommendations = self._generate_betting_recommendations(race_data)
+            else:
+                # 展開予想の上位5頭から具体的な買い目を生成
+                recommendations = self._generate_betting_recommendations_from_top5(
+                    top_5_horses, race_data, flow_result
+                )
             
             return {
                 'status': 'success',
                 'type': 'betting_recommendation',
                 'venue': venue,
                 'total_horses': len(horses),
+                'top_5_horses': top_5_horses[:5],  # 上位5頭を含める
                 'recommendations': recommendations,
                 'last_updated': datetime.now().isoformat()
             }
@@ -1838,6 +1868,131 @@ class ViewLogicEngine:
             return fukusho_rate > 40  # 40%以上を好調とみなす
         
         return False
+    
+    def _generate_betting_recommendations_from_top5(
+        self, 
+        top_5_horses: List[str], 
+        race_data: Dict[str, Any],
+        flow_result: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """
+        展開予想の上位5頭から実践的な馬券買い目を生成
+        
+        Args:
+            top_5_horses: 展開予想の上位5頭
+            race_data: レース情報
+            flow_result: 展開予想結果
+        
+        Returns:
+            推奨馬券リスト
+        """
+        try:
+            recommendations = []
+            budget = 10000  # デフォルト予算1万円
+            
+            # 最低3頭は必要
+            if len(top_5_horses) < 3:
+                return []
+            
+            # 1. 単勝（1位の馬）
+            if len(top_5_horses) >= 1:
+                recommendations.append({
+                    'type': '単勝',
+                    'ticket_type': '単勝',
+                    'horses': [top_5_horses[0]],
+                    'confidence': 75,
+                    'investment': int(budget * 0.2),  # 20%
+                    'reason': f'ViewLogic展開予想1位の{top_5_horses[0]}',
+                    'buy_type': 'ストレート'
+                })
+            
+            # 2. 馬連BOX（上位3頭）
+            if len(top_5_horses) >= 3:
+                box_horses = top_5_horses[:3]
+                recommendations.append({
+                    'type': '馬連BOX',
+                    'ticket_type': '馬連',
+                    'horses': box_horses,
+                    'confidence': 65,
+                    'investment': int(budget * 0.25),  # 25%
+                    'reason': f'上位3頭（{", ".join(box_horses)}）のBOX買い',
+                    'buy_type': 'BOX',
+                    'combinations': 3  # 3頭BOXは3通り
+                })
+            
+            # 3. 3連単1着流し（1位軸、2-3位から2着、4-5位から3着）
+            if len(top_5_horses) >= 4:
+                first = top_5_horses[0]
+                second_candidates = top_5_horses[1:3]  # 2-3位
+                third_candidates = top_5_horses[2:min(5, len(top_5_horses))]  # 3-5位
+                
+                recommendations.append({
+                    'type': '3連単流し',
+                    'ticket_type': '3連単',
+                    'horses': {
+                        '1着': [first],
+                        '2着': second_candidates,
+                        '3着': third_candidates
+                    },
+                    'confidence': 45,
+                    'investment': int(budget * 0.25),  # 25%
+                    'reason': f'{first}の1着固定、2-3着流し',
+                    'buy_type': '流し',
+                    'combinations': len(second_candidates) * len(third_candidates)
+                })
+            
+            # 4. ワイド（1位と2-3位の組み合わせ）
+            if len(top_5_horses) >= 3:
+                axis = top_5_horses[0]
+                partners = top_5_horses[1:3]
+                recommendations.append({
+                    'type': 'ワイド',
+                    'ticket_type': 'ワイド',
+                    'horses': {
+                        '軸': axis,
+                        '相手': partners
+                    },
+                    'confidence': 80,
+                    'investment': int(budget * 0.15),  # 15%
+                    'reason': f'{axis}軸のワイド、確実性重視',
+                    'buy_type': '軸流し',
+                    'combinations': len(partners)
+                })
+            
+            # 5. 3連複（上位4頭BOX）- 穴狙い
+            if len(top_5_horses) >= 4:
+                box_horses = top_5_horses[:4]
+                recommendations.append({
+                    'type': '3連複BOX',
+                    'ticket_type': '3連複',
+                    'horses': box_horses,
+                    'confidence': 55,
+                    'investment': int(budget * 0.15),  # 15%
+                    'reason': f'上位4頭のBOX、配当狙い',
+                    'buy_type': 'BOX',
+                    'combinations': 4  # 4頭から3頭選ぶ組み合わせ
+                })
+            
+            # ペース判定を追加情報として付与
+            pace_info = ""
+            if flow_result and 'pace' in flow_result:
+                pace_data = flow_result['pace']
+                if 'predicted_pace' in pace_data:
+                    pace_info = f"（予想ペース: {pace_data['predicted_pace']}）"
+            
+            # 各推奨にペース情報を追加
+            for rec in recommendations:
+                if pace_info and '理由' in rec:
+                    rec['reason'] += pace_info
+            
+            return recommendations
+            
+        except Exception as e:
+            logger.error(f"展開予想ベースの馬券生成エラー: {e}")
+            import traceback
+            traceback.print_exc()
+            # エラー時は従来の方法にフォールバック
+            return self._generate_betting_recommendations(race_data)
 
     # =====================================
     # ViewLogic傾向分析：4項目分析メソッド群

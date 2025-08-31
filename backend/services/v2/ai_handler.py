@@ -795,7 +795,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                                     display_rate = fukusho_rate * 100
                                 # 100%を上限とする
                                 display_rate = min(display_rate, 100.0)
-                                lines.append(f"{jockey_count}. **{jockey_name}**（{assigned_post}枠）: {race_count}戦 複勝率{display_rate:.1f}%")
+                                # レース数は表示せず、複勝率のみを表示
+                                lines.append(f"{jockey_count}. **{jockey_name}**（{assigned_post}枠）: 複勝率{display_rate:.1f}%")
                             else:
                                 jockey_count += 1
                                 lines.append(f"{jockey_count}. **{jockey_name}**（{assigned_post}枠）: データなし")
@@ -828,7 +829,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                                     display_avg = avg_fukusho * 100
                                 # 100%を上限とする
                                 display_avg = min(display_avg, 100.0)
-                                lines.append(f"{jockey_count}. **{jockey_name}**: 全体{total_races}戦 複勝率{display_avg:.1f}%")
+                                lines.append(f"{jockey_count}. **{jockey_name}**: 複勝率{display_avg:.1f}%")
                             else:
                                 jockey_count += 1
                                 lines.append(f"{jockey_count}. **{jockey_name}**: データなし")

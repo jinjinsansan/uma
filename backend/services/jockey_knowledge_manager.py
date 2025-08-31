@@ -175,6 +175,7 @@ class JockeyKnowledgeManager:
                             aggregated[category]['fukusho_rate'] = (
                                 (prev_rate * prev_count + fukusho_rate * race_count) / total_count
                             )
+                            # 実際の総レース数を保存（騎手ナレッジの実データに基づく）
                             aggregated[category]['race_count'] = total_count
                     except (ValueError, AttributeError, TypeError) as e:
                         logger.warning(f"騎手 {jockey_name} の枠順データ処理エラー: {e}, waku_str={waku_str}, stats={stats}")

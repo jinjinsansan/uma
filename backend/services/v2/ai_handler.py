@@ -1761,19 +1761,73 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 race_date = race.get("開催日", "不明")
                 venue = race.get("競馬場", "不明")
                 distance = race.get("距離", "不明")
-                track = race.get("馬場", "良")
+                track = race.get("馬場", "")
+                
+                # 日付フォーマットの改善（例: 2025/0608 → 2025/06/08）
+                if race_date != "不明" and len(race_date) == 9 and "/" in race_date:
+                    parts = race_date.split("/")
+                    if len(parts) == 2 and len(parts[1]) == 4:
+                        year = parts[0]
+                        month = parts[1][:2]
+                        day = parts[1][2:]
+                        race_date = f"{year}/{month}/{day}"
                 
                 lines.append(f"**{i}. {race_date} {venue}**")
-                lines.append(f"　距離: {distance} / 馬場: {track}")
+                
+                # 距離と馬場（馬場が空の場合は「-」を表示）
+                track_display = track if track else "-"
+                lines.append(f"　📏 距離: {distance} / 馬場: {track_display}")
                 
                 # 成績情報
-                chakujun = race.get("着順", "-")
-                time_result = race.get("タイム", "-")
-                agari = race.get("上り", "-")
-                popularity = race.get("人気", "-")
+                chakujun = race.get("着順", "")
+                if chakujun and str(chakujun) != "":
+                    # 1-3着は強調表示
+                    if str(chakujun) in ["1", "2", "3"]:
+                        chakujun_display = f"**🏆 {chakujun}着**"
+                    else:
+                        chakujun_display = f"{chakujun}着"
+                else:
+                    chakujun_display = "-"
                 
-                lines.append(f"　着順: **{chakujun}着** / 人気: {popularity}")
-                lines.append(f"　タイム: {time_result} / 上り: {agari}")
+                popularity = race.get("人気", "")
+                if popularity and str(popularity) != "":
+                    popularity_display = f"{popularity}番人気"
+                else:
+                    popularity_display = "-"
+                
+                lines.append(f"　📊 着順: {chakujun_display} / 人気: {popularity_display}")
+                
+                # タイムと上り
+                time_result = race.get("タイム", "")
+                agari = race.get("上り", "")
+                
+                # タイムの表示改善
+                time_display = time_result if time_result else "-"
+                
+                # 上りの表示改善（例: 343.0 → 34.3）
+                agari_display = "-"
+                if agari and str(agari) != "":
+                    try:
+                        agari_float = float(agari)
+                        if agari_float > 100:  # 343.0のような形式の場合
+                            agari_display = f"{agari_float/10:.1f}秒"
+                        else:
+                            agari_display = f"{agari_float:.1f}秒"
+                    except:
+                        agari_display = str(agari) if agari else "-"
+                
+                lines.append(f"　⏱ タイム: {time_display} / 上り: {agari_display}")
+                
+                # レース名があれば追加
+                race_name = race.get("レース名", "")
+                if race_name:
+                    lines.append(f"　📋 {race_name}")
+                
+                # 騎手名があれば追加  
+                jockey = race.get("騎手", "")
+                if jockey:
+                    lines.append(f"　🏇 騎手: {jockey}")
+                
                 lines.append("")
             
             # 統計情報
@@ -1782,15 +1836,23 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 lines.append("📈 **戦績サマリー**")
                 lines.append(f"　総戦数: {total_races}戦")
                 
-                # 着順分析
-                win_count = sum(1 for r in races if r.get("着順") == "1")
-                place_count = sum(1 for r in races if r.get("着順") in ["1", "2", "3"])
+                # 着順分析（文字列としての比較に対応）
+                win_count = sum(1 for r in races if str(r.get("着順", "")) == "1")
+                place_count = sum(1 for r in races if str(r.get("着順", "")) in ["1", "2", "3"])
                 
-                if len(races) > 0:
-                    win_rate = (win_count / len(races)) * 100
-                    place_rate = (place_count / len(races)) * 100
-                    lines.append(f"　勝率: {win_rate:.1f}% ({win_count}/{len(races)})")
-                    lines.append(f"　複勝率: {place_rate:.1f}% ({place_count}/{len(races)})")
+                # 着順データがある場合のみ勝率・複勝率を計算
+                valid_races = [r for r in races if r.get("着順") and str(r.get("着順", "")).isdigit()]
+                if valid_races:
+                    win_rate = (win_count / len(valid_races)) * 100
+                    place_rate = (place_count / len(valid_races)) * 100
+                    lines.append(f"　🥇 勝率: {win_rate:.1f}% ({win_count}/{len(valid_races)})")
+                    lines.append(f"　🏅 複勝率: {place_rate:.1f}% ({place_count}/{len(valid_races)})")
+                    
+                    # 平均着順
+                    avg_position = sum(int(r.get("着順")) for r in valid_races) / len(valid_races)
+                    lines.append(f"　📊 平均着順: {avg_position:.1f}着")
+                else:
+                    lines.append("　※ 着順データが不足しています")
         
         else:
             lines.append("❌ **データが見つかりません**")

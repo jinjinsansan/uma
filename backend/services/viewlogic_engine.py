@@ -561,9 +561,27 @@ class ViewLogicEngine:
             # 直近レースの前半3F・後半3Fを収集
             for race in horse['races'][:5]:  # 直近5レース
                 if race.get('ZENHAN_3F'):
-                    zenhan_times.append(float(race['ZENHAN_3F']) / 10)  # 0.1秒単位から秒に変換
+                    zenhan_value = float(race['ZENHAN_3F'])
+                    # データ形式を判定（100以上なら0.1秒単位、100未満なら秒単位）
+                    if zenhan_value >= 100:
+                        # 0.1秒単位のデータ（例：355.0 = 35.5秒）
+                        zenhan_times.append(zenhan_value / 10)
+                    else:
+                        # 既に秒単位のデータ（例：35.5）
+                        zenhan_times.append(zenhan_value)
+                        
                 if race.get('KOHAN_3F'):
-                    kohan_times.append(float(race['KOHAN_3F']) / 10)
+                    kohan_value = float(race['KOHAN_3F'])
+                    # 999.0は欠損値を示すので除外
+                    if kohan_value == 999.0:
+                        continue
+                    # データ形式を判定
+                    if kohan_value >= 100:
+                        # 0.1秒単位のデータ
+                        kohan_times.append(kohan_value / 10)
+                    else:
+                        # 既に秒単位のデータ
+                        kohan_times.append(kohan_value)
         
         if not zenhan_times:
             return {'pace': 'データ不足', 'confidence': 0, 'zenhan_avg': 0, 'kohan_avg': 0}
@@ -572,14 +590,15 @@ class ViewLogicEngine:
         zenhan_avg = mean(zenhan_times)
         kohan_avg = mean(kohan_times) if kohan_times else 0
         
-        # 計画書通りのペース判定基準
-        if zenhan_avg <= 33.5:
+        # 実際の競馬データに基づくペース判定基準
+        # 前半3Fタイム: 33秒台=超ハイ、34秒台=ハイ、35秒台=平均、36秒台以上=スロー
+        if zenhan_avg <= 33.8:
             pace = "超ハイペース"
             confidence = 95
-        elif zenhan_avg <= 34.0:
+        elif zenhan_avg <= 34.8:
             pace = "ハイペース"
             confidence = 90
-        elif zenhan_avg <= 34.5:
+        elif zenhan_avg <= 35.8:
             pace = "平均ペース"
             confidence = 85
         else:

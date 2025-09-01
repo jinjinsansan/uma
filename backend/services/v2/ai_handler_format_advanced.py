@@ -51,24 +51,46 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
     zenhan_avg = pace_pred.get('zenhan_avg', 0)
     kohan_avg = pace_pred.get('kohan_avg', 0)
     
+    # デバッグログ追加
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"ViewLogic展開予想 - zenhan_avg: {zenhan_avg}, kohan_avg: {kohan_avg}, pace: {pace}")
+    
     lines.append("### ペース予想")
     lines.append("")
     lines.append(f"**予想ペース: {pace}** （確信度: {confidence}%）")
     lines.append("")
     
     # ペースに応じた詳細な解説
-    if 'ハイペース' in pace:
+    # zenhan_avgが異常に小さい場合（データ不足）は別の表現を使用
+    if zenhan_avg < 20:  # 20秒未満は物理的に不可能
+        # データが不足している場合の汎用的な表現
+        if 'ハイペース' in pace:
+            lines.append("序盤から激しい先行争いが予想され、ハイペースの展開となりそうです。")
+        elif 'スローペース' in pace:
+            lines.append("各馬が牽制し合い、スローペースの展開が予想されます。")
+        else:
+            lines.append("平均的なペースで推移すると予想されます。")
+    elif 'ハイペース' in pace:
         lines.append(f"前半3Fの予想平均タイムは{zenhan_avg:.1f}秒と速く、序盤から激しい先行争いが予想されます。")
         lines.append("このようなハイペースでは、前半で脚を使った逃げ・先行馬が最後の直線で失速する可能性が高く、")
         lines.append("中団から後方で脚を溜めた差し・追込馬が有利な展開となりそうです。")
         lines.append(f"後半3Fは{kohan_avg:.1f}秒と予想され、前半のペースの反動で後半の失速が懸念されます。")
     elif 'スローペース' in pace:
-        lines.append(f"前半3Fの予想平均タイムは{zenhan_avg:.1f}秒と遅く、各馬が牽制し合う展開が予想されます。")
-        lines.append("スローペースでは前に行った馬が楽に走れるため、逃げ・先行馬が最後まで粘り込む可能性が高いです。")
-        lines.append(f"後半3Fは{kohan_avg:.1f}秒の瞬発力勝負になりそうですが、前残りの可能性が高い展開です。")
+        if zenhan_avg >= 20:  # 正常な値の場合のみタイムを表示
+            lines.append(f"前半3Fの予想平均タイムは{zenhan_avg:.1f}秒と遅く、各馬が牽制し合う展開が予想されます。")
+            lines.append("スローペースでは前に行った馬が楽に走れるため、逃げ・先行馬が最後まで粘り込む可能性が高いです。")
+            lines.append(f"後半3Fは{kohan_avg:.1f}秒の瞬発力勝負になりそうですが、前残りの可能性が高い展開です。")
+        else:
+            lines.append("各馬が牽制し合うスローペースの展開が予想されます。")
+            lines.append("前に行った馬が楽に走れるため、逃げ・先行馬が最後まで粘り込む可能性が高いです。")
     else:
-        lines.append(f"前半3Fは{zenhan_avg:.1f}秒、後半3Fは{kohan_avg:.1f}秒の平均的なペースが予想されます。")
-        lines.append("極端な展開にはなりにくく、各馬の総合的な能力が問われる真の実力勝負となりそうです。")
+        if zenhan_avg >= 20:  # 正常な値の場合のみタイムを表示
+            lines.append(f"前半3Fは{zenhan_avg:.1f}秒、後半3Fは{kohan_avg:.1f}秒の平均的なペースが予想されます。")
+            lines.append("極端な展開にはなりにくく、各馬の総合的な能力が問われる真の実力勝負となりそうです。")
+        else:
+            lines.append("平均的なペースで推移すると予想されます。")
+            lines.append("極端な展開にはなりにくく、各馬の総合的な能力が問われる真の実力勝負となりそうです。")
     lines.append("")
     
     # 詳細な脚質分類と各馬の解説

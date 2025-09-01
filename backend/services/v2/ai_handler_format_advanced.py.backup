@@ -168,20 +168,20 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
         else:
             lines.append(random.choice(templates['平均ペース_intro']))
     elif 'ハイペース' in pace:
-        lines.append(f"前半は速いペースで推移し、{random.choice(templates['ハイペース_intro'])}")
+        lines.append(f"前半3Fの予想平均タイムは{zenhan_avg:.1f}秒と速く、{random.choice(templates['ハイペース_intro'])}")
         lines.append(random.choice(templates['ハイペース_effect']))
-        lines.append("後半は前半のペース反動で失速が懸念される展開です。")
+        lines.append(f"後半3Fは{kohan_avg:.1f}秒と予想され、前半のペースの反動で後半の失速が懸念されます。")
     elif 'スローペース' in pace:
-        if zenhan_avg >= 20:  # 正常な値の場合のみ抽象表現を使用
-            lines.append(f"前半は遅めのペースで、{random.choice(templates['スローペース_intro'])}")
+        if zenhan_avg >= 20:  # 正常な値の場合のみタイムを表示
+            lines.append(f"前半3Fの予想平均タイムは{zenhan_avg:.1f}秒と遅く、{random.choice(templates['スローペース_intro'])}")
             lines.append(random.choice(templates['スローペース_effect']))
-            lines.append("後半は瞬発力勝負になりそうですが、前残りの可能性が高い展開です。")
+            lines.append(f"後半3Fは{kohan_avg:.1f}秒の瞬発力勝負になりそうですが、前残りの可能性が高い展開です。")
         else:
             lines.append(random.choice(templates['スローペース_intro']))
             lines.append(random.choice(templates['スローペース_effect']))
     else:
-        if zenhan_avg >= 20:  # 正常な値の場合のみ抽象表現を使用
-            lines.append(f"前半・後半ともに標準的なペースで、{random.choice(templates['平均ペース_intro'])}")
+        if zenhan_avg >= 20:  # 正常な値の場合のみタイムを表示
+            lines.append(f"前半3Fは{zenhan_avg:.1f}秒、後半3Fは{kohan_avg:.1f}秒の{random.choice(templates['平均ペース_intro'])}")
             lines.append(random.choice(templates['平均ペース_effect']))
         else:
             lines.append(random.choice(templates['平均ペース_intro']))

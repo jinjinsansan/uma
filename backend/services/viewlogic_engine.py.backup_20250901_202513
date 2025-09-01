@@ -529,8 +529,7 @@ class ViewLogicEngine:
         # 展開シミュレーション
         race_simulation = self._simulate_race_positions(horses_data, pace_prediction)
         
-        # 結果をまとめる
-        result = {
+        return {
             'status': 'success',
             'type': 'advanced_flow_prediction',
             'race_info': {
@@ -546,48 +545,14 @@ class ViewLogicEngine:
             'race_simulation': race_simulation,
             'visualization_data': self._prepare_visualization_data(race_simulation)
         }
-        
-        # フォーマットされた出力を追加
-        try:
-            from services.v2.ai_handler_format_advanced import format_flow_prediction_advanced
-            result['formatted_output'] = format_flow_prediction_advanced(result)
-        except Exception as e:
-            # エラーをログに記録
-            import traceback
-            print(f"フォーマットエラー: {str(e)}")
-            traceback.print_exc()
-            result['formatted_output'] = ''
-        
-        return result
-    
-    def _normalize_3f_time(self, value) -> Optional[float]:
-        """
-        3Fタイムを秒単位に正規化
-        Phase 1: データ正規化の実装
-        """
-        # 欠損値チェック
-        if value == 0 or value == 999 or value == 999.0:
-            return None
-        
-        # 0.1秒単位の値（300以上）
-        if value >= 300:
-            return value / 10  # 331.0 → 33.1秒
-        
-        # 秒の整数部分（50以下）
-        elif value <= 50:
-            return float(value)  # 35 → 35.0秒
-        
-        # 中間値（100-299）も0.1秒単位として扱う
-        else:
-            return value / 10  # 295.0 → 29.5秒
     
     def _advanced_pace_prediction(self, horses_data: List[Dict]) -> Dict[str, Any]:
         """
         計画書通りのペース予測アルゴリズム
-        前半3F・後半3Fのデータを使用（正規化済み）
+        前半3F・後半3Fのデータを使用
         """
-        zenhan_times = []  # 前半3Fタイム（秒単位）
-        kohan_times = []   # 後半3Fタイム（秒単位）
+        zenhan_times = []  # 前半3Fタイム
+        kohan_times = []   # 後半3Fタイム
         
         for horse in horses_data:
             if 'races' not in horse:
@@ -595,19 +560,28 @@ class ViewLogicEngine:
             
             # 直近レースの前半3F・後半3Fを収集
             for race in horse['races'][:5]:  # 直近5レース
-                # 前半3Fの正規化
-                zenhan_raw = race.get('ZENHAN_3F')
-                if zenhan_raw is not None:
-                    zenhan_normalized = self._normalize_3f_time(float(zenhan_raw))
-                    if zenhan_normalized is not None:
-                        zenhan_times.append(zenhan_normalized)
-                
-                # 後半3Fの正規化
-                kohan_raw = race.get('KOHAN_3F')
-                if kohan_raw is not None:
-                    kohan_normalized = self._normalize_3f_time(float(kohan_raw))
-                    if kohan_normalized is not None:
-                        kohan_times.append(kohan_normalized)
+                if race.get('ZENHAN_3F'):
+                    zenhan_value = float(race['ZENHAN_3F'])
+                    # データ形式を判定（100以上なら0.1秒単位、100未満なら秒単位）
+                    if zenhan_value >= 100:
+                        # 0.1秒単位のデータ（例：355.0 = 35.5秒）
+                        zenhan_times.append(zenhan_value / 10)
+                    else:
+                        # 既に秒単位のデータ（例：35.5）
+                        zenhan_times.append(zenhan_value)
+                        
+                if race.get('KOHAN_3F'):
+                    kohan_value = float(race['KOHAN_3F'])
+                    # 999.0は欠損値を示すので除外
+                    if kohan_value == 999.0:
+                        continue
+                    # データ形式を判定
+                    if kohan_value >= 100:
+                        # 0.1秒単位のデータ
+                        kohan_times.append(kohan_value / 10)
+                    else:
+                        # 既に秒単位のデータ
+                        kohan_times.append(kohan_value)
         
         if not zenhan_times:
             return {'pace': 'データ不足', 'confidence': 0, 'zenhan_avg': 0, 'kohan_avg': 0}
@@ -616,20 +590,20 @@ class ViewLogicEngine:
         zenhan_avg = mean(zenhan_times)
         kohan_avg = mean(kohan_times) if kohan_times else 0
         
-        # 設計書通りのペース判定基準
-        # 前半3Fタイム: 33.5秒以下=超ハイ、34.0秒以下=ハイ、34.5秒以下=平均、それ以上=スロー
-        if zenhan_avg <= 33.5:
+        # 実際の競馬データに基づくペース判定基準
+        # 前半3Fタイム: 33秒台=超ハイ、34秒台=ハイ、35秒台=平均、36秒台以上=スロー
+        if zenhan_avg <= 33.8:
             pace = "超ハイペース"
             confidence = 95
-        elif zenhan_avg <= 34.0:
+        elif zenhan_avg <= 34.8:
             pace = "ハイペース"
             confidence = 90
-        elif zenhan_avg <= 34.5:
+        elif zenhan_avg <= 35.8:
             pace = "平均ペース"
             confidence = 85
         else:
             pace = "スローペース"
-            confidence = 90
+            confidence = 80
         
         return {
             'pace': pace,
@@ -810,10 +784,7 @@ class ViewLogicEngine:
         return stability_scores
     
     def _calculate_flow_matching(self, horses_data: List[Dict], pace_prediction: Dict) -> Dict[str, Any]:
-        """
-        展開適性マッチング
-        Phase 2: 設計書通りのパーセンテージ調整方式
-        """
+        """展開適性マッチング（計画書通り）"""
         flow_scores = {}
         pace = pace_prediction['pace']
         
@@ -824,67 +795,51 @@ class ViewLogicEngine:
                 flow_scores[horse_name] = 50.0
                 continue
             
-            # 脚質指数の計算（-5～+5の範囲）
+            # 脚質指数の計算
             style_index = self._calculate_style_index(horse['races'])
             
-            # 基本スコア60点から開始
-            base_score = 60.0
+            # 過去の成績から実績評価を加味
+            performance_bonus = self._calculate_performance_bonus(horse['races'])
             
-            # ペースに応じた評価調整（細かい差別化を実現）
+            # ペースに応じた評価調整（より大きな差別化）
             if 'ハイペース' in pace:
-                # ハイペース時の調整
+                # 後半型有利
                 if style_index > 0:  # 差し・追込タイプ
-                    # スタイルインデックスが大きいほど有利（0～+5の範囲）
-                    # 基本20%ボーナス + スタイルインデックスによる追加調整
-                    score = base_score * (1.2 + style_index * 0.04)  # 1.2～1.4倍
+                    base_score = 65 + (style_index * 5)  # より大きな差を付ける
                 else:  # 逃げ・先行タイプ
-                    # スタイルインデックスが小さいほど不利（-5～0の範囲）
-                    # 基本15%ペナルティ + スタイルインデックスによる調整
-                    score = base_score * (0.85 + style_index * 0.03)  # 0.70～0.85倍
+                    base_score = 40 - (abs(style_index) * 3)
             elif 'スローペース' in pace:
-                # スローペース時の調整
+                # 前半型有利
                 if style_index < 0:  # 逃げ・先行タイプ
-                    # スタイルインデックスが小さいほど有利（-5～0の範囲）
-                    # 基本15%ボーナス + スタイルインデックスによる追加調整
-                    score = base_score * (1.15 - style_index * 0.03)  # 1.15～1.30倍
+                    base_score = 65 + (abs(style_index) * 5)
                 else:  # 差し・追込タイプ
-                    # スタイルインデックスが大きいほど不利（0～+5の範囲）
-                    # 基本10%ペナルティ + スタイルインデックスによる調整
-                    score = base_score * (0.9 - style_index * 0.02)  # 0.80～0.90倍
+                    base_score = 40 - (style_index * 3)
             else:
-                # 平均ペース時の調整
-                # style_indexの絶対値が小さいほど有利（バランス型が有利）
-                # より細かい差別化のため、二次関数的な調整を適用
-                adjustment = (5 - abs(style_index)) * 3 + style_index * 0.5  # より細かい調整
-                score = base_score + adjustment
+                # 平均ペース - 脚質による差別化を追加
+                if abs(style_index) < 1:  # バランス型
+                    base_score = 60 + performance_bonus
+                elif style_index > 0:  # 差し・追込寄り
+                    base_score = 55 + (style_index * 2) + performance_bonus
+                else:  # 逃げ・先行寄り
+                    base_score = 55 + (abs(style_index) * 2) + performance_bonus
             
-            # 40-85点の範囲に収める
-            flow_scores[horse_name] = min(85, max(40, score))
+            # 最終スコア（パフォーマンスボーナスを加味）
+            final_score = base_score + performance_bonus
+            flow_scores[horse_name] = min(100, max(0, final_score))
         
         return flow_scores
     
     def _calculate_style_index(self, races: List[Dict]) -> float:
-        """
-        脚質指数の計算（後半-前半の差）
-        Phase 2: 正規化を使用し、-5～+5の範囲に収める
-        """
+        """脚質指数の計算（後半-前半の差）"""
         style_values = []
         
-        for race in races[:5]:  # 直近5レース
-            zenhan_raw = race.get('ZENHAN_3F')
-            kohan_raw = race.get('KOHAN_3F')
+        for race in races:
+            zenhan = race.get('ZENHAN_3F', 0)
+            kohan = race.get('KOHAN_3F', 0)
             
-            if zenhan_raw and kohan_raw:
-                # 正規化
-                zenhan = self._normalize_3f_time(float(zenhan_raw))
-                kohan = self._normalize_3f_time(float(kohan_raw))
-                
-                if zenhan and kohan:
-                    # 後半-前半の差（秒単位）
-                    diff = kohan - zenhan
-                    # -5～+5の範囲に制限
-                    normalized_diff = max(-5, min(5, diff))
-                    style_values.append(normalized_diff)
+            if zenhan and kohan:
+                # 正の値は差し・追込型、負の値は逃げ・先行型
+                style_values.append((kohan - zenhan) / 10)
         
         return mean(style_values) if style_values else 0
     
@@ -926,92 +881,26 @@ class ViewLogicEngine:
         
         return simulation
     
-    def _calculate_past_performance(self, races: List[Dict]) -> float:
-        """過去成績の評価（0-100点）"""
-        if not races:
-            return 50.0
-        
-        scores = []
-        for race in races[:5]:  # 直近5レース
-            finish = race.get('KAKUTEI_CHAKUJUN', 10)
-            if finish <= 3:
-                scores.append(85 + (4 - finish) * 5)  # 1着100点、2着95点、3着90点
-            elif finish <= 5:
-                scores.append(70 + (6 - finish) * 5)  # 4着75点、5着70点
-            elif finish <= 10:
-                scores.append(50 - (finish - 6) * 3)  # 6着以下は徐々に減点
-            else:
-                scores.append(30)
-        
-        return mean(scores) if scores else 50.0
-    
-    def _calculate_recent_form(self, races: List[Dict]) -> float:
-        """近走の調子（0-100点）"""
-        if not races:
-            return 50.0
-        
-        # 直近3走の着順変化を評価
-        recent_races = races[:3]
-        if len(recent_races) < 2:
-            return 50.0
-        
-        improvements = []
-        for i in range(len(recent_races) - 1):
-            prev_finish = recent_races[i+1].get('KAKUTEI_CHAKUJUN', 10)
-            curr_finish = recent_races[i].get('KAKUTEI_CHAKUJUN', 10)
-            improvement = prev_finish - curr_finish  # 良化していればプラス
-            improvements.append(improvement)
-        
-        avg_improvement = mean(improvements)
-        # -5～+5の改善度を50～100点に変換
-        score = 50 + (avg_improvement * 10)
-        return min(100, max(0, score))
-    
     def _predict_finish_position(self, horse_data: Dict, pace_prediction: Dict) -> float:
-        """
-        Phase 3: 総合スコアベースの着順予測
-        値が小さいほど上位（1.0が最上位）
-        """
+        """ペースを考慮した着順予測"""
         if 'races' not in horse_data:
-            return 99.0
+            return 10.0
         
-        races = horse_data['races']
+        # 基本的な着順の平均
+        avg_finish = mean([r.get('KAKUTEI_CHAKUJUN', 10) for r in horse_data['races']])
         
-        # 各要素のスコア計算（0-100点）
-        past_performance = self._calculate_past_performance(races)
-        
-        # フローマッチングスコアは既に計算済みなので、ここでは簡易版
-        style_index = self._calculate_style_index(races)
+        # ペースによる補正
+        style_index = self._calculate_style_index(horse_data['races'])
         pace = pace_prediction['pace']
         
-        # 展開適性の簡易評価
-        if 'ハイペース' in pace:
-            if style_index > 0:
-                flow_score = 75
-            else:
-                flow_score = 45
-        elif 'スローペース' in pace:
-            if style_index < 0:
-                flow_score = 70
-            else:
-                flow_score = 50
-        else:
-            flow_score = 60 + (5 - abs(style_index)) * 3
+        if 'ハイペース' in pace and style_index > 0:
+            # 差し・追込有利
+            avg_finish -= 1.5
+        elif 'スローペース' in pace and style_index < 0:
+            # 逃げ・先行有利
+            avg_finish -= 1.5
         
-        recent_form = self._calculate_recent_form(races)
-        
-        # 総合スコア（重み付け）
-        total_score = (
-            past_performance * 0.35 +    # 35%: 過去成績
-            flow_score * 0.40 +          # 40%: 展開適性
-            recent_form * 0.25            # 25%: 近走の調子
-        )
-        
-        # スコアを着順予測値に変換（高得点ほど小さい値）
-        # 100点→1.0、50点→10.0、0点→20.0
-        predicted_position = 20.0 - (total_score / 100.0 * 19.0)
-        
-        return max(1.0, predicted_position)
+        return max(1.0, avg_finish)
     
     def _prepare_visualization_data(self, simulation: Dict) -> Dict[str, Any]:
         """可視化用データの準備"""

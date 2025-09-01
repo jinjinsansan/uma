@@ -3,7 +3,101 @@ V2 AIハンドラー用の高度な展開予想フォーマット関数
 predict_race_flow_advancedメソッドの出力に対応
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, List
+import random
+
+def get_pace_templates() -> Dict[str, List[str]]:
+    """ペース予想の多様なテンプレートを返す"""
+    return {
+        'ハイペース_intro': [
+            "序盤から激しい先行争いが予想され、ハイペースの展開となりそうです。",
+            "スタート直後から各馬が積極的に前を取りに行き、速いペースで推移する可能性が高いです。",
+            "前半から飛ばす展開が予想され、後半のスタミナ勝負が鍵となりそうです。",
+            "逃げ馬が複数いることから、序盤のポジション争いが激化しそうです。",
+        ],
+        'ハイペース_effect': [
+            "このようなハイペースでは、前半で脚を使った逃げ・先行馬が最後の直線で失速する可能性が高く、中団から後方で脚を溜めた差し・追込馬が有利な展開となりそうです。",
+            "速いペースは差し・追込馬にとって絶好の展開。前が止まったところを一気に差し切る場面が見られそうです。",
+            "前半の消耗戦により、後方待機組の末脚が炸裂する可能性が高まります。",
+            "タフな流れになることで、スタミナに優れた馬や展開利を得られる差し馬が台頭しそうです。",
+        ],
+        'スローペース_intro': [
+            "各馬が牽制し合い、スローペースの展開が予想されます。",
+            "逃げ馬が単騎で楽に逃げられそうで、前半はゆったりとしたペースになりそうです。",
+            "序盤は様子見ムードで、後半の瞬発力勝負になる可能性が高いです。",
+            "前半は各馬が脚を溜め合う展開で、最後の直線での位置取りが重要になりそうです。",
+        ],
+        'スローペース_effect': [
+            "スローペースでは前に行った馬が楽に走れるため、逃げ・先行馬が最後まで粘り込む可能性が高いです。",
+            "前残りの展開が予想され、逃げ・先行馬の粘り込みに注意が必要です。",
+            "溜めた脚を使える逃げ・先行馬が有利で、差し馬は届かない可能性があります。",
+            "瞬発力勝負になりやすく、キレのある脚を持つ馬が有利な展開です。",
+        ],
+        '平均ペース_intro': [
+            "平均的なペースで推移すると予想されます。",
+            "極端な展開にはなりにくく、淡々とレースが進みそうです。",
+            "標準的なペースが予想され、各馬の地力が試される展開です。",
+            "バランスの取れたペースで、どの脚質にもチャンスがありそうです。",
+        ],
+        '平均ペース_effect': [
+            "極端な展開にはなりにくく、各馬の総合的な能力が問われる真の実力勝負となりそうです。",
+            "どの脚質にも平等にチャンスがあり、能力と調子の良い馬が好走しそうです。",
+            "展開の有利不利が少ないため、素直に強い馬が勝つ可能性が高いです。",
+            "総合力の高い馬や、安定感のある馬が力を発揮しやすい展開です。",
+        ]
+    }
+
+def get_horse_description_templates() -> Dict[str, List[str]]:
+    """馬の説明の多様なテンプレートを返す"""
+    return {
+        '逃げ_積極': [
+            "{horse}は超積極的な逃げを見せる可能性が高く、序盤から大きくリードを取ろうとするでしょう。",
+            "{horse}が果敢にハナを奪いに行き、後続を大きく引き離す逃げを打つ可能性があります。",
+            "スタート直後から{horse}が先頭に立ち、マイペースで逃げる展開が予想されます。",
+            "{horse}の積極的な逃げが予想され、どこまで粘れるかが注目されます。",
+        ],
+        '先行_積極': [
+            "{horses}は積極的に前のポジションを取りに行き、2-3番手での競馬が予想されます。",
+            "{horses}が好位を確保し、直線で先頭を狙う競馬をしそうです。",
+            "先行力のある{horses}が前々で競馬を進め、粘り強く走りそうです。",
+            "{horses}は番手から虎視眈々と逃げ馬を狙う位置取りになりそうです。",
+        ],
+        '差し_有利': [
+            "ハイペースが予想される今回、{horses}などの差し馬には絶好の展開となりそうです。",
+            "{horses}にとっては願ってもない展開で、最後の直線で爆発的な末脚が期待できます。",
+            "展開が向きそうな{horses}の末脚に注目が集まります。",
+            "{horses}は中団待機から、最後の直線で鋭い脚を使ってきそうです。",
+        ],
+        '追込_期待': [
+            "{horses}などの追込馬も、前がバテる展開を待っています。",
+            "最後方から一気の追込を狙う{horses}の末脚次第では激走もありえます。",
+            "{horses}は後方一気の戦法で、直線での豪脚に期待がかかります。",
+            "展開次第では{horses}の強烈な追込が炸裂する可能性があります。",
+        ]
+    }
+
+def get_conclusion_templates() -> Dict[str, List[str]]:
+    """結論部分の多様なテンプレートを返す"""
+    return {
+        'ハイペース': [
+            "ハイペースの消耗戦が予想され、後方待機組の台頭に期待が持てる展開です。",
+            "前半の激しい流れが、後半の大きな展開変化を生みそうです。",
+            "スタミナと末脚の両方が求められる、タフなレースになりそうです。",
+            "差し・追込馬にとって絶好の展開が予想されます。",
+        ],
+        'スローペース': [
+            "前残りの可能性が高く、逃げ・先行馬を中心とした馬券が面白そうです。",
+            "瞬発力勝負になりやすく、キレのある脚を持つ馬に注目です。",
+            "前に行った馬が有利な展開で、先行力のある馬を重視したいです。",
+            "スローの瞬発力勝負では、位置取りとタイミングが重要になりそうです。",
+        ],
+        '平均ペース': [
+            "バランスの取れた展開で、総合力の高い馬が素直に好走しそうです。",
+            "展開の有利不利が少なく、実力通りの結果になる可能性が高いです。",
+            "どの脚質にもチャンスがあり、調子の良い馬を見極めることが重要です。",
+            "安定感のある馬や、このコースで実績のある馬が狙い目です。",
+        ]
+    }
 
 def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
     """高度な展開予想結果をフォーマット - 長文の自然言語で出力"""
@@ -62,35 +156,36 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
     lines.append("")
     
     # ペースに応じた詳細な解説
+    templates = get_pace_templates()
+    
     # zenhan_avgが異常に小さい場合（データ不足）は別の表現を使用
     if zenhan_avg < 20:  # 20秒未満は物理的に不可能
         # データが不足している場合の汎用的な表現
         if 'ハイペース' in pace:
-            lines.append("序盤から激しい先行争いが予想され、ハイペースの展開となりそうです。")
+            lines.append(random.choice(templates['ハイペース_intro']))
         elif 'スローペース' in pace:
-            lines.append("各馬が牽制し合い、スローペースの展開が予想されます。")
+            lines.append(random.choice(templates['スローペース_intro']))
         else:
-            lines.append("平均的なペースで推移すると予想されます。")
+            lines.append(random.choice(templates['平均ペース_intro']))
     elif 'ハイペース' in pace:
-        lines.append(f"前半3Fの予想平均タイムは{zenhan_avg:.1f}秒と速く、序盤から激しい先行争いが予想されます。")
-        lines.append("このようなハイペースでは、前半で脚を使った逃げ・先行馬が最後の直線で失速する可能性が高く、")
-        lines.append("中団から後方で脚を溜めた差し・追込馬が有利な展開となりそうです。")
+        lines.append(f"前半3Fの予想平均タイムは{zenhan_avg:.1f}秒と速く、{random.choice(templates['ハイペース_intro'])}")
+        lines.append(random.choice(templates['ハイペース_effect']))
         lines.append(f"後半3Fは{kohan_avg:.1f}秒と予想され、前半のペースの反動で後半の失速が懸念されます。")
     elif 'スローペース' in pace:
         if zenhan_avg >= 20:  # 正常な値の場合のみタイムを表示
-            lines.append(f"前半3Fの予想平均タイムは{zenhan_avg:.1f}秒と遅く、各馬が牽制し合う展開が予想されます。")
-            lines.append("スローペースでは前に行った馬が楽に走れるため、逃げ・先行馬が最後まで粘り込む可能性が高いです。")
+            lines.append(f"前半3Fの予想平均タイムは{zenhan_avg:.1f}秒と遅く、{random.choice(templates['スローペース_intro'])}")
+            lines.append(random.choice(templates['スローペース_effect']))
             lines.append(f"後半3Fは{kohan_avg:.1f}秒の瞬発力勝負になりそうですが、前残りの可能性が高い展開です。")
         else:
-            lines.append("各馬が牽制し合うスローペースの展開が予想されます。")
-            lines.append("前に行った馬が楽に走れるため、逃げ・先行馬が最後まで粘り込む可能性が高いです。")
+            lines.append(random.choice(templates['スローペース_intro']))
+            lines.append(random.choice(templates['スローペース_effect']))
     else:
         if zenhan_avg >= 20:  # 正常な値の場合のみタイムを表示
-            lines.append(f"前半3Fは{zenhan_avg:.1f}秒、後半3Fは{kohan_avg:.1f}秒の平均的なペースが予想されます。")
-            lines.append("極端な展開にはなりにくく、各馬の総合的な能力が問われる真の実力勝負となりそうです。")
+            lines.append(f"前半3Fは{zenhan_avg:.1f}秒、後半3Fは{kohan_avg:.1f}秒の{random.choice(templates['平均ペース_intro'])}")
+            lines.append(random.choice(templates['平均ペース_effect']))
         else:
-            lines.append("平均的なペースで推移すると予想されます。")
-            lines.append("極端な展開にはなりにくく、各馬の総合的な能力が問われる真の実力勝負となりそうです。")
+            lines.append(random.choice(templates['平均ペース_intro']))
+            lines.append(random.choice(templates['平均ペース_effect']))
     lines.append("")
     
     # 詳細な脚質分類と各馬の解説
@@ -99,12 +194,15 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
     lines.append("")
     
     # 逃げ馬の分析
+    horse_templates = get_horse_description_templates()
+    
     if '逃げ' in detailed_styles and any(detailed_styles['逃げ'].values()):
         lines.append("#### 🏃 逃げ馬の動向")
         for sub_style, horses in detailed_styles['逃げ'].items():
             if horses:
                 if sub_style == '超積極逃げ':
-                    lines.append(f"**{horses[0]}**は超積極的な逃げを見せる可能性が高く、序盤から大きくリードを取ろうとするでしょう。")
+                    template = random.choice(horse_templates['逃げ_積極'])
+                    lines.append(template.format(horse=f"**{horses[0]}**"))
                     lines.append("この馬がハナを切れば、後続との差を広げて逃げ切りを図る展開が予想されます。")
                 elif sub_style == '状況逃げ':
                     lines.append(f"**{', '.join(horses)}**は状況を見ながらの逃げが予想され、他に逃げ馬がいなければ積極的に前に出そうです。")
@@ -118,7 +216,8 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
         for sub_style, horses in detailed_styles['先行'].items():
             if horses:
                 if sub_style == '前寄り先行':
-                    lines.append(f"**{', '.join(horses[:2])}**は積極的に前のポジションを取りに行き、2-3番手での競馬が予想されます。")
+                    template = random.choice(horse_templates['先行_積極'])
+                    lines.append(template.format(horses=f"**{', '.join(horses[:2])}**"))
                 elif sub_style == '安定先行':
                     lines.append(f"**{', '.join(horses[:2])}**は安定した先行策を取り、好位でレースを進めそうです。")
                 elif sub_style == '後寄り先行':
@@ -132,7 +231,8 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
             for sub_style, horses in detailed_styles['差し'].items():
                 if horses and len(horses) > 0:
                     if 'ハイペース' in pace:
-                        lines.append(f"ハイペースが予想される今回、**{', '.join(horses[:3])}**などの差し馬には絶好の展開となりそうです。")
+                        template = random.choice(horse_templates['差し_有利'])
+                        lines.append(template.format(horses=f"**{', '.join(horses[:3])}**"))
                         lines.append("前半で脚を溜め、最後の直線で爆発的な末脚を発揮する可能性があります。")
                     else:
                         lines.append(f"**{', '.join(horses[:3])}**は中団から後方に控え、最後の直線勝負に賭けることになりそうです。")
@@ -142,7 +242,8 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
             for sub_style, horses in detailed_styles['追込'].items():
                 if horses and len(horses) > 0:
                     if 'ハイペース' in pace:
-                        lines.append(f"**{', '.join(horses[:2])}**などの追込馬も、前がバテる展開を待っています。")
+                        template = random.choice(horse_templates['追込_期待'])
+                        lines.append(template.format(horses=f"**{', '.join(horses[:2])}**"))
                     else:
                         lines.append(f"**{', '.join(horses[:2])}**は後方一気の追込を狙いますが、展開次第では届かない可能性もあります。")
                     break
@@ -185,8 +286,12 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
         if 'corner3' in simulation and len(simulation['corner3']) > 0:
             corner3_horses = [entry.get('horse_name', '不明') for entry in simulation['corner3'][:5]]
             lines.append("#### 中盤の展開（3コーナー付近）")
-            lines.append(f"3コーナーを迎える頃には、**{corner3_horses[0]}**がリードを保ち、")
-            lines.append(f"2番手に**{corner3_horses[1]}**、3番手に**{corner3_horses[2]}**という隊列になりそうです。")
+            if len(corner3_horses) >= 1:
+                lines.append(f"3コーナーを迎える頃には、**{corner3_horses[0]}**がリードを保ち、")
+            if len(corner3_horses) >= 3:
+                lines.append(f"2番手に**{corner3_horses[1]}**、3番手に**{corner3_horses[2]}**という隊列になりそうです。")
+            elif len(corner3_horses) >= 2:
+                lines.append(f"2番手に**{corner3_horses[1]}**が続く展開になりそうです。")
             if 'ハイペース' in pace:
                 lines.append("ペースが速いため、後方待機組が徐々に進出を開始する場面です。")
             lines.append("")
@@ -195,20 +300,31 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
         if 'corner4' in simulation and len(simulation['corner4']) > 0:
             corner4_horses = [entry.get('horse_name', '不明') for entry in simulation['corner4'][:5]]
             lines.append("#### 勝負所（4コーナー）")
-            lines.append(f"最後の4コーナーでは、**{corner4_horses[0]}**が依然として先頭をキープしていますが、")
+            if len(corner4_horses) >= 1:
+                lines.append(f"最後の4コーナーでは、**{corner4_horses[0]}**が依然として先頭をキープしていますが、")
             if 'ハイペース' in pace:
                 lines.append("ハイペースの影響で脚色が鈍り始め、後続の差し・追込馬が一気に接近してきます。")
-                lines.append(f"特に**{corner4_horses[2]}**や**{corner4_horses[3]}**の末脚が注目されます。")
+                if len(corner4_horses) >= 4:
+                    lines.append(f"特に**{corner4_horses[2]}**や**{corner4_horses[3]}**の末脚が注目されます。")
+                elif len(corner4_horses) >= 3:
+                    lines.append(f"特に**{corner4_horses[2]}**の末脚が注目されます。")
             else:
-                lines.append(f"**{corner4_horses[1]}**と**{corner4_horses[2]}**が虎視眈々と逆転を狙っています。")
+                if len(corner4_horses) >= 3:
+                    lines.append(f"**{corner4_horses[1]}**と**{corner4_horses[2]}**が虎視眈々と逆転を狙っています。")
+                elif len(corner4_horses) >= 2:
+                    lines.append(f"**{corner4_horses[1]}**が虎視眈々と逆転を狙っています。")
             lines.append("")
         
         # ゴール予想
         if 'finish' in simulation and len(simulation['finish']) > 0:
             finish_horses = [entry.get('horse_name', '不明') for entry in simulation['finish'][:5]]
             lines.append("#### ゴール前の攻防")
-            lines.append(f"最後の直線では、**{finish_horses[0]}**が抜け出す可能性が高く、")
-            lines.append(f"**{finish_horses[1]}**と**{finish_horses[2]}**が激しく追い上げる展開が予想されます。")
+            if len(finish_horses) >= 1:
+                lines.append(f"最後の直線では、**{finish_horses[0]}**が抜け出す可能性が高く、")
+            if len(finish_horses) >= 3:
+                lines.append(f"**{finish_horses[1]}**と**{finish_horses[2]}**が激しく追い上げる展開が予想されます。")
+            elif len(finish_horses) >= 2:
+                lines.append(f"**{finish_horses[1]}**が激しく追い上げる展開が予想されます。")
             lines.append("")
             lines.append("**【上位5頭予想】**")
             for i, horse in enumerate(finish_horses, 1):
@@ -257,6 +373,17 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
         lines.append("")
         lines.append("3. **実績と安定感**")
         lines.append("   過去の実績が安定している馬を信頼できる展開です。")
+    
+    # 結論部分のテンプレート化
+    conclusion_templates = get_conclusion_templates()
+    lines.append("")
+    lines.append("### まとめ")
+    if 'ハイペース' in pace:
+        lines.append(random.choice(conclusion_templates['ハイペース']))
+    elif 'スローペース' in pace:
+        lines.append(random.choice(conclusion_templates['スローペース']))
+    else:
+        lines.append(random.choice(conclusion_templates['平均ペース']))
     
     lines.append("")
     lines.append("---")

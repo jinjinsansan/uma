@@ -153,7 +153,7 @@ async def create_chat(
         user_email = user_info.get("email", "")
         
         # 管理者チェック（テストモードの場合はポイントチェックをスキップ）
-        is_admin_test = request.is_test_mode and user_email == "goldbenchan@gmail.com"
+        is_admin_test = request.is_test_mode and (user_email == "goldbenchan@gmail.com" or user_email == "kusanokiyoshi1@gmail.com")
         
         # ポイント確認（管理者テストモード以外）
         if not is_admin_test:

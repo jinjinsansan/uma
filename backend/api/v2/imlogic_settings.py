@@ -69,38 +69,61 @@ class IMLogicSettingsResponse(BaseModel):
 @router.post("/save")
 async def save_imlogic_settings(request: IMLogicSettingsRequest) -> IMLogicSettingsResponse:
     """
-    IMLogic設定を保存（ユーザーの最新設定として）
-    古い設定は自動的に非アクティブになる
+    IMLogic設定を保存（既存の設定があれば更新、なければ作成）
+    履歴管理なし、常に1ユーザー1レコード
     """
     try:
         # emailからUUIDを取得
         user_uuid = get_user_uuid_from_email(request.user_id)
         
-        # 既存の設定を非アクティブ化
-        supabase.table("v2_imlogic_settings").update({
-            "is_active": False
-        }).eq("user_id", user_uuid).execute()
+        # 既存の設定を確認
+        existing = supabase.table("v2_imlogic_settings")\
+            .select("*")\
+            .eq("user_id", user_uuid)\
+            .eq("is_active", True)\
+            .execute()
         
-        # 新しい設定を保存
-        new_settings = {
-            "id": str(uuid.uuid4()),
-            "user_id": user_uuid,
-            "settings_name": request.settings_name,
-            "horse_weight": request.horse_weight,
-            "jockey_weight": request.jockey_weight,
-            "item_weights": request.item_weights,
-            "is_active": True,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
-        }
-        
-        result = supabase.table("v2_imlogic_settings").insert(new_settings).execute()
-        
-        if result.data:
-            logger.info(f"IMLogic設定を保存しました: user_id={request.user_id}")
-            return IMLogicSettingsResponse(**result.data[0])
+        if existing.data and len(existing.data) > 0:
+            # 既存の設定を更新（アップデート）
+            updated_settings = {
+                "settings_name": request.settings_name,
+                "horse_weight": request.horse_weight,
+                "jockey_weight": request.jockey_weight,
+                "item_weights": request.item_weights,
+                "updated_at": datetime.now().isoformat()
+            }
+            
+            result = supabase.table("v2_imlogic_settings")\
+                .update(updated_settings)\
+                .eq("id", existing.data[0]["id"])\
+                .execute()
+            
+            if result.data:
+                logger.info(f"IMLogic設定を更新しました: user_id={request.user_id}")
+                return IMLogicSettingsResponse(**result.data[0])
+            else:
+                raise HTTPException(status_code=500, detail="設定の更新に失敗しました")
         else:
-            raise HTTPException(status_code=500, detail="設定の保存に失敗しました")
+            # 新規作成（初回のみ）
+            new_settings = {
+                "id": str(uuid.uuid4()),
+                "user_id": user_uuid,
+                "settings_name": request.settings_name,
+                "horse_weight": request.horse_weight,
+                "jockey_weight": request.jockey_weight,
+                "item_weights": request.item_weights,
+                "is_active": True,
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat()
+            }
+            
+            result = supabase.table("v2_imlogic_settings").insert(new_settings).execute()
+            
+            if result.data:
+                logger.info(f"IMLogic設定を新規作成しました: user_id={request.user_id}")
+                return IMLogicSettingsResponse(**result.data[0])
+            else:
+                raise HTTPException(status_code=500, detail="設定の作成に失敗しました")
             
     except Exception as e:
         logger.error(f"IMLogic設定保存エラー: {e}")
@@ -159,35 +182,10 @@ async def get_current_imlogic_settings(user_id: str) -> Optional[IMLogicSettings
 @router.put("/update")
 async def update_imlogic_settings(request: IMLogicSettingsRequest) -> IMLogicSettingsResponse:
     """
-    既存のIMLogic設定を更新
+    既存のIMLogic設定を更新（saveと同じロジック：アップサート）
     """
-    try:
-        # emailからUUIDを取得
-        user_uuid = get_user_uuid_from_email(request.user_id)
-        
-        # 現在のアクティブな設定を更新
-        result = supabase.table("v2_imlogic_settings")\
-            .update({
-                "settings_name": request.settings_name,
-                "horse_weight": request.horse_weight,
-                "jockey_weight": request.jockey_weight,
-                "item_weights": request.item_weights,
-                "updated_at": datetime.now().isoformat()
-            })\
-            .eq("user_id", user_uuid)\
-            .eq("is_active", True)\
-            .execute()
-        
-        if result.data:
-            logger.info(f"IMLogic設定を更新しました: user_id={request.user_id}")
-            return IMLogicSettingsResponse(**result.data[0])
-        else:
-            # 設定が存在しない場合は新規作成
-            return await save_imlogic_settings(request)
-            
-    except Exception as e:
-        logger.error(f"IMLogic設定更新エラー: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    # saveと全く同じ動作（アップサート）
+    return await save_imlogic_settings(request)
 
 @router.delete("/reset/{user_id}")
 async def reset_imlogic_settings(user_id: str) -> Dict[str, str]:

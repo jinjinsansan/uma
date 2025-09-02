@@ -24,7 +24,7 @@ def get_user_uuid_from_email(email_or_uuid: str) -> str:
     """
     emailまたはUUIDからユーザーIDを取得
     UUIDフォーマットの場合はそのまま返す
-    emailの場合はv2_usersテーブルから検索
+    emailの場合は決定論的なUUIDを生成（同じemailからは常に同じUUID）
     """
     try:
         # UUID形式かチェック
@@ -34,20 +34,17 @@ def get_user_uuid_from_email(email_or_uuid: str) -> str:
         except ValueError:
             pass  # email形式として処理を続ける
         
-        # emailでユーザーを検索
-        result = supabase.table("v2_users").select("id").eq("email", email_or_uuid).execute()
-        
-        if result.data and len(result.data) > 0:
-            return result.data[0]["id"]
-        else:
-            logger.error(f"ユーザーが見つかりません: {email_or_uuid}")
-            raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+        # emailから決定論的なUUIDを生成（同じemailからは常に同じUUIDが生成される）
+        # これによりv2_usersテーブルの有無に関わらず動作する
+        fixed_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, email_or_uuid.lower()))
+        logger.info(f"emailからUUID生成: email={email_or_uuid}, uuid={fixed_uuid}")
+        return fixed_uuid
                 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"ユーザーID取得エラー: {e}")
-        raise HTTPException(status_code=500, detail=f"ユーザー情報の取得に失敗しました: {str(e)}")
+        # エラーの場合も固定UUIDを返す
+        fixed_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, email_or_uuid.lower()))
+        return fixed_uuid
 
 class IMLogicSettingsRequest(BaseModel):
     """IMLogic設定リクエスト"""

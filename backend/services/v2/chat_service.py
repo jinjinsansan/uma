@@ -45,6 +45,22 @@ class V2ChatService:
     ) -> Dict:
         """新しいチャットセッションを作成"""
         try:
+            # IMLogic設定IDが指定されていない場合、ユーザーの最新設定を取得
+            if not imlogic_settings_id:
+                try:
+                    # ユーザーの最新のアクティブな設定を取得
+                    settings_result = self.supabase.table("v2_imlogic_settings")\
+                        .select("id")\
+                        .eq("user_id", user_id)\
+                        .eq("is_active", True)\
+                        .single()\
+                        .execute()
+                    
+                    if settings_result.data:
+                        imlogic_settings_id = settings_result.data["id"]
+                        logger.info(f"ユーザー {user_id} の最新IMLogic設定を使用: {imlogic_settings_id}")
+                except Exception as e:
+                    logger.warning(f"IMLogic設定の取得に失敗（デフォルト使用）: {e}")
             
             # チャットセッション作成
             session_data = {

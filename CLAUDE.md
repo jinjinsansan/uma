@@ -2,6 +2,53 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚨 重要：プロジェクト移動完了 (2025-09-02)
+
+### 新しいプロジェクトパス
+- **Windows**: `E:\dev\Cusor` (HDD)
+- **WSL**: `/mnt/e/dev/Cusor`
+- **旧パス**: `C:\Users\USER\OneDrive\デスクトップ\Cusor` (削除予定)
+
+### 移動の詳細
+1. **問題**: OneDrive下で68GBに膨張、同期負荷で作業が重い
+2. **解決策**: 
+   - 不要なバックアップファイル削除（195個の差分バックアップ等）
+   - 68GB → 6.3GBに削減（約91%削減）
+   - E:ドライブ（HDD）へ移動
+3. **効果**: 
+   - Cドライブ: 95% → 82%使用率に改善
+   - OneDrive同期負荷から解放
+   - 作業速度大幅改善
+
+### ディレクトリ構成
+```
+/mnt/e/dev/Cusor/
+├── chatbot/
+│   └── uma/
+│       ├── backend/          # FastAPIバックエンド
+│       │   ├── api/         # APIエンドポイント
+│       │   ├── services/    # ビジネスロジック
+│       │   └── data/        # ナレッジファイル（4.1GB）
+│       └── frontend/        # （旧フロントエンド）
+├── front/
+│   └── d-logic-ai-frontend/ # Next.jsフロントエンド
+└── Claudショートカット/     # WSL起動バッチファイル
+```
+
+### WSLアクセス方法
+```bash
+# バッチファイル経由（推奨）
+E:\dev\Cusor\Claudショートカット\StartWSL_HDD_KeepOpen.bat
+
+# または直接WSLから
+wsl -d Ubuntu --cd /mnt/e/dev/Cusor
+```
+
+### GitHub連携状態
+- **リポジトリ**: https://github.com/jinjinsansan/uma.git
+- **状態**: 正常接続（新パスから問題なくpush/pull可能）
+- **注意**: 9/2の増分更新スクリプトは未コミット
+
 ## 🚨 重要な決定事項 (2025/08/08 更新)
 
 ### 1. ナレッジファイル管理の最終決定

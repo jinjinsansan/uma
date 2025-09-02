@@ -209,16 +209,19 @@ if os.getenv("ENABLE_V2_FEATURES", "true").lower() == "true":
         from api.v2 import line_referral as v2_line_referral_router
         from api.v2 import dlogic as v2_dlogic_router
         from api.v2 import ilogic as v2_ilogic_router
+        from api.v2 import imlogic_settings as v2_imlogic_settings_router
         app.include_router(v2_points_router.router)
         app.include_router(v2_chat_router.router)
         app.include_router(v2_health_router.router)
         app.include_router(v2_line_referral_router.router)
         app.include_router(v2_dlogic_router.router, prefix="/api/v2/dlogic")
         app.include_router(v2_ilogic_router.router, prefix="/api/v2/ilogic")
+        app.include_router(v2_imlogic_settings_router.router)
         app.include_router(v2_cleanup_router)
         print("✅ V2ポイント制システムAPI登録完了")
         print("✅ V2 D-Logic バッチ計算API登録完了")
         print("✅ V2 I-Logic バッチ計算API登録完了")
+        print("✅ V2 IMLogic設定管理API登録完了")
     except ImportError as e:
         print(f"⚠️ V2ポイント制システムAPIが見つかりません: {e}")
 else:

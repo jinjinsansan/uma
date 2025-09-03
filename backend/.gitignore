@@ -11,3 +11,10 @@ backend/data/viewlogic_knowledge.json
 backend/data/viewlogic_knowledge_summary.json
 backend/data/.wrangler/
 test_viewlogic*.py
+# Large data files
+backend/data/unified_knowledge_*.json
+backend/data/dlogic_raw_knowledge.json
+
+# Temporary large files
+*.json.bak
+*.json.tmp

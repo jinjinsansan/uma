@@ -980,21 +980,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         # レースデータを保持（determine_ai_typeで使用）
         self.current_race_data = race_data
         
-        # AI タイプの決定
-        if ai_type:
-            determined_ai = ai_type
-            # ViewLogicの場合は、メッセージからサブタイプを決定
-            if ai_type == 'viewlogic':
-                _, sub_type = self.determine_ai_type(message)
-                # ViewLogic以外が判定された場合はデフォルトに
-                if sub_type not in ['flow', 'trend', 'opinion']:
-                    sub_type = 'manual'
-            else:
-                sub_type = 'manual'
-        else:
-            determined_ai, sub_type = self.determine_ai_type(message)
-        
-        # レース外の質問をチェック
+        # まずレース外の質問をチェック（AI判定の前に実行）
         if self._is_out_of_scope(message, race_data):
             venue = race_data.get('venue', '')
             race_number = race_data.get('race_number', '')
@@ -1016,7 +1002,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                         if potential_horse not in common_words:
                             return {
                                 'content': f"「{potential_horse}」は、{venue} {race_number}Rには出走しません。\nこのレースの出走馬は以下の通りです:\n" + "、".join(race_horses[:5]) + ("..." if len(race_horses) > 5 else ""),
-                                'ai_type': determined_ai,
+                                'ai_type': 'imlogic',  # デフォルトでimlogicを返す
                                 'sub_type': 'out_of_scope',
                                 'analysis_data': None
                             }
@@ -1024,10 +1010,24 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             # 他のレースや開催場への言及の場合
             return {
                 'content': f"このチャットは{venue} {race_number}R専用です。他のレースについては新しいチャットを作成してください。",
-                'ai_type': determined_ai,
+                'ai_type': 'imlogic',  # デフォルトでimlogicを返す
                 'sub_type': 'out_of_scope',
                 'analysis_data': None
             }
+        
+        # AI タイプの決定（レース外チェックの後に移動）
+        if ai_type:
+            determined_ai = ai_type
+            # ViewLogicの場合は、メッセージからサブタイプを決定
+            if ai_type == 'viewlogic':
+                _, sub_type = self.determine_ai_type(message)
+                # ViewLogic以外が判定された場合はデフォルトに
+                if sub_type not in ['flow', 'trend', 'opinion']:
+                    sub_type = 'manual'
+            else:
+                sub_type = 'manual'
+        else:
+            determined_ai, sub_type = self.determine_ai_type(message)
         
         # AI種別に応じて処理
         analysis_data = None
@@ -1094,8 +1094,9 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         # レースに存在しない馬名をチェック
         race_horses = race_data.get('horses', [])
         if race_horses:
-            # メッセージから馬名らしい単語を抽出（カタカナまたは英字の連続）
-            potential_horses = re.findall(r'[ア-ンー]+|[A-Za-z]+', message)
+            # メッセージから馬名らしい単語を抽出（全カタカナ文字と英字の連続）
+            # ァ-ヴ で全てのカタカナ（小文字含む）とヴをカバー
+            potential_horses = re.findall(r'[ァ-ヴー]+|[A-Za-z]+', message)
             
             for potential_horse in potential_horses:
                 # 3文字以上で、かつレースの馬名リストに存在しない場合
@@ -1112,6 +1113,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                         # 一般的な単語や助詞でないことを確認
                         common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー', 'ViewLogic', 'IMLogic', 'DLogic', 'ILogic']
                         if potential_horse not in common_words:
+                            logger.info(f"レース外の馬を検出: {potential_horse}")
                             return True
         
         return False

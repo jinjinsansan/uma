@@ -67,34 +67,57 @@ class UpdateSettingsRequest(BaseModel):
 
 @router.get("/settings")
 async def get_user_settings(user_info: dict = Depends(verify_email_token)):
-    """ユーザーの現在のIMLogic設定を取得"""
+    """ユーザーの現在のIMLogic設定を取得（最新の1件）"""
     try:
         # V2認証システムからuser_idを取得
         user_id = user_info.get("user_id")
         
-        # アクティブな設定を取得（v2_imlogic_settingsテーブルから）
+        # 最新の設定を取得（v2_imlogic_settingsテーブルから）
         result = supabase.table("v2_imlogic_settings") \
             .select("*") \
             .eq("user_id", user_id) \
+            .order("created_at", desc=True) \
+            .limit(1) \
             .execute()
         
         if result.data and len(result.data) > 0:
-            # 最新の設定を取得（created_at降順で最初の1件）
-            data = sorted(result.data, key=lambda x: x.get('created_at', ''), reverse=True)[0]
+            data = result.data[0]
             return {
                 "settings": {
                     "id": data["id"],
-                    "name": data.get("settings_name", data.get("name", "カスタム設定")),
-                    "weights": data["item_weights"],
-                    "horse_ratio": data["horse_weight"],
-                    "jockey_ratio": data["jockey_weight"],
-                    "updated_at": data.get("updated_at", data.get("created_at"))
+                    "name": data.get("settings_name", "カスタム設定"),
+                    "horse_weight": data["horse_weight"],
+                    "jockey_weight": data["jockey_weight"],
+                    "item_weights": data["item_weights"],
+                    "created_at": data.get("created_at"),
+                    "updated_at": data.get("updated_at")
                 }
             }
         else:
-            # デフォルト設定を返す
+            # デフォルト設定を返す（新規ユーザー用）
             return {
-                "settings": None
+                "settings": {
+                    "id": None,
+                    "name": "デフォルト設定",
+                    "horse_weight": 70,
+                    "jockey_weight": 30,
+                    "item_weights": {
+                        "1_distance_aptitude": 8.33,
+                        "2_bloodline_evaluation": 8.33,
+                        "3_jockey_compatibility": 8.33,
+                        "4_trainer_evaluation": 8.33,
+                        "5_track_aptitude": 8.33,
+                        "6_weather_aptitude": 8.33,
+                        "7_popularity_factor": 8.33,
+                        "8_weight_impact": 8.33,
+                        "9_horse_weight_impact": 8.33,
+                        "10_corner_specialist": 8.33,
+                        "11_margin_analysis": 8.33,
+                        "12_time_index": 8.37
+                    },
+                    "created_at": None,
+                    "updated_at": None
+                }
             }
             
     except Exception as e:
@@ -115,7 +138,7 @@ async def create_settings(
     request: CreateSettingsRequest,
     user_info: dict = Depends(verify_email_token)
 ):
-    """新規IMLogic設定を作成"""
+    """新規IMLogic設定を作成（既存設定がある場合は更新）"""
     try:
         # V2認証システムからuser_idを取得
         user_id = user_info.get("user_id")
@@ -135,18 +158,33 @@ async def create_settings(
                 detail=f"12項目の重みの合計は100である必要があります（現在: {weights_sum:.2f}）"
             )
         
-        # 設定を保存
-        settings_id = str(uuid.uuid4())
+        # 既存設定があるか確認（UNIQUE制約により1ユーザー1設定）
+        existing = supabase.table("v2_imlogic_settings").select("id").eq("user_id", user_id).execute()
         
-        # 常に新規作成（履歴を残すため）
-        result = supabase.table("v2_imlogic_settings").insert({
-            "id": settings_id,
-            "user_id": user_id,
-            "settings_name": request.name,
-            "horse_weight": request.horse_weight,
-            "jockey_weight": request.jockey_weight,
-            "item_weights": request.item_weights
-        }).execute()
+        if existing.data:
+            # 既存設定を更新
+            result = supabase.table("v2_imlogic_settings").update({
+                "settings_name": request.name,
+                "horse_weight": request.horse_weight,
+                "jockey_weight": request.jockey_weight,
+                "item_weights": request.item_weights,
+                "updated_at": datetime.now().isoformat()
+            }).eq("user_id", user_id).execute()
+            
+            message = "IMLogic設定を更新しました"
+        else:
+            # 新規作成
+            settings_id = str(uuid.uuid4())
+            result = supabase.table("v2_imlogic_settings").insert({
+                "id": settings_id,
+                "user_id": user_id,
+                "settings_name": request.name,
+                "horse_weight": request.horse_weight,
+                "jockey_weight": request.jockey_weight,
+                "item_weights": request.item_weights
+            }).execute()
+            
+            message = "IMLogic設定を作成しました"
         
         return {
             "id": settings_id,

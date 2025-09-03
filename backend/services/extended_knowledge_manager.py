@@ -16,9 +16,12 @@ class ExtendedKnowledgeManager:
     
     def __init__(self):
         self.data_dir = Path(__file__).parent.parent / "data"
-        self.knowledge_file = self.data_dir / "dlogic_extended_knowledge.json"
+        # 統合ナレッジファイルを使用
+        self.knowledge_file = self.data_dir / "unified_knowledge_20250903.json"
         self.knowledge_data: Dict[str, Any] = {}
         self.is_loaded = False
+        # CloudflareのCDN URL（統合ナレッジファイル用）
+        self.cdn_url = "https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/unified_knowledge_20250903.json"
         self._load_knowledge()
     
     def _load_knowledge(self) -> None:

@@ -21,8 +21,9 @@ class ViewLogicDataManager:
         self.horses_dict = {}  # 馬名でアクセスするための辞書
         self.last_updated = None
         self.cache_ttl = timedelta(hours=24)  # 24時間キャッシュ
-        self.cdn_url = "https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/viewlogic_knowledge.json"
-        self.local_cache_path = "/tmp/viewlogic_knowledge_cache.json"
+        # 統合ナレッジファイルを使用（2025-09-03更新版）
+        self.cdn_url = "https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/unified_knowledge_20250903.json"
+        self.local_cache_path = "/tmp/unified_knowledge_cache.json"
         
         # 初期化時にデータをロード
         self.load_knowledge()
@@ -96,7 +97,7 @@ class ViewLogicDataManager:
         try:
             local_path = os.path.join(
                 os.path.dirname(__file__), 
-                '../data/viewlogic_knowledge.json'
+                '../data/unified_knowledge_20250903.json'
             )
             
             if not os.path.exists(local_path):

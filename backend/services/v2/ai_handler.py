@@ -1766,11 +1766,17 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             lines.append("")
             
             for i, race in enumerate(races, 1):
-                # レース基本情報
-                race_date = race.get("開催日", "不明")
-                venue = race.get("競馬場", "不明")
-                distance = race.get("距離", "不明")
-                track = race.get("馬場", "")
+                # レース基本情報（新しい絵文字付きキーと旧キーの両方に対応）
+                race_date = race.get("📅 開催日", race.get("開催日", "不明"))
+                venue = race.get("🏟️ 競馬場", race.get("競馬場", "不明"))
+                race_name = race.get("🏁 レース", race.get("レース", ""))
+                class_name = race.get("🏆 クラス", race.get("クラス", ""))
+                distance = race.get("📏 距離", race.get("距離", "不明"))
+                track = race.get("🌤️ 馬場", race.get("馬場", ""))
+                
+                # 血統情報の取得
+                sire = race.get("🐴 父", race.get("父", ""))
+                broodmare_sire = race.get("🐎 母父", race.get("母父", ""))
                 
                 # 日付フォーマットの改善（例: 2025/0608 → 2025/06/08）
                 if race_date != "不明" and len(race_date) == 9 and "/" in race_date:
@@ -1781,14 +1787,27 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                         day = parts[1][2:]
                         race_date = f"{year}/{month}/{day}"
                 
-                lines.append(f"**{i}. {race_date} {venue}**")
+                # レース名がある場合は表示、ない場合は日付と競馬場のみ
+                if race_name and class_name:
+                    lines.append(f"**{i}. {race_date} {venue} {race_name}（{class_name}）**")
+                elif race_name:
+                    lines.append(f"**{i}. {race_date} {venue} {race_name}**")
+                else:
+                    lines.append(f"**{i}. {race_date} {venue}**")
                 
                 # 距離と馬場（馬場が空の場合は「-」を表示）
                 track_display = track if track else "-"
                 lines.append(f"　📏 距離: {distance} / 馬場: {track_display}")
                 
-                # 成績情報
-                chakujun = race.get("着順", "")
+                # 成績情報（新しい絵文字付きキーと旧キーの両方に対応）
+                chakujun = race.get("🥇 着順", race.get("着順", ""))
+                # "11着" のような形式から数字部分を抽出
+                if chakujun and "着" in str(chakujun):
+                    chakujun = str(chakujun).replace("着", "")
+                # 先頭の0を削除（"02" → "2"）
+                if chakujun and str(chakujun).startswith("0") and len(str(chakujun)) > 1:
+                    chakujun = str(chakujun).lstrip("0")
+                
                 if chakujun and str(chakujun) != "":
                     # 1-3着は強調表示
                     if str(chakujun) in ["1", "2", "3"]:
@@ -1798,7 +1817,10 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 else:
                     chakujun_display = "-"
                 
-                popularity = race.get("人気", "")
+                popularity = race.get("📊 人気", race.get("人気", ""))
+                # "10番人気" のような形式から数字部分を抽出
+                if popularity and "番人気" in str(popularity):
+                    popularity = str(popularity).replace("番人気", "")
                 if popularity and str(popularity) != "":
                     popularity_display = f"{popularity}番人気"
                 else:
@@ -1806,34 +1828,62 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 
                 lines.append(f"　📊 着順: {chakujun_display} / 人気: {popularity_display}")
                 
-                # タイムと上り
-                time_result = race.get("タイム", "")
-                agari = race.get("上り", "")
+                # タイムと上り（新しい絵文字付きキーと旧キーの両方に対応）
+                time_result = race.get("⏱️ タイム", race.get("タイム", ""))
+                agari = race.get("🏃 上り", race.get("上り", ""))
                 
-                # タイムの表示改善
-                time_display = time_result if time_result else "-"
+                # タイムの表示改善（例: 1588 → 1:58.8）
+                time_display = "-"
+                if time_result and str(time_result).isdigit():
+                    time_str = str(time_result)
+                    if len(time_str) == 4:  # 1588のような形式
+                        time_display = f"{time_str[0]}:{time_str[1:3]}.{time_str[3]}"
+                    elif len(time_str) == 3:  # 589のような形式（1分未満）
+                        time_display = f"0:{time_str[0:2]}.{time_str[2]}"
+                    else:
+                        time_display = time_result
+                elif time_result:
+                    time_display = time_result
                 
-                # 上りの表示改善（例: 343.0 → 34.3）
+                # 上りの表示改善（例: 334 → 33.4）
                 agari_display = "-"
                 if agari and str(agari) != "":
+                    agari_str = str(agari).replace("秒", "")  # "334秒"から"秒"を削除
                     try:
-                        agari_float = float(agari)
-                        if agari_float > 100:  # 343.0のような形式の場合
-                            agari_display = f"{agari_float/10:.1f}秒"
+                        if agari_str.isdigit():
+                            agari_int = int(agari_str)
+                            if agari_int > 100:  # 334のような形式の場合
+                                agari_display = f"{agari_int/10:.1f}秒"
+                            else:
+                                agari_display = f"{agari_int:.1f}秒"
                         else:
-                            agari_display = f"{agari_float:.1f}秒"
+                            agari_float = float(agari_str)
+                            if agari_float > 100:  # 343.0のような形式の場合
+                                agari_display = f"{agari_float/10:.1f}秒"
+                            else:
+                                agari_display = f"{agari_float:.1f}秒"
                     except:
                         agari_display = str(agari) if agari else "-"
                 
                 lines.append(f"　⏱ タイム: {time_display} / 上り: {agari_display}")
                 
-                # レース名があれば追加
-                race_name = race.get("レース名", "")
-                if race_name:
-                    lines.append(f"　📋 {race_name}")
+                # 血統情報を表示
+                if sire or broodmare_sire:
+                    bloodline_parts = []
+                    if sire and sire != "不明":
+                        bloodline_parts.append(f"父: {sire}")
+                    if broodmare_sire and broodmare_sire != "不明":
+                        bloodline_parts.append(f"母父: {broodmare_sire}")
+                    if bloodline_parts:
+                        lines.append(f"　🧬 血統: {' / '.join(bloodline_parts)}")
+                
+                # レース名があれば追加（注：これは別のレース名フィールド）
+                extra_race_name = race.get("レース名", "")
+                if extra_race_name and extra_race_name != race_name:  # 重複を避ける
+                    lines.append(f"　📋 {extra_race_name}")
                 
                 # 騎手名があれば追加  
-                jockey = race.get("騎手", "")
+                jockey = race.get("🏇 騎手", race.get("騎手", ""))
                 if jockey:
                     lines.append(f"　🏇 騎手: {jockey}")
                 

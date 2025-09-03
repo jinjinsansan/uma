@@ -416,18 +416,35 @@ class V2ChatService:
     ) -> bool:
         """チャットセッションと関連メッセージを削除"""
         try:
+            # 削除前にセッションが存在するか確認
+            check_session = self.supabase.table("v2_chat_sessions")\
+                .select("id")\
+                .eq("id", session_id)\
+                .eq("user_id", user_id)\
+                .execute()
+            
+            if not check_session.data:
+                logger.warning(f"Session {session_id} not found for user {user_id}")
+                return False
+            
             # まずメッセージを削除
             delete_messages = self.supabase.table("v2_chat_messages").delete().eq("session_id", session_id).execute()
-            logger.info(f"Deleted {len(delete_messages.data) if delete_messages.data else 0} messages for session {session_id}")
+            logger.info(f"Deleted messages for session {session_id}")
             
             # セッションを削除
             delete_session = self.supabase.table("v2_chat_sessions").delete().eq("id", session_id).eq("user_id", user_id).execute()
             
-            if delete_session.data:
+            # 削除後に確認（削除が成功したか）
+            verify_deletion = self.supabase.table("v2_chat_sessions")\
+                .select("id")\
+                .eq("id", session_id)\
+                .execute()
+            
+            if not verify_deletion.data:
                 logger.info(f"Successfully deleted session {session_id}")
                 return True
             else:
-                logger.warning(f"Session {session_id} not found for user {user_id}")
+                logger.error(f"Failed to delete session {session_id} - still exists in database")
                 return False
                 
         except Exception as e:

@@ -17,7 +17,7 @@ class DLogicLazyDataManager:
     """D-Logic遅延読み込みデータ管理システム"""
     
     def __init__(self):
-        self.knowledge_url = "https://github.com/jinjinsansan/dlogic-knowledge-data/releases/download/V2.0/dlogic_raw_knowledge.json"
+        self.knowledge_url = "https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/unified_knowledge_20250903.json"
         self.cache_file = os.path.join(tempfile.gettempdir(), "dlogic_cache.pkl.gz")
         self.horse_index = {}  # 馬名 -> ファイル内位置のマッピング
         self.cached_horses = {}  # 最近使用した馬データ（LRUキャッシュ）

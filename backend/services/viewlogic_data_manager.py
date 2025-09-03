@@ -123,9 +123,21 @@ class ViewLogicDataManager:
         if not self.knowledge_data or 'horses' not in self.knowledge_data:
             return
         
-        for horse_data in self.knowledge_data['horses']:
-            if 'horse_name' in horse_data:
-                self.horses_dict[horse_data['horse_name']] = horse_data
+        horses_data = self.knowledge_data['horses']
+        
+        # 統合ナレッジファイル形式 {馬名: {races: [...]}} の場合
+        if isinstance(horses_data, dict):
+            for horse_name, horse_data in horses_data.items():
+                if isinstance(horse_data, dict):
+                    # 統合形式: horse_nameをデータに追加
+                    horse_data['horse_name'] = horse_name
+                    self.horses_dict[horse_name] = horse_data
+        
+        # 従来のViewLogic形式 [{horse_name: ..., races: ...}, ...] の場合
+        elif isinstance(horses_data, list):
+            for horse_data in horses_data:
+                if 'horse_name' in horse_data:
+                    self.horses_dict[horse_data['horse_name']] = horse_data
     
     def get_horse_data(self, horse_name: str) -> Optional[Dict[str, Any]]:
         """指定した馬のデータを取得"""

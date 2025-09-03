@@ -35,6 +35,16 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def safe_int(value, default=0):
+    """統合ナレッジファイルの文字列数値を安全に整数に変換"""
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
 class RunningStyleAnalyzer:
     """脚質判定と3段階分類を行うクラス"""
     
@@ -46,8 +56,13 @@ class RunningStyleAnalyzer:
         # 1コーナー通過順位の平均を計算
         corner1_positions = []
         for race in horse_races:
-            if 'CORNER1_JUNI' in race and race['CORNER1_JUNI'] > 0:
-                corner1_positions.append(race['CORNER1_JUNI'])
+            if 'CORNER1_JUNI' in race:
+                try:
+                    corner1_pos = int(race['CORNER1_JUNI'])
+                    if corner1_pos > 0:
+                        corner1_positions.append(corner1_pos)
+                except (ValueError, TypeError):
+                    continue
         
         if not corner1_positions:
             return "不明"
@@ -83,9 +98,9 @@ class RunningStyleAnalyzer:
         escape_races = 0
         
         for race in horse_races:
-            corner1 = race.get('CORNER1_JUNI', 99)
-            corner2 = race.get('CORNER2_JUNI', 99)
-            finish = race.get('KAKUTEI_CHAKUJUN', 99)
+            corner1 = safe_int(race.get('CORNER1_JUNI'), 99)
+            corner2 = safe_int(race.get('CORNER2_JUNI'), 99)
+            finish = safe_int(race.get('KAKUTEI_CHAKUJUN'), 99)
             
             # 逃げた場合
             if corner1 <= 2:
@@ -118,7 +133,7 @@ class RunningStyleAnalyzer:
         position_stability = 0
         
         for race in horse_races:
-            corner1 = race.get('CORNER1_JUNI', 99)
+            corner1 = safe_int(race.get('CORNER1_JUNI'), 99)
             if corner1 < 99:
                 corner1_positions.append(corner1)
         
@@ -145,8 +160,8 @@ class RunningStyleAnalyzer:
         finishing_power_scores = []
         
         for race in horse_races:
-            corner4 = race.get('CORNER4_JUNI', 99)
-            finish = race.get('KAKUTEI_CHAKUJUN', 99)
+            corner4 = safe_int(race.get('CORNER4_JUNI'), 99)
+            finish = safe_int(race.get('KAKUTEI_CHAKUJUN'), 99)
             
             if corner4 < 99 and finish < 99:
                 # 4コーナーから着順への改善度
@@ -171,8 +186,8 @@ class RunningStyleAnalyzer:
         total_races = len(horse_races)
         
         for race in horse_races:
-            corner4 = race.get('CORNER4_JUNI', 99)
-            finish = race.get('KAKUTEI_CHAKUJUN', 99)
+            corner4 = safe_int(race.get('CORNER4_JUNI'), 99)
+            finish = safe_int(race.get('KAKUTEI_CHAKUJUN'), 99)
             
             if corner4 > 10 and finish <= 3:
                 extreme_finishes += 1
@@ -203,25 +218,25 @@ class RunningStyleAnalyzer:
         solo_count = 0
         total_escapes = 0
         for race in horse_races:
-            if race.get('CORNER1_JUNI', 99) <= 2:
+            if safe_int(race.get('CORNER1_JUNI'), 99) <= 2:
                 total_escapes += 1
-                if race.get('CORNER2_JUNI', 99) == 1:
+                if safe_int(race.get('CORNER2_JUNI'), 99) == 1:
                     solo_count += 1
         
         if total_escapes > 0:
             score_components['solo_escape'] = (solo_count / total_escapes) * 40
         
         # 2. スタートダッシュ力（簡易計算）
-        corner1_avg = mean([r.get('CORNER1_JUNI', 10) for r in horse_races[:5]])
+        corner1_avg = mean([safe_int(r.get('CORNER1_JUNI'), 10) for r in horse_races[:5]])
         score_components['start_dash'] = max(0, (10 - corner1_avg) * 2.5)
         
         # 3. 逃げ粘り度
         success_count = 0
         escape_count = 0
         for race in horse_races:
-            if race.get('CORNER1_JUNI', 99) <= 3:
+            if safe_int(race.get('CORNER1_JUNI'), 99) <= 3:
                 escape_count += 1
-                if race.get('KAKUTEI_CHAKUJUN', 99) <= 3:
+                if safe_int(race.get('KAKUTEI_CHAKUJUN'), 99) <= 3:
                     success_count += 1
         
         if escape_count > 0:
@@ -232,7 +247,7 @@ class RunningStyleAnalyzer:
         
         # 5. 最近の勢い
         recent_races = horse_races[:3] if len(horse_races) >= 3 else horse_races
-        recent_corner1 = [r.get('CORNER1_JUNI', 99) for r in recent_races]
+        recent_corner1 = [safe_int(r.get('CORNER1_JUNI'), 99) for r in recent_races]
         if recent_corner1:
             recent_avg = mean(recent_corner1)
             if recent_avg <= 3:
@@ -706,8 +721,8 @@ class ViewLogicEngine:
         total_escapes = 0
         
         for race in races:
-            corner1 = race.get('CORNER1_JUNI', 99)
-            corner2 = race.get('CORNER2_JUNI', 99)
+            corner1 = safe_int(race.get('CORNER1_JUNI'), 99)
+            corner2 = safe_int(race.get('CORNER2_JUNI'), 99)
             
             if corner1 <= 2:  # 逃げた場合
                 total_escapes += 1
@@ -717,7 +732,7 @@ class ViewLogicEngine:
                     solo_escape_count += 1
                 
                 # 逃げて3着以内
-                if race.get('KAKUTEI_CHAKUJUN', 99) <= 3:
+                if safe_int(race.get('KAKUTEI_CHAKUJUN'), 99) <= 3:
                     escape_success_count += 1
         
         if total_escapes == 0:
@@ -738,7 +753,7 @@ class ViewLogicEngine:
         corner1_positions = []
         
         for race in races:
-            corner1 = race.get('CORNER1_JUNI', 99)
+            corner1 = safe_int(race.get('CORNER1_JUNI'), 99)
             if corner1 < 99:
                 corner1_positions.append(corner1)
         
@@ -760,8 +775,8 @@ class ViewLogicEngine:
         finishing_improvements = []
         
         for race in races:
-            corner4 = race.get('CORNER4_JUNI', 99)
-            finish = race.get('KAKUTEI_CHAKUJUN', 99)
+            corner4 = safe_int(race.get('CORNER4_JUNI'), 99)
+            finish = safe_int(race.get('KAKUTEI_CHAKUJUN'), 99)
             
             if corner4 < 99 and finish < 99:
                 improvement = corner4 - finish
@@ -784,8 +799,8 @@ class ViewLogicEngine:
         extreme_finishes = 0
         
         for race in races:
-            corner4 = race.get('CORNER4_JUNI', 99)
-            finish = race.get('KAKUTEI_CHAKUJUN', 99)
+            corner4 = safe_int(race.get('CORNER4_JUNI'), 99)
+            finish = safe_int(race.get('KAKUTEI_CHAKUJUN'), 99)
             
             if corner4 > 10 and finish <= 3:
                 extreme_finishes += 1
@@ -814,10 +829,10 @@ class ViewLogicEngine:
             stability_values = []
             for race in horse['races']:
                 positions = [
-                    race.get('CORNER1_JUNI', 99),
-                    race.get('CORNER2_JUNI', 99),
-                    race.get('CORNER3_JUNI', 99),
-                    race.get('CORNER4_JUNI', 99)
+                    safe_int(race.get('CORNER1_JUNI'), 99),
+                    safe_int(race.get('CORNER2_JUNI'), 99),
+                    safe_int(race.get('CORNER3_JUNI'), 99),
+                    safe_int(race.get('CORNER4_JUNI'), 99)
                 ]
                 
                 # 有効な位置データのみ使用
@@ -927,9 +942,9 @@ class ViewLogicEngine:
                 continue
             
             # 過去のコーナー通過順位の平均から予測
-            c1_data = [r.get('CORNER1_JUNI', 10) for r in horse['races'] if r.get('CORNER1_JUNI')]
-            c3_data = [r.get('CORNER3_JUNI', 10) for r in horse['races'] if r.get('CORNER3_JUNI')]
-            c4_data = [r.get('CORNER4_JUNI', 10) for r in horse['races'] if r.get('CORNER4_JUNI')]
+            c1_data = [safe_int(r.get('CORNER1_JUNI'), 10) for r in horse['races'] if r.get('CORNER1_JUNI')]
+            c3_data = [safe_int(r.get('CORNER3_JUNI'), 10) for r in horse['races'] if r.get('CORNER3_JUNI')]
+            c4_data = [safe_int(r.get('CORNER4_JUNI'), 10) for r in horse['races'] if r.get('CORNER4_JUNI')]
             
             avg_c1 = mean(c1_data) if c1_data else 10
             avg_c3 = mean(c3_data) if c3_data else 10
@@ -956,7 +971,7 @@ class ViewLogicEngine:
         
         scores = []
         for race in races[:5]:  # 直近5レース
-            finish = race.get('KAKUTEI_CHAKUJUN', 10)
+            finish = safe_int(race.get('KAKUTEI_CHAKUJUN'), 10)
             if finish <= 3:
                 scores.append(85 + (4 - finish) * 5)  # 1着100点、2着95点、3着90点
             elif finish <= 5:
@@ -980,8 +995,8 @@ class ViewLogicEngine:
         
         improvements = []
         for i in range(len(recent_races) - 1):
-            prev_finish = recent_races[i+1].get('KAKUTEI_CHAKUJUN', 10)
-            curr_finish = recent_races[i].get('KAKUTEI_CHAKUJUN', 10)
+            prev_finish = safe_int(recent_races[i+1].get('KAKUTEI_CHAKUJUN'), 10)
+            curr_finish = safe_int(recent_races[i].get('KAKUTEI_CHAKUJUN'), 10)
             improvement = prev_finish - curr_finish  # 良化していればプラス
             improvements.append(improvement)
         
@@ -2552,7 +2567,7 @@ class ViewLogicEngine:
                             if race_venue == venue and race_track == track_type:
                                 if not distance or race_distance == distance:
                                     total_runs += 1
-                                    place = race.get('KAKUTEI_CHAKUJUN', 99)
+                                    place = safe_int(race.get('KAKUTEI_CHAKUJUN'), 99)
                                     if place == 1:
                                         wins += 1
                                     if place <= 3:

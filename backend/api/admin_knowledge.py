@@ -65,7 +65,7 @@ async def get_update_status(secret_key: str):
         current_info = {
             "total_horses": len(dlogic_manager.knowledge_data.get('horses', {})),
             "last_updated": dlogic_manager.knowledge_data.get('meta', {}).get('last_updated', 'unknown'),
-            "github_url": "https://github.com/jinjinsansan/dlogic-knowledge-data/releases/download/V1.0/dlogic_raw_knowledge.json"
+            "cdn_url": "https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/unified_knowledge_20250903.json"
         }
         
         # 更新履歴

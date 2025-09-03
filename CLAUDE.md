@@ -31,10 +31,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - システムプロンプトから削除済み
 - 「独自基準100点」という表現で統一
 
-### 5. 今後の課題と解決策
-- **課題**: ローカルPC依存（電源、ネットワーク）
-- **将来**: Supabase 等のクラウドストレージへ移行
-- **現在**: PC常時稼働で運用
+### 5. 統合ナレッジファイル移行完了 (2025-09-03)
+- **完了**: 全てのエンジンが統合ナレッジファイル（53,618頭）を使用
+- **CDN**: Cloudflare R2 `https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/unified_knowledge_20250903.json`
+- **旧URL削除**: GitHub Releasesの古いナレッジファイル参照を全て削除
+- **メモリ削減**: 重複ダウンロードを排除し、Renderのメモリ使用量を最適化
 
 ## 🏇 騎手名マッピングシステム (2025-01-31 追加)
 

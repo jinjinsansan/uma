@@ -394,9 +394,12 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 lines.append(f"{rank_display} {horse_name}: {total_score:.1f}点")
                 lines.append(f"   馬: {horse_score:.1f}点 | 騎手: {jockey_score:.1f}点")
                 
+                # 次の馬との間に空行を追加（最後の馬以外）
+                if i < len(valid_scores) - 1:
+                    lines.append("")
+                
                 # 6位目に区切り線を追加
                 if i == 5:
-                    lines.append("")
                     lines.append("【6位以下】")
             
             # データがない馬がいる場合の注記
@@ -1526,8 +1529,8 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                     if 'bloodline_evaluation' in details:
                         lines.append(f"   血統評価: {details['bloodline_evaluation']:.1f}")
                 
-                # 5位と6位の間に空行を追加
-                if i == 4:
+                # 次の馬との間に空行を追加（最後の馬以外）
+                if i < len(valid_horses) - 1:
                     lines.append("")
                 
                 # 6位目に区切り線を追加

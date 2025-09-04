@@ -643,29 +643,41 @@ class ViewLogicEngine:
         else:
             calculation_pace = "スローペース"
         
-        # 表示用ペース判定（日本語出力に使用）
-        if zenhan_avg <= 35.0:
+        # 表示用ペース判定（固定四分位数 - 全レース共通基準）
+        # 全レースデータの統計から算出した固定値を使用
+        # これにより4種類全てのペースが適切に出現
+        q1 = 33.5  # 超ハイペース境界（より速いレースで出現）
+        q2 = 34.3  # ハイ/平均ペース境界（中央値）
+        q3 = 35.0  # 平均/スローペース境界（より遅いレースで出現）
+        
+        # 四分位数ベースのペース判定（各25%に均等分布）
+        if zenhan_avg <= q1:
             display_pace = "超ハイペース"
             confidence = 95
-        elif zenhan_avg <= 36.0:
+        elif zenhan_avg <= q2:
             display_pace = "ハイペース"
             confidence = 90
-        elif zenhan_avg <= 37.0:
+        elif zenhan_avg <= q3:
             display_pace = "平均ペース"
             confidence = 85
         else:
             display_pace = "スローペース"
             confidence = 90
         
-        # 閾値付近（±0.3秒）では20%の確率で隣接ペースに変更（表示の多様性向上）
-        if 35.7 <= zenhan_avg <= 36.3:  # ハイ/平均の境界
-            if random.random() < 0.2:
+        # 閾値付近（四分位点の±0.1秒）では30%の確率で隣接ペースに変更（表示の多様性向上）
+        margin = 0.1
+        if abs(zenhan_avg - q1) <= margin:  # Q1付近
+            if random.random() < 0.3:
+                display_pace = random.choice(["超ハイペース", "ハイペース"])
+                confidence = 85
+        elif abs(zenhan_avg - q2) <= margin:  # Q2付近
+            if random.random() < 0.3:
                 display_pace = random.choice(["ハイペース", "平均ペース"])
                 confidence = 85
-        elif 36.7 <= zenhan_avg <= 37.3:  # 平均/スローの境界
-            if random.random() < 0.2:
+        elif abs(zenhan_avg - q3) <= margin:  # Q3付近
+            if random.random() < 0.3:
                 display_pace = random.choice(["平均ペース", "スローペース"])
-                confidence = 85
+                confidence = 8585
         
         return {
             'pace': display_pace,  # 表示用（日本語出力）

@@ -2485,8 +2485,8 @@ class ViewLogicEngine:
 
     def _analyze_jockeys_course_performance(self, jockeys: List[str], venue: str, distance: int, track_type: str) -> List[Dict]:
         """
-        3. 騎手の開催場所（開催場+距離+コース種別）での成績複勝率を分析
-        ViewLogicナレッジファイルのracesデータから騎手別に集計
+        3. 騎手の開催場所（開催場+距離）での成績複勝率を分析
+        騎手ナレッジファイルから直接データを取得
         
         Args:
             jockeys: 騎手名リスト
@@ -2498,7 +2498,8 @@ class ViewLogicEngine:
             騎手の該当コース成績リスト
         """
         jockey_course_performances = []
-        course_key = f"{venue}{distance}m{track_type}" if distance else f"{venue}{track_type}"
+        # 騎手ナレッジファイルのキー形式（競馬場_距離）
+        course_key = f"{venue}_{distance}"
         
         # jockeysパラメータの型をチェック
         logger.info(f"_analyze_jockeys_course_performance called with jockeys type: {type(jockeys)}")
@@ -2526,66 +2527,106 @@ class ViewLogicEngine:
             logger.warning(f"有効な騎手データがありません（コース成績分析）: {jockeys}")
             return []
         
-        if not self.data_manager.is_loaded():
-            logger.warning("ViewLogicナレッジファイルが読み込まれていません")
+        # 騎手マネージャーの確認
+        if not self.jockey_manager or not self.jockey_manager.is_loaded():
+            logger.warning("騎手ナレッジファイルが読み込まれていません")
             return []
         
         try:
-            # 各騎手について、ViewLogicの全馬データから該当コースでの騎乗成績を集計
+            # 各騎手について、騎手ナレッジファイルから該当コースのデータを取得
             for jockey_name in valid_jockeys:
-                wins = 0
-                fukusho = 0
-                total_runs = 0
+                # 騎手名を正規化
+                normalized_name = self._normalize_jockey_name(jockey_name)
                 
-                # 全馬のデータを検索
-                for horse_name, horse_data in self.data_manager.horses_dict.items():
-                    if 'races' not in horse_data:
-                        continue
+                # 騎手データを取得（複数パターンを試行）
+                jockey_data = self.jockey_manager.get_jockey_data(normalized_name)
+                
+                # 見つからない場合、他のパターンも試す
+                if not jockey_data:
+                    # パターン1: 入力名そのまま
+                    jockey_data = self.jockey_manager.get_jockey_data(jockey_name)
                     
-                    # 該当馬のレースデータから騎手の成績を集計
-                    for race in horse_data['races']:
-                        # ViewLogicのフィールド名を使用
-                        race_jockey = race.get('KISHUMEI_RYAKUSHO', '')
-                        race_venue_code = race.get('KEIBAJO_CODE', '')
-                        race_distance = race.get('KYORI', 0)
-                        race_track_code = race.get('TRACK_CODE', '')
-                        
-                        # 会場コードを会場名に変換
-                        venue_map = {
-                            '01': '札幌', '02': '函館', '03': '福島', '04': '新潟',
-                            '05': '東京', '06': '中山', '07': '中京', '08': '京都',
-                            '09': '阪神', '10': '小倉'
-                        }
-                        race_venue = venue_map.get(race_venue_code, '')
-                        
-                        # トラックコードをコース種別に変換（11-29は芝、それ以外はダート）
-                        race_track = '芝' if 11 <= int(race_track_code) <= 29 else 'ダート'
-                        
-                        # 騎手名の正規化（スペースや記号の違いを吸収）
-                        if self._normalize_jockey_name(race_jockey) == self._normalize_jockey_name(jockey_name):
-                            # コース条件の一致確認
-                            if race_venue == venue and race_track == track_type:
-                                if not distance or race_distance == distance:
-                                    total_runs += 1
-                                    place = safe_int(race.get('KAKUTEI_CHAKUJUN'), 99)
-                                    if place == 1:
-                                        wins += 1
-                                    if place <= 3:
-                                        fukusho += 1
+                    # パターン2: 前後の空白を除去（全角空白含む）
+                    if not jockey_data:
+                        clean_name = jockey_name.strip().strip('　')
+                        jockey_data = self.jockey_manager.get_jockey_data(clean_name)
+                    
+                    # パターン3: 末尾に全角空白を追加（石橋脩対応）
+                    if not jockey_data:
+                        jockey_data = self.jockey_manager.get_jockey_data(clean_name + '　')
+                    
+                    # パターン4: 外国人騎手の特殊対応
+                    if not jockey_data and clean_name == 'ルメール':
+                        # Ｃ．を付けずに試す
+                        jockey_data = self.jockey_manager.get_jockey_data('ルメール')
                 
-                # 成績データを追加
-                if total_runs > 0:
+                if not jockey_data:
+                    # 騎手データが見つからない場合
+                    logger.info(f"騎手データが見つかりません: {jockey_name}")
+                    jockey_course_performances.append({
+                        'jockey_name': jockey_name,
+                        'course_key': course_key,
+                        'total_runs': 0,
+                        'wins': 0,
+                        'fukusho_count': 0,
+                        'win_rate': 0.0,
+                        'fukusho_rate': 0.0,
+                        'status': 'no_jockey_data'
+                    })
+                    continue
+                
+                # venue_course_statsから該当コースのデータを探す
+                venue_course_stats = jockey_data.get('venue_course_stats', {})
+                
+                # 該当コースのデータを取得
+                course_stats = None
+                
+                # 完全一致を試みる
+                if course_key in venue_course_stats:
+                    course_stats = venue_course_stats[course_key]
+                else:
+                    # 芝/ダートを含むキーも試す（互換性のため）
+                    alt_keys = [
+                        f"{venue}_{distance}m",
+                        f"{venue}_{distance}{track_type}",
+                        f"{venue}_{distance}m{track_type}"
+                    ]
+                    
+                    for key in alt_keys:
+                        if key in venue_course_stats:
+                            course_stats = venue_course_stats[key]
+                            break
+                
+                # コース成績が見つかった場合
+                if course_stats:
+                    total_runs = course_stats.get('race_count', 0)
+                    fukusho_rate = course_stats.get('fukusho_rate', 0)
+                    
+                    # resultsから勝利数と複勝数を計算
+                    wins = 0
+                    fukusho = 0
+                    results = course_stats.get('results', [])
+                    for result in results:
+                        position = result.get('position', 99)
+                        if position == 1:
+                            wins += 1
+                        if position <= 3:
+                            fukusho += 1
+                    
+                    # 成績データを追加
                     jockey_course_performances.append({
                         'jockey_name': jockey_name,
                         'course_key': course_key,
                         'total_runs': total_runs,
                         'wins': wins,
                         'fukusho_count': fukusho,
-                        'win_rate': wins / total_runs if total_runs > 0 else 0.0,
-                        'fukusho_rate': fukusho / total_runs if total_runs > 0 else 0.0,
+                        'win_rate': (wins / total_runs * 100) if total_runs > 0 else 0.0,
+                        'fukusho_rate': fukusho_rate,  # 既に%形式
                         'status': 'found'
                     })
                 else:
+                    # 該当コースのデータがない場合
+                    logger.info(f"騎手 {jockey_name} の {course_key} データが見つかりません")
                     jockey_course_performances.append({
                         'jockey_name': jockey_name,
                         'course_key': course_key,

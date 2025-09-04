@@ -745,13 +745,15 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     total_runs = jockey.get('total_runs', 0)
                     win_rate = jockey.get('win_rate', 0.0)
                     fukusho_rate = jockey.get('fukusho_rate', 0.0)
-                    lines.append(f"{i}. **{jockey['jockey_name']}**: {total_runs}戦 勝率{win_rate:.1f}% 複勝率{fukusho_rate:.1f}%")
+                    # 騎手ナレッジファイルは直近5戦のデータのみ保持
+                    display_runs = f"直近{total_runs}戦" if total_runs <= 5 else f"{total_runs}戦"
+                    lines.append(f"{i}. **{jockey['jockey_name']}**: {display_runs} 勝率{win_rate:.1f}% 複勝率{fukusho_rate:.1f}%")
                 
                 # 完結メッセージを追加
                 lines.append("")
-                lines.append(f"以上が当コースで騎乗経験のある{len(jockeys_with_data)}名です。")
+                lines.append(f"以上が当コースで騎乗経験のある{len(jockeys_with_data)}名です（直近データより）。")
                 if jockeys_no_data:
-                    lines.append(f"その他の騎手は当コースでの騎乗経験がありません。")
+                    lines.append(f"その他の騎手は当コースでの騎乗経験がありません（直近5戦内）。")
             else:
                 lines.append("出場騎手全員が当コースでの騎乗経験がありません。")
                 lines.append("騎手の適性よりも馬の能力を重視した方がよいでしょう。")
@@ -980,33 +982,36 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         # レースデータを保持（determine_ai_typeで使用）
         self.current_race_data = race_data
         
-        # まずレース外の質問をチェック（AI判定の前に実行）
+        # まず出走馬チェック（AI判定の前に必ず実行）
+        venue = race_data.get('venue', '')
+        race_number = race_data.get('race_number', '')
+        race_horses = race_data.get('horses', [])
+        
+        # レースに存在しない馬名が含まれているかチェック
+        # カタカナの馬名を正しく抽出（ァ-ヴーを使用）
+        potential_horses = re.findall(r'[ァ-ヴー]+', message)
+        
+        for potential_horse in potential_horses:
+            if len(potential_horse) >= 3:
+                is_in_race = False
+                for race_horse in race_horses:
+                    if potential_horse in race_horse or race_horse in potential_horse:
+                        is_in_race = True
+                        break
+                
+                # 助詞チェックを緩和（馬名単体でも検出）
+                if not is_in_race:
+                    common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー', 'ViewLogic', 'IMLogic', 'DLogic', 'ILogic']
+                    if potential_horse not in common_words:
+                        return {
+                            'content': f"「{potential_horse}」は、{venue} {race_number}Rには出走しません。\nこのレースの出走馬は以下の通りです:\n" + "、".join(race_horses),
+                            'ai_type': 'imlogic',  # デフォルトでimlogicを返す
+                            'sub_type': 'out_of_scope',
+                            'analysis_data': None
+                        }
+        
+        # 次にレース外の質問をチェック
         if self._is_out_of_scope(message, race_data):
-            venue = race_data.get('venue', '')
-            race_number = race_data.get('race_number', '')
-            
-            # レースに存在しない馬名が含まれているかチェック
-            race_horses = race_data.get('horses', [])
-            potential_horses = re.findall(r'[ア-ンー]+|[A-Za-z]+', message)
-            
-            for potential_horse in potential_horses:
-                if len(potential_horse) >= 3:
-                    is_in_race = False
-                    for race_horse in race_horses:
-                        if potential_horse in race_horse or race_horse in potential_horse:
-                            is_in_race = True
-                            break
-                    
-                    if not is_in_race and re.search(f'{potential_horse}(の|は|が|を|と|って|という)', message):
-                        common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー', 'ViewLogic', 'IMLogic', 'DLogic', 'ILogic']
-                        if potential_horse not in common_words:
-                            return {
-                                'content': f"「{potential_horse}」は、{venue} {race_number}Rには出走しません。\nこのレースの出走馬は以下の通りです:\n" + "、".join(race_horses[:5]) + ("..." if len(race_horses) > 5 else ""),
-                                'ai_type': 'imlogic',  # デフォルトでimlogicを返す
-                                'sub_type': 'out_of_scope',
-                                'analysis_data': None
-                            }
-            
             # 他のレースや開催場への言及の場合
             return {
                 'content': f"このチャットは{venue} {race_number}R専用です。他のレースについては新しいチャットを作成してください。",
@@ -1907,12 +1912,25 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 lines.append("📈 **戦績サマリー**")
                 lines.append(f"　総戦数: {total_races}戦")
                 
-                # 着順分析（整数型と文字列型の両方に対応）
-                win_count = sum(1 for r in races if str(r.get("着順", "")) == "1" or r.get("着順") == 1)
-                place_count = sum(1 for r in races if str(r.get("着順", "")) in ["1", "2", "3"] or r.get("着順") in [1, 2, 3])
+                # 着順分析（整数型と文字列型、絵文字付きキーの両方に対応）
+                win_count = 0
+                place_count = 0
+                valid_races = []
                 
-                # 着順データがある場合のみ勝率・複勝率を計算
-                valid_races = [r for r in races if r.get("着順") and str(r.get("着順", "")).isdigit()]
+                for r in races:
+                    # 着順データを取得（新旧両方のキーに対応）
+                    chakujun = r.get("🥇 着順", r.get("着順", ""))
+                    # "11着" のような形式から数字部分を抽出
+                    if chakujun and "着" in str(chakujun):
+                        chakujun = str(chakujun).replace("着", "")
+                    
+                    # 有効な着順データかチェック
+                    if chakujun and str(chakujun).isdigit():
+                        valid_races.append({"着順": int(chakujun)})
+                        if str(chakujun) == "1":
+                            win_count += 1
+                        if str(chakujun) in ["1", "2", "3"]:
+                            place_count += 1
                 if valid_races:
                     win_rate = (win_count / len(valid_races)) * 100
                     place_rate = (place_count / len(valid_races)) * 100
@@ -1943,7 +1961,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             
             # recent_ridesからデータ表示（出走数が0でない場合のみ表示）
             if result.get("recent_rides"):
-                lines.append("🏟️ **競馬場・距離別成績（直近5戦）**")
+                lines.append("🏟️ **競馬場・距離別成績（直近データ）**")
                 displayed_any = False
                 
                 for ride in result["recent_rides"]:
@@ -1954,7 +1972,9 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                     
                     # 出走数が0でない場合のみ表示
                     if runs > 0:
-                        lines.append(f"　{venue}{distance}: {runs}戦 複勝率{fukusho_rate}")
+                        # 騎手ナレッジファイルは直近5戦のみ保持
+                        display_runs = f"直近{runs}戦" if runs <= 5 else f"{runs}戦"
+                        lines.append(f"　{venue}{distance}: {display_runs} 複勝率{fukusho_rate}")
                         displayed_any = True
                 
                 if not displayed_any:
@@ -1963,7 +1983,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             
             # 統計情報から馬場状態別成績
             if stats.get("馬場別成績"):
-                lines.append("🌧️ **馬場状態別成績（直近5戦）**")
+                lines.append("🌧️ **馬場状態別成績（直近データ）**")
                 track_stats = stats["馬場別成績"]
                 
                 # 重複を除去して表示
@@ -1981,7 +2001,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             
             # 枠順別成績
             if stats.get("枠順別成績"):
-                lines.append("🎯 **枠順別成績（直近5戦）**")
+                lines.append("🎯 **枠順別成績（直近データ）**")
                 post_stats = stats["枠順別成績"]
                 
                 for post_data in post_stats:
@@ -1995,7 +2015,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             total_races = stats.get("総出走数", 0)
             overall_rate = stats.get("総合複勝率", "0.0%")
             
-            lines.append("📈 **総合成績**")
+            lines.append("📈 **総合成績（直近データ）**")
             lines.append(f"　分析対象: {total_races}戦")
             if total_races > 0:
                 lines.append(f"　総合複勝率: {overall_rate}")

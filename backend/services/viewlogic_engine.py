@@ -2312,14 +2312,14 @@ class ViewLogicEngine:
                 
                 # 成績をまとめる
                 if course_runs > 0:
-                    fukusho_rate = course_fukusho / course_runs
-                    logger.info(f"馬の該当コース成績あり: {horse_name}, {course_runs}戦, 複勝率{fukusho_rate:.1%}")
+                    fukusho_rate = (course_fukusho / course_runs) * 100  # パーセント形式に変換
+                    logger.info(f"馬の該当コース成績あり: {horse_name}, {course_runs}戦, 複勝率{fukusho_rate:.1f}%")
                     horse_performances.append({
                         'horse_name': horse_name,
                         'course_key': course_key,
                         'total_runs': course_runs,
                         'fukusho_count': course_fukusho,
-                        'fukusho_rate': fukusho_rate,
+                        'fukusho_rate': fukusho_rate,  # %形式で保存
                         'status': 'found'
                     })
                 else:
@@ -2705,10 +2705,10 @@ class ViewLogicEngine:
         
         try:
             # 1. 馬のコース適性インサイト
-            strong_horses = [h for h in horse_course_stats if h['fukusho_rate'] > 0.5 and h['total_runs'] >= 3]
+            strong_horses = [h for h in horse_course_stats if h['fukusho_rate'] > 50 and h['total_runs'] >= 3]
             if strong_horses:
                 top_horse = strong_horses[0]
-                insights.append(f"{top_horse['horse_name']}は当コースで複勝率{top_horse['fukusho_rate']:.1%}と高適性")
+                insights.append(f"{top_horse['horse_name']}は当コースで複勝率{top_horse['fukusho_rate']:.1f}%と高適性")
             
             # 2. 騎手の枠順傾向インサイト  
             if jockey_post_stats:
@@ -2742,10 +2742,10 @@ class ViewLogicEngine:
                     insights.append(f"枠順は{best_position[0]}が複勝率{best_position[1]:.1f}%で有利")
             
             # 3. 騎手のコース適性インサイト
-            strong_jockeys = [j for j in jockey_course_stats if j['fukusho_rate'] > 0.4 and j['total_runs'] >= 5]
+            strong_jockeys = [j for j in jockey_course_stats if j['fukusho_rate'] > 40 and j['total_runs'] >= 5]
             if strong_jockeys:
                 top_jockey = strong_jockeys[0]
-                insights.append(f"{top_jockey['jockey_name']}は当コースで複勝率{top_jockey['fukusho_rate']*100:.1f}%の好成績")
+                insights.append(f"{top_jockey['jockey_name']}は当コースで複勝率{top_jockey['fukusho_rate']:.1f}%の好成績")
             
             return insights[:3]  # 最大3つのインサイト
             
@@ -2864,6 +2864,27 @@ class ViewLogicEngine:
             # 騎手名を正規化（動的検索＋静的マッピング）
             normalized_name = self._normalize_jockey_name(jockey_name)
             jockey_data = self.jockey_manager.get_jockey_data(normalized_name)
+            
+            # 見つからない場合、他のパターンも試す
+            if not jockey_data:
+                # パターン1: 入力名そのまま
+                jockey_data = self.jockey_manager.get_jockey_data(jockey_name)
+                
+                # パターン2: 前後の空白を除去（全角空白含む）
+                if not jockey_data:
+                    clean_name = jockey_name.strip().strip('　')
+                    jockey_data = self.jockey_manager.get_jockey_data(clean_name)
+                
+                # パターン3: 末尾に全角空白を追加
+                if not jockey_data:
+                    jockey_data = self.jockey_manager.get_jockey_data(clean_name + '　')
+                
+                # パターン4: 部分一致検索（騎手ナレッジファイルの全騎手名から検索）
+                if not jockey_data and hasattr(self.jockey_manager, 'jockey_data'):
+                    for full_name in self.jockey_manager.jockey_data.keys():
+                        if clean_name in full_name:
+                            jockey_data = self.jockey_manager.jockey_data[full_name]
+                            break
             
             if not jockey_data:
                 return {

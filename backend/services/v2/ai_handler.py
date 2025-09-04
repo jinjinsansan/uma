@@ -715,7 +715,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 for i, horse in enumerate(horses_with_data, 1):
                     total_runs = horse.get('total_runs', 0)
                     fukusho_rate = horse.get('fukusho_rate', 0.0)
-                    lines.append(f"{i}. **{horse['horse_name']}**: {total_runs}戦 複勝率{fukusho_rate*100:.1f}%")
+                    lines.append(f"{i}. **{horse['horse_name']}**: {total_runs}戦 複勝率{fukusho_rate:.1f}%")
                 
                 # 完結メッセージを追加
                 lines.append("")
@@ -745,7 +745,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     total_runs = jockey.get('total_runs', 0)
                     win_rate = jockey.get('win_rate', 0.0)
                     fukusho_rate = jockey.get('fukusho_rate', 0.0)
-                    lines.append(f"{i}. **{jockey['jockey_name']}**: {total_runs}戦 勝率{win_rate*100:.1f}% 複勝率{fukusho_rate*100:.1f}%")
+                    lines.append(f"{i}. **{jockey['jockey_name']}**: {total_runs}戦 勝率{win_rate:.1f}% 複勝率{fukusho_rate:.1f}%")
                 
                 # 完結メッセージを追加
                 lines.append("")
@@ -1789,13 +1789,23 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                         day = parts[1][2:]
                         race_date = f"{year}/{month}/{day}"
                 
-                # レース名がある場合は表示、ない場合は日付と競馬場のみ
-                if race_name and class_name:
-                    lines.append(f"**{i}. {race_date} {venue} {race_name}（{class_name}）**")
-                elif race_name:
-                    lines.append(f"**{i}. {race_date} {venue} {race_name}**")
+                # レース名とクラス名の表示（どちらか一方でも表示）
+                if race_name or class_name:
+                    # レース名とクラス名の組み合わせを適切に処理
+                    if race_name and class_name:
+                        race_display = f"{race_name}（{class_name}）"
+                    elif race_name:
+                        race_display = race_name
+                    else:  # class_nameのみの場合
+                        race_display = class_name
+                    lines.append(f"**{i}. {race_date} {venue} {race_display}**")
                 else:
-                    lines.append(f"**{i}. {race_date} {venue}**")
+                    # レース名もクラス名もない場合はレース番号のみ
+                    race_num = race.get("🏁 レース", race.get("レース", ""))
+                    if race_num:
+                        lines.append(f"**{i}. {race_date} {venue} {race_num}**")
+                    else:
+                        lines.append(f"**{i}. {race_date} {venue}**")
                 
                 # 距離と馬場（馬場が空の場合は「-」を表示）
                 track_display = track if track else "-"

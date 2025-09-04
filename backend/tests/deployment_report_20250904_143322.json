@@ -1,0 +1,123 @@
+{
+  "timestamp": "2025-09-04T14:33:21.755402",
+  "tests": {
+    "システムステータス": {
+      "データベース接続": {
+        "status": "PASS",
+        "details": "応答時間: 124ms"
+      },
+      "APIエンドポイント実装": {
+        "status": "PASS",
+        "details": "checkSystemStatus関数実装済み"
+      }
+    },
+    "閲覧数追跡": {
+      "APIエンドポイント": {
+        "status": "PASS",
+        "details": "track-view.ts実装確認"
+      },
+      "フロントエンド実装": {
+        "status": "PASS",
+        "details": "trackView関数実装確認"
+      },
+      "データベース構造": {
+        "status": "PASS",
+        "details": "view_countフィールド存在"
+      }
+    },
+    "既存機能": {
+      "V1_usersテーブル": {
+        "status": "PASS",
+        "details": "アクセス可能"
+      },
+      "V1_user_quotasテーブル": {
+        "status": "PASS",
+        "details": "アクセス可能"
+      },
+      "V1_line_ticketsテーブル": {
+        "status": "PASS",
+        "details": "アクセス可能"
+      },
+      "V1_chat_sessionsテーブル": {
+        "status": "FAIL",
+        "details": "{'message': \"Could not find the table 'public.chat_sessions' in the schema cache\", 'code': 'PGRST205', 'hint': \"Perhaps you meant the table 'public.v2_chat_sessions'\", 'details': None}"
+      },
+      "V2_v2_usersテーブル": {
+        "status": "PASS",
+        "details": "アクセス可能"
+      },
+      "V2_v2_chat_sessionsテーブル": {
+        "status": "PASS",
+        "details": "アクセス可能"
+      },
+      "V2_v2_user_pointsテーブル": {
+        "status": "PASS",
+        "details": "アクセス可能"
+      },
+      "V2_v2_columnsテーブル": {
+        "status": "PASS",
+        "details": "アクセス可能"
+      }
+    },
+    "API一貫性": {
+      "/pages/api/v2/admin/columns.ts": {
+        "status": "PASS",
+        "details": "v2_columns使用確認"
+      },
+      "/pages/api/v2/admin/columns/[id].ts": {
+        "status": "PASS",
+        "details": "v2_columns使用確認"
+      },
+      "/pages/api/v2/admin/dashboard.ts": {
+        "status": "PASS",
+        "details": "v2_使用確認"
+      },
+      "/pages/api/v2/admin/referrals.ts": {
+        "status": "PASS",
+        "details": "v2_使用確認"
+      }
+    },
+    "UI整合性": {
+      "/src/app/v2/admin/page.tsx": {
+        "status": "PASS",
+        "details": "全要素確認"
+      },
+      "/src/app/v2/admin/columns/page.tsx": {
+        "status": "PASS",
+        "details": "全要素確認"
+      },
+      "/src/app/v2/admin/referrals/page.tsx": {
+        "status": "PASS",
+        "details": "全要素確認"
+      },
+      "/src/app/v2/column/page.tsx": {
+        "status": "PASS",
+        "details": "全要素確認"
+      },
+      "/src/app/v2/column/[id]/page.tsx": {
+        "status": "PASS",
+        "details": "全要素確認"
+      }
+    },
+    "ビルドチェック": {
+      "/pages/api/v2/admin/dashboard.ts": {
+        "status": "PASS",
+        "details": "構文OK"
+      },
+      "/pages/api/v2/columns/track-view.ts": {
+        "status": "PASS",
+        "details": "構文OK"
+      },
+      "/src/app/v2/column/[id]/page.tsx": {
+        "status": "PASS",
+        "details": "構文OK"
+      }
+    }
+  },
+  "summary": {
+    "total": 25,
+    "passed": 24,
+    "failed": 1,
+    "warnings": 0
+  }
+}

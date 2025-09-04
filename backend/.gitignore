@@ -18,3 +18,6 @@ backend/data/dlogic_raw_knowledge.json
 # Temporary large files
 *.json.bak
 *.json.tmp
+data/unified_knowledge_*.json
+data/jockey_knowledge.json
+data/jockey_knowledge_backup_*.json

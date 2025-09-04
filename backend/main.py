@@ -45,6 +45,7 @@ from api.v2.points import router as v2_points_router
 from api.v2.chat import router as v2_chat_router
 from api.v2.imlogic_settings import router as v2_imlogic_settings_router
 from api.v2.cleanup_settings import router as v2_cleanup_router
+from api.v2.column import router as v2_column_router
 
 # 非同期処理とキャッシュ
 from api.async_endpoints import router as async_router
@@ -210,6 +211,7 @@ if os.getenv("ENABLE_V2_FEATURES", "true").lower() == "true":
         from api.v2 import line_referral_improved as v2_line_referral_improved_router
         from api.v2 import dlogic as v2_dlogic_router
         from api.v2 import ilogic as v2_ilogic_router
+        from api.v2 import admin_campaign as v2_admin_campaign_router
         app.include_router(v2_points_router.router)
         app.include_router(v2_chat_router.router)
         app.include_router(v2_health_router.router)
@@ -218,6 +220,8 @@ if os.getenv("ENABLE_V2_FEATURES", "true").lower() == "true":
         app.include_router(v2_dlogic_router.router, prefix="/api/v2/dlogic")
         app.include_router(v2_ilogic_router.router, prefix="/api/v2/ilogic")
         app.include_router(v2_cleanup_router)
+        app.include_router(v2_column_router)
+        app.include_router(v2_admin_campaign_router.router)
         print("✅ V2ポイント制システムAPI登録完了")
         print("✅ V2 D-Logic バッチ計算API登録完了")
         print("✅ V2 I-Logic バッチ計算API登録完了")

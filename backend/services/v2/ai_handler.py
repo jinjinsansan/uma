@@ -374,30 +374,30 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             lines.append(f"{race_data.get('venue', '')} {race_data.get('race_number', '')}R")
             lines.append("")
             
-            # 上位5頭を表示（スコアがある馬のみ）
-            emojis = ['🥇', '🥈', '🥉', '4位:', '5位:']
+            # 全頭を順位付きで表示（I-Logic形式）
+            emojis = ['🥇', '🥈', '🥉']
             valid_scores = [s for s in scores if s.get('total_score') is not None]
             
-            for i, score_data in enumerate(valid_scores[:5]):
-                emoji = emojis[i] if i < 5 else f"{i+1}."
+            for i, score_data in enumerate(valid_scores):
+                # 上位3位まで絵文字、4位以降は数字表示
+                if i < 3:
+                    rank_display = f"{emojis[i]} {i+1}位:"
+                else:
+                    rank_display = f"{i+1}位:"
+                
                 # 'horse_name'と'horse'の両方に対応
                 horse_name = score_data.get('horse_name') or score_data.get('horse', '不明')
                 total_score = score_data.get('total_score', 0)
                 horse_score = score_data.get('horse_score', 0)
                 jockey_score = score_data.get('jockey_score', 0)
                 
-                lines.append(f"{emoji} {horse_name}: {total_score:.1f}点")
+                lines.append(f"{rank_display} {horse_name}: {total_score:.1f}点")
                 lines.append(f"   馬: {horse_score:.1f}点 | 騎手: {jockey_score:.1f}点")
-            
-            # 6位以下も簡潔に表示（スコアがある馬のみ）
-            if len(valid_scores) > 5:
-                lines.append("")
-                lines.append("【6位以下】")
-                for score_data in valid_scores[5:]:
-                    # 'horse_name'と'horse'の両方に対応
-                    horse_name = score_data.get('horse_name') or score_data.get('horse', '不明')
-                    total_score = score_data.get('total_score', 0)
-                    lines.append(f"{horse_name}: {total_score:.1f}点")
+                
+                # 6位目に区切り線を追加
+                if i == 5:
+                    lines.append("")
+                    lines.append("【6位以下】")
             
             # データがない馬がいる場合の注記
             no_data_horses = [s.get('horse_name') or s.get('horse', '不明') 
@@ -1503,30 +1503,36 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             lines = []
             lines.append(f"🎯 D-Logic分析結果")
             lines.append(f"{race_data.get('venue', '')} {race_data.get('race_number', '')}R {race_data.get('race_name', '')}")
+            lines.append("")
             
-            # 上位5頭を表示
-            emojis = ['🥇', '🥈', '🥉', '4位:', '5位:']
-            for i, (horse_name, data) in enumerate(valid_horses[:5]):
-                emoji = emojis[i] if i < 5 else f"{i+1}."
-                score = data.get('score', 0)
-                lines.append(f"{emoji} {horse_name}: {score:.1f}点")
+            # 全頭を順位付きで表示（I-Logic形式）
+            emojis = ['🥇', '🥈', '🥉']
+            for i, (horse_name, data) in enumerate(valid_horses):
+                # 上位3位まで絵文字、4位以降は数字表示
+                if i < 3:
+                    rank_display = f"{emojis[i]} {i+1}位:"
+                else:
+                    rank_display = f"{i+1}位:"
                 
-                # 詳細スコアがあれば表示
-                if data.get('details'):
+                score = data.get('score', 0)
+                lines.append(f"{rank_display} {horse_name}: {score:.1f}点")
+                
+                # 詳細スコアがあれば表示（上位5頭のみ）
+                if i < 5 and data.get('details'):
                     details = data['details']
                     # 主要な項目を表示
                     if 'distance_aptitude' in details:
                         lines.append(f"   距離適性: {details['distance_aptitude']:.1f}")
                     if 'bloodline_evaluation' in details:
                         lines.append(f"   血統評価: {details['bloodline_evaluation']:.1f}")
-            
-            # 6位以下も簡潔に表示
-            if len(valid_horses) > 5:
-                lines.append("")
-                lines.append("【6位以下】")
-                for horse_name, data in valid_horses[5:]:
-                    score = data.get('score', 0)
-                    lines.append(f"{horse_name}: {score:.1f}点")
+                
+                # 5位と6位の間に空行を追加
+                if i == 4:
+                    lines.append("")
+                
+                # 6位目に区切り線を追加
+                if i == 5:
+                    lines.append("【6位以下】")
             
             # データがない馬がいる場合の注記
             no_data_horses = [name for name, data in dlogic_result.items() 

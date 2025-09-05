@@ -19,21 +19,19 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["v2_dlogic"])
 
-# Redis接続（キャッシュ用）
-if REDIS_MODULE_AVAILABLE:
-    try:
-        redis_client = redis.Redis(host='localhost', port=6379, db=1, decode_responses=True)
-        redis_client.ping()
-        REDIS_AVAILABLE = True
-        logger.info("Redis connected for D-Logic cache")
-    except:
-        redis_client = None
-        REDIS_AVAILABLE = False
-        logger.warning("Redis server not available, D-Logic will run without cache")
-else:
-    redis_client = None
+# Redis接続（統合キャッシュサービス使用）
+try:
+    from services.redis_cache import get_redis_cache
+    redis_cache = get_redis_cache()
+    REDIS_AVAILABLE = redis_cache.is_connected()
+    if REDIS_AVAILABLE:
+        logger.info("Redis connected for V2 D-Logic cache via unified service")
+    else:
+        logger.warning("Redis not available, V2 D-Logic will use memory cache")
+except ImportError as e:
+    redis_cache = None
     REDIS_AVAILABLE = False
-    logger.warning("Redis module not installed, D-Logic will run without cache")
+    logger.warning(f"Redis cache service not available: {e}")
 
 # D-Logicマネージャーのシングルトンインスタンス
 # main.pyで初期化されたインスタンスを再利用して初回ロード時間を削減
@@ -95,23 +93,23 @@ def generate_cache_key(race_id: str, horses: List[str]) -> str:
 
 # キャッシュの取得
 def get_cached_scores(cache_key: str) -> Optional[Dict]:
-    """Redisからキャッシュされたスコアを取得"""
-    if not REDIS_AVAILABLE:
+    """統合Redisキャッシュからスコアを取得"""
+    if not REDIS_AVAILABLE or not redis_cache:
         return None
     
     try:
-        cached = redis_client.get(cache_key)
-        if cached:
-            return json.loads(cached)
+        cached_data = redis_cache.get(cache_key)
+        if cached_data:
+            return cached_data
     except Exception as e:
-        logger.error(f"Cache retrieval error: {e}")
+        logger.error(f"V2 Cache retrieval error: {e}")
     
     return None
 
 # キャッシュの保存
 def save_to_cache(cache_key: str, scores: List[HorseScore], ttl: int = 3600):
-    """スコアをRedisにキャッシュ（デフォルト1時間）"""
-    if not REDIS_AVAILABLE:
+    """統合Redisキャッシュにスコアを保存（デフォルト1時間）"""
+    if not REDIS_AVAILABLE or not redis_cache:
         return
     
     try:
@@ -119,9 +117,11 @@ def save_to_cache(cache_key: str, scores: List[HorseScore], ttl: int = 3600):
             "scores": [score.dict() for score in scores],
             "timestamp": datetime.now().isoformat()
         }
-        redis_client.setex(cache_key, ttl, json.dumps(cache_data))
+        success = redis_cache.set(cache_key, cache_data, ttl=ttl)
+        if success:
+            logger.info(f"V2 D-Logic scores cached: {cache_key} (TTL: {ttl}s)")
     except Exception as e:
-        logger.error(f"Cache save error: {e}")
+        logger.error(f"V2 Cache save error: {e}")
 
 @router.post("/batch", response_model=BatchDLogicResponse)
 async def calculate_batch_dlogic(request: BatchDLogicRequest):

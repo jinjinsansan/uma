@@ -209,6 +209,7 @@ if os.getenv("ENABLE_V2_FEATURES", "true").lower() == "true":
         from api.v2 import health as v2_health_router
         from api.v2 import line_referral as v2_line_referral_router
         from api.v2 import line_referral_improved as v2_line_referral_improved_router
+        from api.v2 import line_webhook as v2_line_webhook_router
         from api.v2 import dlogic as v2_dlogic_router
         from api.v2 import ilogic as v2_ilogic_router
         from api.v2 import admin_campaign as v2_admin_campaign_router
@@ -217,6 +218,7 @@ if os.getenv("ENABLE_V2_FEATURES", "true").lower() == "true":
         app.include_router(v2_health_router.router)
         app.include_router(v2_line_referral_router.router)
         app.include_router(v2_line_referral_improved_router.router)
+        app.include_router(v2_line_webhook_router.router)
         app.include_router(v2_dlogic_router.router, prefix="/api/v2/dlogic")
         app.include_router(v2_ilogic_router.router, prefix="/api/v2/ilogic")
         app.include_router(v2_cleanup_router)

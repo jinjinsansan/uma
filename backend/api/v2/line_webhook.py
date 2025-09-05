@@ -17,7 +17,7 @@ import base64
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v2/line", tags=["v2-line"])
+router = APIRouter(tags=["v2-line-webhook"])
 
 # Supabase設定
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -51,7 +51,7 @@ def verify_line_signature(body: bytes, signature: str) -> bool:
     calculated_signature = base64.b64encode(hash_digest).decode('utf-8')
     return calculated_signature == signature
 
-@router.post("/webhook")
+@router.post("/api/v2/line/webhook")
 async def line_webhook_v2(
     request: Request,
     x_line_signature: str = Header(None)

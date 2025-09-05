@@ -174,13 +174,13 @@ async def apply_referral_code(
         raise HTTPException(status_code=500, detail="紹介コードの適用に失敗しました")
 
 @router.get("/status")
-async def get_line_status(user_email: str = Depends(get_current_user)):
+async def get_line_status(user_id: str = Depends(get_current_user)):
     """
     LINE連携と友達紹介の状態を取得
     """
     try:
-        # ユーザー情報を取得（emailベース）
-        user_result = supabase.table("v2_user_points").select("*").eq("user_email", user_email).execute()
+        # v2_usersテーブルからユーザー情報を取得
+        user_result = supabase.table("v2_users").select("*").eq("id", user_id).execute()
         
         if not user_result.data:
             # ユーザーが存在しない場合はデフォルト値を返す
@@ -190,18 +190,25 @@ async def get_line_status(user_email: str = Depends(get_current_user)):
                 "has_used_referral": False,
                 "referral_code": None,
                 "referral_count": 0,
-                "referred_by_code": None
+                "has_claimed_daily_login": False,
+                "points_config": v2_config.get_points_summary()
             }
         
         user = user_result.data[0]
         
+        # 今日のデイリーログインボーナスを取得したか確認
+        today = date.today().isoformat()
+        daily_login_result = supabase.table("v2_point_transactions").select("id").eq("user_id", user_id).eq("transaction_type", "daily_login").gte("created_at", f"{today}T00:00:00").execute()
+        has_claimed_daily_login = bool(daily_login_result.data)
+        
         return {
-            "line_connected": bool(user.get("line_connected")),
+            "line_connected": bool(user.get("line_user_id")),
             "line_connected_at": user.get("line_connected_at"),
-            "has_used_referral": bool(user.get("has_used_referral")),
+            "has_used_referral": bool(user.get("referred_by")),
             "referral_code": user.get("referral_code"),
             "referral_count": user.get("referral_count", 0),
-            "referred_by_code": user.get("referred_by_code")
+            "has_claimed_daily_login": has_claimed_daily_login,
+            "points_config": v2_config.get_points_summary()
         }
         
     except Exception as e:
@@ -296,7 +303,7 @@ async def get_my_referral_code(user_id: str = Depends(get_current_user)):
         logger.error(f"紹介コード取得エラー: {e}")
         raise HTTPException(status_code=500, detail="紹介コードの取得に失敗しました")
 
-@router.get("/status")
+@router.get("/full-status")
 async def get_line_referral_status(user_id: str = Depends(get_current_user)):
     """
     LINE連携・紹介状態・ログインボーナス状態を取得

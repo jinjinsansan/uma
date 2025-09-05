@@ -173,6 +173,41 @@ async def apply_referral_code(
         logger.error(f"紹介コード適用エラー: {e}")
         raise HTTPException(status_code=500, detail="紹介コードの適用に失敗しました")
 
+@router.get("/status")
+async def get_line_status(user_email: str = Depends(get_current_user)):
+    """
+    LINE連携と友達紹介の状態を取得
+    """
+    try:
+        # ユーザー情報を取得（emailベース）
+        user_result = supabase.table("v2_user_points").select("*").eq("user_email", user_email).execute()
+        
+        if not user_result.data:
+            # ユーザーが存在しない場合はデフォルト値を返す
+            return {
+                "line_connected": False,
+                "line_connected_at": None,
+                "has_used_referral": False,
+                "referral_code": None,
+                "referral_count": 0,
+                "referred_by_code": None
+            }
+        
+        user = user_result.data[0]
+        
+        return {
+            "line_connected": bool(user.get("line_connected")),
+            "line_connected_at": user.get("line_connected_at"),
+            "has_used_referral": bool(user.get("has_used_referral")),
+            "referral_code": user.get("referral_code"),
+            "referral_count": user.get("referral_count", 0),
+            "referred_by_code": user.get("referred_by_code")
+        }
+        
+    except Exception as e:
+        logger.error(f"LINE状態取得エラー: {e}")
+        raise HTTPException(status_code=500, detail="ステータスの取得に失敗しました")
+
 @router.post("/daily-login")
 async def claim_daily_login_bonus(user_id: str = Depends(get_current_user)):
     """

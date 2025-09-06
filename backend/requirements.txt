@@ -16,3 +16,4 @@ httpx>=0.24.0
 anthropic>=0.3.0
 redis>=4.0.0
 numpy>=1.24.0
+aiohttp>=3.8.0

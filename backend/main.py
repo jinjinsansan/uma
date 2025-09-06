@@ -101,6 +101,16 @@ async def startup_event():
     print("🚀 アプリケーション起動時の初期化開始...")
     print("=" * 80)
     
+    # Keep-Aliveサービスを開始（Renderのコールドスタート対策）
+    try:
+        from services.v2.keep_alive import get_keep_alive_service
+        keep_alive = get_keep_alive_service()
+        import asyncio
+        asyncio.create_task(keep_alive.start())
+        print("✅ Keep-Aliveサービス: 開始（コールドスタート対策）")
+    except Exception as e:
+        print(f"⚠️  Keep-Aliveサービス開始エラー: {e}")
+    
     # Redis接続の初期化（最初に実行）
     try:
         from services.redis_cache import get_redis_cache

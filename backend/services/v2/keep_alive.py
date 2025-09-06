@@ -23,20 +23,9 @@ class KeepAliveService:
         self.interval = 60  # テスト用に1分ごと（本番は300秒）
         
     async def start(self):
-        """Keep-Aliveサービスを開始"""
-        if self.running:
-            return
-            
-        self.running = True
-        logger.info("Keep-Alive service started")
-        
-        while self.running:
-            try:
-                await self._ping_health()
-                await asyncio.sleep(self.interval)
-            except Exception as e:
-                logger.error(f"Keep-Alive error: {e}")
-                await asyncio.sleep(60)  # エラー時は1分後に再試行
+        """Keep-Aliveサービスを開始 - 無効化（パフォーマンス問題のため）"""
+        logger.info("Keep-Alive service disabled (performance optimization)")
+        return  # 完全に無効化
     
     async def _ping_health(self):
         """ヘルスチェックエンドポイントにリクエスト"""

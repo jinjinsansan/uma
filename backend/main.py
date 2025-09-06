@@ -101,6 +101,17 @@ async def startup_event():
     print("🚀 アプリケーション起動時の初期化開始...")
     print("=" * 80)
     
+    # Redis接続の初期化（最初に実行）
+    try:
+        from services.redis_cache import get_redis_cache
+        redis_cache = get_redis_cache()
+        if redis_cache.is_connected():
+            print(f"✅ Redis接続成功: {redis_cache.host}:{redis_cache.port}")
+        else:
+            print("⚠️  Redis接続失敗: メモリキャッシュを使用します")
+    except Exception as e:
+        print(f"⚠️  Redis初期化エラー: {e}")
+    
     # 1. 通常のナレッジファイル（FastDLogicEngine経由で自動的に初期化される）
     try:
         from api.chat import fast_engine_instance

@@ -87,7 +87,7 @@ class V2Config:
     
     @property
     def POINTS_LINE_CONNECT(self):
-        return self.get_points_value("line_connect", 12)
+        return self.get_points_value("line_connect", 24)
     
     @property
     def POINTS_DAILY_LOGIN(self):

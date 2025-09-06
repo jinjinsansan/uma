@@ -290,6 +290,17 @@ async def apply_referral_code(
         logger.error(f"紹介コード適用エラー: {e}")
         raise HTTPException(status_code=500, detail="紹介コードの適用に失敗しました")
 
+def generate_referral_code(email: str) -> str:
+    """メールアドレスから6文字の紹介コードを生成"""
+    import hashlib
+    chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    hash_value = int(hashlib.md5(email.encode()).hexdigest()[:8], 16)
+    code = ''
+    for _ in range(6):
+        code += chars[hash_value % len(chars)]
+        hash_value //= len(chars)
+    return code
+
 @router.get("/referral/status")
 async def get_referral_status(user_id: str = Depends(get_current_user)):
     """
@@ -303,6 +314,15 @@ async def get_referral_status(user_id: str = Depends(get_current_user)):
             raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
         
         user = user_result.data[0]
+        
+        # referral_codeがない場合は生成して保存
+        if not user.get("referral_code") and user.get("email"):
+            referral_code = generate_referral_code(user["email"])
+            supabase.table("v2_users").update({
+                "referral_code": referral_code
+            }).eq("id", user_id).execute()
+            user["referral_code"] = referral_code
+            logger.info(f"Generated referral code for user {user_id}: {referral_code}")
         
         # 紹介した人のうちLINE連携済みの人数を取得
         line_connected_result = supabase.table("v2_referral_history").select(

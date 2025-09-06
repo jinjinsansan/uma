@@ -161,6 +161,22 @@ async def startup_event():
     except Exception as e:
         print(f"⚠️  ViewLogicエンジン初期化エラー: {e}")
     
+    # 6. V2 AIハンドラー（V2チャット用、遅延初期化を防ぐため事前読み込み）
+    try:
+        from services.v2.ai_handler_singleton import get_ai_handler
+        v2_ai_handler = get_ai_handler()
+        print("✅ V2 AIハンドラー: 事前初期化完了（V2チャット高速化）")
+    except Exception as e:
+        print(f"⚠️  V2 AIハンドラー初期化エラー: {e}")
+    
+    # 7. 拡張ナレッジマネージャー（ViewLogic用、遅延初期化を防ぐため事前読み込み）
+    try:
+        from services.extended_knowledge_manager import get_extended_knowledge_manager
+        extended_manager = get_extended_knowledge_manager()
+        print("✅ 拡張ナレッジマネージャー: 事前初期化完了（ViewLogic高速化）")
+    except Exception as e:
+        print(f"⚠️  拡張ナレッジマネージャー初期化エラー: {e}")
+    
     # レース分析エンジンの初期化（統合ナレッジを使用）
     try:
         from services.race_analysis_engine import get_race_analysis_engine

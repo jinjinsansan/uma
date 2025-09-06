@@ -56,8 +56,9 @@ class ExtendedKnowledgeManager:
             self.knowledge_data = {'horses': {}}
     
     def _download_from_cdn(self) -> None:
-        """CDNから拡張ナレッジファイルをダウンロード"""
-        cdn_url = "https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/dlogic_extended_knowledge.json"
+        """CDNから統合ナレッジファイルをダウンロード"""
+        # 統合ナレッジファイルを使用（拡張データも含まれている）
+        cdn_url = self.cdn_url  # unified_knowledge_20250903.json
         
         try:
             logger.info(f"CDNからダウンロード中: {cdn_url}")

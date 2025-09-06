@@ -292,8 +292,18 @@ class IntegratedDLogicCalculator:
             ]
         }
 
-# グローバルインスタンス
-d_logic_calculator = IntegratedDLogicCalculator()
+# グローバルインスタンス（遅延初期化）
+_d_logic_calculator = None
+
+def get_d_logic_calculator():
+    """IntegratedDLogicCalculatorのシングルトンインスタンスを取得（遅延初期化）"""
+    global _d_logic_calculator
+    if _d_logic_calculator is None:
+        _d_logic_calculator = IntegratedDLogicCalculator()
+    return _d_logic_calculator
+
+# 互換性のため（非推奨）
+d_logic_calculator = None  # 実際の使用時にget_d_logic_calculator()を呼ぶべき
 
 if __name__ == "__main__":
     # テスト実行

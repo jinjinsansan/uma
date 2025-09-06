@@ -170,33 +170,38 @@ async def create_chat(
         
         # 初回の場合、バッチ計算を実行
         if not existing_scores:
-            logger.info(f"初回チャット作成: {request.race_id} - バッチ計算を実行")
+            logger.info(f"初回チャット作成: {request.race_id}")
             
-            # D-Logicバッチ計算
-            try:
-                from api.v2.dlogic import calculate_dlogic_batch
-                dlogic_scores = await calculate_dlogic_batch(request.horses)
-                logger.info(f"D-Logicバッチ計算完了: {len(dlogic_scores)}頭")
-            except Exception as e:
-                logger.warning(f"D-Logicバッチ計算失敗: {e}")
-                dlogic_scores = None
-            
-            # I-Logicバッチ計算（騎手データがある場合のみ）
+            # D-Logic/I-Logicバッチ計算をスキップ（出走表で表示しないため）
+            # 将来的に再度表示する場合はコメントを外す
+            dlogic_scores = None
             ilogic_scores = None
-            if request.jockeys and request.posts:
-                try:
-                    from api.v2.ilogic import calculate_ilogic_batch
-                    ilogic_scores = await calculate_ilogic_batch(
-                        horses=request.horses,
-                        jockeys=request.jockeys,
-                        posts=request.posts,
-                        horse_numbers=request.horse_numbers or [],
-                        venue=request.venue
-                    )
-                    logger.info(f"I-Logicバッチ計算完了: {len(ilogic_scores)}頭")
-                except Exception as e:
-                    logger.warning(f"I-Logicバッチ計算失敗: {e}")
-                    ilogic_scores = None
+            
+            # # D-Logicバッチ計算
+            # try:
+            #     from api.v2.dlogic import calculate_dlogic_batch
+            #     dlogic_scores = await calculate_dlogic_batch(request.horses)
+            #     logger.info(f"D-Logicバッチ計算完了: {len(dlogic_scores)}頭")
+            # except Exception as e:
+            #     logger.warning(f"D-Logicバッチ計算失敗: {e}")
+            #     dlogic_scores = None
+            
+            # # I-Logicバッチ計算（騎手データがある場合のみ）
+            # ilogic_scores = None
+            # if request.jockeys and request.posts:
+            #     try:
+            #         from api.v2.ilogic import calculate_ilogic_batch
+            #         ilogic_scores = await calculate_ilogic_batch(
+            #             horses=request.horses,
+            #             jockeys=request.jockeys,
+            #             posts=request.posts,
+            #             horse_numbers=request.horse_numbers or [],
+            #             venue=request.venue
+            #         )
+            #         logger.info(f"I-Logicバッチ計算完了: {len(ilogic_scores)}頭")
+            #     except Exception as e:
+            #         logger.warning(f"I-Logicバッチ計算失敗: {e}")
+            #         ilogic_scores = None
             
             # v2_race_scoresに保存
             await race_scores_service.save_race_scores(

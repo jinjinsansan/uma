@@ -213,8 +213,10 @@ if os.getenv("ENABLE_V2_FEATURES", "true").lower() == "true":
         from api.v2 import dlogic as v2_dlogic_router
         from api.v2 import ilogic as v2_ilogic_router
         from api.v2 import admin_campaign as v2_admin_campaign_router
+        from api.v2 import my_account_batch as v2_my_account_batch_router
         app.include_router(v2_points_router.router)
         app.include_router(v2_chat_router.router)
+        app.include_router(v2_my_account_batch_router.router)
         app.include_router(v2_health_router.router)
         app.include_router(v2_line_referral_router.router)
         app.include_router(v2_line_referral_improved_router.router)

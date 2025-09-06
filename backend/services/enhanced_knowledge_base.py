@@ -334,8 +334,18 @@ class EnhancedKnowledgeBase:
             print(f"❌ 保存エラー: {e}")
             return ""
 
-# グローバルインスタンス
-enhanced_knowledge_base = EnhancedKnowledgeBase()
+# グローバルインスタンス（遅延初期化）
+_enhanced_knowledge_base = None
+
+def get_enhanced_knowledge_base():
+    """EnhancedKnowledgeBaseのシングルトンインスタンスを取得（遅延初期化）"""
+    global _enhanced_knowledge_base
+    if _enhanced_knowledge_base is None:
+        _enhanced_knowledge_base = EnhancedKnowledgeBase()
+    return _enhanced_knowledge_base
+
+# 互換性のため（非推奨）
+enhanced_knowledge_base = None  # 実際の使用時にget_enhanced_knowledge_base()を呼ぶべき
 
 if __name__ == "__main__":
     # テスト実行

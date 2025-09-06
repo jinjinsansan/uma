@@ -64,7 +64,7 @@ async def calculate_batch_ilogic(request: BatchILogicRequest):
                 scores_list = []
         else:
             # 騎手情報がない場合はエラーとする（簡易計算は行わない）
-            logger.error(f"I-Logic batch calculation requires jockeys, posts and venue. Request: {request.dict()}")
+            logger.warning(f"I-Logic batch calculation requires jockeys, posts and venue. Request: {request.dict()}")
             return BatchILogicResponse(
                 race_id=request.race_id,
                 scores=[],

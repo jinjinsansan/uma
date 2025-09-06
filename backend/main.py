@@ -134,27 +134,15 @@ async def startup_event():
     except Exception as e:
         print(f"⚠️  騎手ナレッジファイル初期化エラー: {e}")
     
-    # 2.5. ViewLogicナレッジファイル  
-    try:
-        from services.viewlogic_data_manager import get_viewlogic_data_manager
-        viewlogic_manager = get_viewlogic_data_manager()
-        viewlogic_count = viewlogic_manager.get_total_horses()
-        print(f"✅ ViewLogicナレッジファイル: {viewlogic_count}頭のデータを初期化")
-    except Exception as e:
-        print(f"⚠️  ViewLogicナレッジファイル初期化エラー: {e}")
+    # 注: ViewLogicと拡張ナレッジは統合ナレッジに含まれるため個別読み込み不要
+    # 統合ナレッジ（53,618頭）と騎手ナレッジ（846騎手）のみで全機能をカバー
     
-    # 3. 拡張ナレッジファイル（レース分析V2用）
+    # レース分析エンジンの初期化（統合ナレッジを使用）
     try:
-        from services.extended_knowledge_manager import get_extended_knowledge_manager
-        extended_manager = get_extended_knowledge_manager()
-        extended_horses = extended_manager.get_all_horses()
-        print(f"✅ 拡張ナレッジファイル: {len(extended_horses)}頭のデータを初期化")
-        
-        # レース分析エンジンも事前に初期化
         from services.race_analysis_engine import get_race_analysis_engine
         from api.chat import fast_engine_instance
         race_engine = get_race_analysis_engine(fast_engine_instance)
-        print("✅ レース分析エンジン: 初期化完了")
+        print("✅ レース分析エンジン: 初期化完了（統合ナレッジ使用）")
     except Exception as e:
         print(f"⚠️  拡張ナレッジファイル初期化エラー: {e}")
         import traceback

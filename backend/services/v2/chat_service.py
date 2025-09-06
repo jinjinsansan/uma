@@ -116,22 +116,33 @@ class V2ChatService:
                         logger.error(f"Failed to parse race_snapshot for session {session.get('id')}: {e}")
                         session["race_snapshot"] = {}
             
-            # メッセージカウントを追加
-            for session in sessions:
+            # メッセージカウントを追加（パフォーマンス最適化: 一括取得）
+            session_ids = [session["id"] for session in sessions]
+            if session_ids:
                 try:
-                    # Supabaseのcount機能を使用
+                    # 全セッションのメッセージカウントを一度に取得
                     messages_response = self.supabase.table("v2_chat_messages")\
-                        .select("*", count="exact")\
-                        .eq("session_id", session["id"])\
+                        .select("session_id")\
+                        .in_("session_id", session_ids)\
                         .execute()
-                    # countプロパティが存在する場合は使用、なければデータの長さを使用
-                    if hasattr(messages_response, 'count') and messages_response.count is not None:
-                        session["message_count"] = messages_response.count
-                    else:
-                        session["message_count"] = len(messages_response.data) if messages_response.data else 0
+                    
+                    # session_idごとにカウント
+                    message_counts = {}
+                    if messages_response.data:
+                        for msg in messages_response.data:
+                            session_id = msg["session_id"]
+                            message_counts[session_id] = message_counts.get(session_id, 0) + 1
+                    
+                    # 各セッションにカウントを設定
+                    for session in sessions:
+                        session["message_count"] = message_counts.get(session["id"], 0)
+                    
+                    logger.debug(f"Message counts retrieved for {len(sessions)} sessions")
                 except Exception as e:
-                    logger.warning(f"Failed to get message count for session {session.get('id')}: {e}")
-                    session["message_count"] = 0
+                    logger.warning(f"Failed to get message counts: {e}")
+                    # エラー時は全セッションのカウントを0に
+                    for session in sessions:
+                        session["message_count"] = 0
             
             return sessions
             

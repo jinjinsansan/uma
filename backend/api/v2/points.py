@@ -201,6 +201,42 @@ async def reset_points(
         logger.error(f"ポイントリセットエラー: {e}")
         raise HTTPException(status_code=500, detail="ポイントリセットに失敗しました")
 
+@router.post("/daily-login")
+async def claim_daily_login(user_id: str = Depends(get_current_user)):
+    """
+    デイリーログインボーナスを取得
+    """
+    try:
+        service = V2PointsService()
+        
+        # 今日既にログインボーナスを受け取っているかチェック
+        today = datetime.now().date()
+        existing_login = await service.check_daily_login_exists(user_id, today)
+        
+        if existing_login:
+            raise HTTPException(status_code=400, detail="今日のログインボーナスは既に受け取り済みです")
+        
+        # デイリーログインポイント付与
+        daily_points = 2  # デイリーログインボーナス: 2ポイント
+        transaction = await service.grant_points(
+            user_id=user_id,
+            amount=daily_points,
+            transaction_type="daily_login",
+            description="デイリーログインボーナス"
+        )
+        
+        return {
+            "points_granted": daily_points,
+            "message": f"デイリーログインボーナス {daily_points}ポイント を獲得しました！",
+            "new_balance": transaction["balance_after"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"デイリーログインボーナス取得エラー: {e}")
+        raise HTTPException(status_code=500, detail="ログインボーナスの取得に失敗しました")
+
 @router.get("/transactions")
 async def get_transactions(
     limit: int = 20,

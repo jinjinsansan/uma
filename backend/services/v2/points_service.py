@@ -241,3 +241,29 @@ class V2PointsService:
         except Exception as e:
             logger.error(f"取引履歴取得エラー: {e}")
             raise
+    
+    async def check_daily_login_exists(self, user_id: str, date) -> bool:
+        """指定日のデイリーログインボーナスが既に取得されているかチェック"""
+        try:
+            from datetime import datetime
+            
+            # 日付を文字列形式に変換（YYYY-MM-DD）
+            if isinstance(date, datetime):
+                date_str = date.strftime('%Y-%m-%d')
+            else:
+                date_str = str(date)
+            
+            # 指定日のデイリーログイン取引をチェック
+            response = self.supabase.table("v2_point_transactions")\
+                .select("id")\
+                .eq("user_id", user_id)\
+                .eq("transaction_type", "daily_login")\
+                .gte("created_at", f"{date_str}T00:00:00")\
+                .lte("created_at", f"{date_str}T23:59:59")\
+                .execute()
+            
+            return len(response.data) > 0
+            
+        except Exception as e:
+            logger.error(f"デイリーログインチェックエラー: {e}")
+            return False  # エラー時は安全側に倒して false を返す

@@ -7,6 +7,14 @@ import os
 from datetime import datetime
 import json
 import gc
+import logging
+
+# ログレベルの設定（本番環境では WARNING に設定）
+# 高負荷時のパフォーマンス向上のため
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 # ガベージコレクションの最適化（メモリ優先設定）
 # デフォルト値は (700, 10, 10)
@@ -87,6 +95,24 @@ app.add_middleware(
     expose_headers=["*"]  # レスポンスヘッダーも公開
 )
 
+# レート制限の追加（高負荷対策）
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+    
+    # レート制限の設定
+    limiter = Limiter(
+        key_func=get_remote_address,
+        default_limits=["100 per minute"]  # デフォルト: 1分間に100リクエスト
+    )
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    print("✅ レート制限: 有効化（高負荷対策）")
+except ImportError:
+    print("⚠️ slowapiがインストールされていません。レート制限は無効です。")
+    limiter = None
+
 # OpenAI API設定
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
 
@@ -157,8 +183,8 @@ async def startup_event():
     
     # 4. IMLogicエンジン（V2チャット用、遅延初期化を防ぐため事前読み込み）
     try:
-        from services.imlogic_engine import IMLogicEngine
-        imlogic_engine = IMLogicEngine()
+        from services.imlogic_engine import get_imlogic_engine
+        imlogic_engine = get_imlogic_engine()
         print("✅ IMLogicエンジン: 事前初期化完了（V2チャット高速化）")
     except Exception as e:
         print(f"⚠️  IMLogicエンジン初期化エラー: {e}")

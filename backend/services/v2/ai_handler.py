@@ -225,10 +225,9 @@ class V2AIHandler:
         try:
             # 分析を実行する場合
             if self._should_analyze(message):
-                # 重要: /logic-chatと同じように毎回新しいエンジンを作成
-                # メモリよりも正確性を優先
-                from services.imlogic_engine import IMLogicEngine
-                imlogic_engine_temp = IMLogicEngine()
+                # シングルトンパターンを使用してメモリ効率を改善
+                from services.imlogic_engine import get_imlogic_engine
+                imlogic_engine_temp = get_imlogic_engine()
                 # デフォルトの設定を使用（設定が無い場合）
                 if not settings:
                     settings = self._get_default_imlogic_settings()

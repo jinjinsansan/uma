@@ -12,8 +12,21 @@ logger = logging.getLogger(__name__)
 class IMLogicEngine:
     """IMLogic計算エンジン（ILogicのカスタマイズ版）"""
     
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        """シングルトンパターンの実装"""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
     def __init__(self):
         """初期化"""
+        # すでに初期化済みの場合はスキップ
+        if IMLogicEngine._initialized:
+            return
+            
         # ILogicと同じナレッジファイルを使用
         try:
             # 騎手データマネージャー（騎手データ：843騎手）
@@ -31,6 +44,9 @@ class IMLogicEngine:
             
             # I-Logicエンジンは遅延初期化（必要時に作成）
             self._modern_engine = None
+            
+            # 初期化完了フラグを設定
+            IMLogicEngine._initialized = True
             
             logger.info("IMLogicエンジンを初期化しました（ILogicナレッジ使用）")
         except Exception as e:
@@ -382,3 +398,13 @@ class IMLogicEngine:
             return 'G3'
         else:
             return ''
+
+
+# グローバルインスタンスを作成（シングルトン）
+def get_imlogic_engine() -> IMLogicEngine:
+    """IMLogicEngineのシングルトンインスタンスを取得"""
+    return IMLogicEngine()
+
+
+# 互換性のためのインスタンス
+imlogic_engine_instance = get_imlogic_engine()

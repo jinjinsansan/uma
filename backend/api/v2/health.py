@@ -47,8 +47,8 @@ async def health_check() -> Dict:
     
     # IMLogicエンジンチェック
     try:
-        from services.imlogic_engine import IMLogicEngine
-        engine = IMLogicEngine()
+        from services.imlogic_engine import get_imlogic_engine
+        engine = get_imlogic_engine()
         health_status["services"]["imlogic"] = {
             "status": "ready",
             "jockey_data_loaded": hasattr(engine, 'jockey_manager'),

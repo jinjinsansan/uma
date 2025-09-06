@@ -291,14 +291,17 @@ async def apply_referral_code(
         raise HTTPException(status_code=500, detail="紹介コードの適用に失敗しました")
 
 def generate_referral_code(email: str) -> str:
-    """メールアドレスから6文字の紹介コードを生成"""
-    import hashlib
+    """メールアドレスから6文字の紹介コードを生成（フロントエンドと同じアルゴリズム）"""
     chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-    hash_value = int(hashlib.md5(email.encode()).hexdigest()[:8], 16)
+    hash_value = 0
+    for i in range(len(email)):
+        hash_value = ((hash_value << 5) - hash_value) + ord(email[i])
+        hash_value = hash_value & 0x7FFFFFFF  # 32bit integer
+    hash_value = abs(hash_value)
     code = ''
     for _ in range(6):
         code += chars[hash_value % len(chars)]
-        hash_value //= len(chars)
+        hash_value = hash_value // len(chars)
     return code
 
 @router.get("/referral/status")

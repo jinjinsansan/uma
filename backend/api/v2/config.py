@@ -9,6 +9,7 @@ from typing import Optional
 from supabase import create_client, Client
 import json
 import logging
+from .config_cache import points_config_cache
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -36,6 +37,11 @@ class V2Config:
     
     def _get_db_config(self) -> Optional[dict]:
         """データベースから設定を取得（キャンペーン設定優先）"""
+        # まずキャッシュを確認
+        cached = points_config_cache.get()
+        if cached is not None:
+            return cached
+            
         if not self.supabase:
             return None
         
@@ -49,7 +55,10 @@ class V2Config:
                 .execute()
             
             if result.data:
-                return result.data[0].get("config", {})
+                config = result.data[0]
+                # キャッシュに保存
+                points_config_cache.set(config)
+                return config
         except Exception as e:
             logger.debug(f"DB設定取得失敗（正常）: {e}")
         

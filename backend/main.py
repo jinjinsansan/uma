@@ -137,6 +137,30 @@ async def startup_event():
     # 注: ViewLogicと拡張ナレッジは統合ナレッジに含まれるため個別読み込み不要
     # 統合ナレッジ（53,618頭）と騎手ナレッジ（846騎手）のみで全機能をカバー
     
+    # 3. 拡張ナレッジベース（V2チャット用、遅延初期化を防ぐため事前読み込み）
+    try:
+        from services.enhanced_knowledge_base import get_enhanced_knowledge_base
+        enhanced_kb = get_enhanced_knowledge_base()
+        print("✅ 拡張ナレッジベース: 事前初期化完了（V2チャット高速化）")
+    except Exception as e:
+        print(f"⚠️  拡張ナレッジベース初期化エラー: {e}")
+    
+    # 4. IMLogicエンジン（V2チャット用、遅延初期化を防ぐため事前読み込み）
+    try:
+        from services.imlogic_engine import IMLogicEngine
+        imlogic_engine = IMLogicEngine()
+        print("✅ IMLogicエンジン: 事前初期化完了（V2チャット高速化）")
+    except Exception as e:
+        print(f"⚠️  IMLogicエンジン初期化エラー: {e}")
+    
+    # 5. ViewLogicエンジン（V2チャット用、遅延初期化を防ぐため事前読み込み）
+    try:
+        from services.viewlogic_engine import ViewLogicEngine
+        viewlogic_engine = ViewLogicEngine()
+        print("✅ ViewLogicエンジン: 事前初期化完了（V2チャット高速化）")
+    except Exception as e:
+        print(f"⚠️  ViewLogicエンジン初期化エラー: {e}")
+    
     # レース分析エンジンの初期化（統合ナレッジを使用）
     try:
         from services.race_analysis_engine import get_race_analysis_engine

@@ -213,6 +213,34 @@ async def startup_event():
     except Exception as e:
         print(f"⚠️  拡張ナレッジマネージャー初期化エラー: {e}")
     
+    # 8. 地方競馬版エンジン（南関東4場用、遅延初期化を防ぐため事前読み込み）
+    try:
+        # 地方競馬版データマネージャー
+        from services.local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
+        horse_count = len(local_dlogic_manager_v2.knowledge_data.get('horses', {}))
+        print(f"✅ 地方競馬版マネージャーV2: 初期化完了（{horse_count}頭）")
+        
+        # 地方競馬版騎手マネージャー
+        from services.local_jockey_data_manager import local_jockey_manager
+        jockey_count = len(local_jockey_manager.knowledge_data.get('jockeys', {}))
+        print(f"✅ 地方競馬版騎手マネージャー: 初期化完了（{jockey_count}騎手）")
+        
+        # 地方競馬版ViewLogicエンジン
+        from services.local_viewlogic_engine_v2 import LocalViewLogicEngineV2
+        local_viewlogic_v2 = LocalViewLogicEngineV2()
+        print("✅ 地方競馬版ViewLogicエンジンV2: 事前初期化完了")
+        
+        # 地方競馬版の各エンジン
+        from services.local_fast_dlogic_engine_v2 import LocalFastDLogicEngineV2
+        from services.local_imlogic_engine_v2 import LocalIMLogicEngineV2
+        from services.local_race_analysis_engine_v2 import LocalRaceAnalysisEngineV2
+        local_dlogic_v2 = LocalFastDLogicEngineV2()
+        local_imlogic_v2 = LocalIMLogicEngineV2()
+        local_race_v2 = LocalRaceAnalysisEngineV2()
+        print("✅ 地方競馬版全エンジン: 事前初期化完了（D-Logic, I-Logic, IMLogic, ViewLogic）")
+    except Exception as e:
+        print(f"⚠️  地方競馬版エンジン初期化エラー: {e}")
+    
     # レース分析エンジンの初期化（統合ナレッジを使用）
     try:
         from services.race_analysis_engine import get_race_analysis_engine

@@ -25,6 +25,10 @@ class LocalViewLogicEngineV2(ViewLogicEngine):
         self.data_manager = local_dlogic_manager_v2
         self.jockey_manager = local_jockey_manager
         
+        # 互換性メソッドを追加（安全な最小限修正）
+        self._ensure_data_manager_compatibility()
+        self._ensure_jockey_manager_compatibility()
+        
         print(f"🏇 地方競馬版ViewLogicエンジンV2初期化完了")
         horse_count = len(self.data_manager.knowledge_data.get('horses', {}))
         jockey_count = len(self.jockey_manager.knowledge_data.get('jockeys', {}))
@@ -49,6 +53,86 @@ class LocalViewLogicEngineV2(ViewLogicEngine):
     def get_horse_data(self, horse_name: str) -> Optional[Dict[str, Any]]:
         """馬データを取得（ViewLogicDataManagerとの互換性のため）"""
         return self.data_manager.get_horse_raw_data(horse_name)
+    
+    # ===== 互換性のためのプロキシメソッド（安全な最小限修正） =====
+    
+    def _ensure_data_manager_compatibility(self):
+        """data_managerに必要なメソッドを追加（ViewLogicEngineとの互換性のため）"""
+        # get_total_horsesメソッドが存在しない場合、プロキシを追加
+        if not hasattr(self.data_manager, 'get_total_horses'):
+            def get_total_horses_proxy():
+                """総馬数を取得するプロキシメソッド"""
+                if hasattr(self.data_manager, 'knowledge_data') and self.data_manager.knowledge_data:
+                    horses = self.data_manager.knowledge_data.get('horses', {})
+                    return len(horses)
+                return 0
+            self.data_manager.get_total_horses = get_total_horses_proxy
+            
+        # is_loadedメソッドが存在しない場合、プロキシを追加
+        if not hasattr(self.data_manager, 'is_loaded'):
+            def is_loaded_proxy():
+                """データがロード済みか確認するプロキシメソッド"""
+                return hasattr(self.data_manager, 'knowledge_data') and self.data_manager.knowledge_data is not None
+            self.data_manager.is_loaded = is_loaded_proxy
+    
+    def _ensure_jockey_manager_compatibility(self):
+        """jockey_managerに必要なメソッドを追加（ViewLogicEngineとの互換性のため）"""
+        # get_jockey_post_position_fukusho_ratesメソッドが存在しない場合、プロキシを追加
+        if not hasattr(self.jockey_manager, 'get_jockey_post_position_fukusho_rates'):
+            def get_jockey_post_position_fukusho_rates_proxy(jockey_names: list):
+                """騎手の枠順別複勝率を取得するプロキシメソッド"""
+                result = {}
+                for jockey_name in jockey_names:
+                    # デフォルトの枠順別データを返す（データ不足として扱う）
+                    result[jockey_name] = {
+                        '内枠（1-6）': {'fukusho_rate': 0.0, 'race_count': 0},
+                        '中枠（7-12）': {'fukusho_rate': 0.0, 'race_count': 0},
+                        '外枠（13-18）': {'fukusho_rate': 0.0, 'race_count': 0}
+                    }
+                return result
+            self.jockey_manager.get_jockey_post_position_fukusho_rates = get_jockey_post_position_fukusho_rates_proxy
+    
+    def predict_race_flow_advanced(self, race_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        計画書通りの高度な展開予想（地方競馬版）
+        前半3F・後半3Fを使用したペース予測と詳細な脚質分析
+        """
+        horses = race_data.get('horses', [])
+        if not horses:
+            return {
+                'status': 'error',
+                'message': '出走馬情報がありません'
+            }
+        
+        # 各馬のデータを取得（馬番付き） - 地方版データアクセス
+        horses_data = []
+        for idx, horse_name in enumerate(horses, 1):
+            horse_data = self.get_horse_data(horse_name)  # オーバーライドされたメソッドを使用
+            if horse_data:
+                horse_data['horse_number'] = race_data.get('horse_numbers', [])[idx-1] if idx-1 < len(race_data.get('horse_numbers', [])) else idx
+                horses_data.append(horse_data)
+        
+        # データが少ない場合のフォールバック
+        if len(horses_data) < len(horses) * 0.3:  # 30%未満しかデータがない場合
+            return {
+                'status': 'warning',
+                'type': 'advanced_flow_prediction',
+                'race_info': {
+                    'venue': race_data.get('venue', ''),
+                    'race_number': race_data.get('race_number', ''),
+                    'race_name': race_data.get('race_name', ''),
+                    'distance': race_data.get('distance', '')
+                },
+                'pace_prediction': {'pace': 'データ不足', 'confidence': 0, 'zenhan_avg': 0, 'kohan_avg': 0},
+                'detailed_styles': {},
+                'position_stability': {},
+                'flow_matching': {},
+                'race_simulation': {},
+                'visualization_data': {}
+            }
+        
+        # 親クラスのメソッドを呼び出し
+        return super().predict_race_flow_advanced(race_data)
 
 # グローバルインスタンス
 local_viewlogic_engine_v2 = LocalViewLogicEngineV2()

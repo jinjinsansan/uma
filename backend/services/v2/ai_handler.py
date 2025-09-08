@@ -31,6 +31,9 @@ class V2AIHandler:
         # self.dlogic_manager = DLogicRawDataManager()  # メモリ重複を避ける
         self.anthropic_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY")) if Anthropic else None
         
+        # 地方競馬場リスト（南関東4場）
+        self.LOCAL_VENUES = ['川崎', '大井', '船橋', '浦和']
+        
         # AI選択キーワード
         self.AI_KEYWORDS = {
             'imlogic': ['分析', '評価', 'IMLogic', 'IM', 'アイエム'],
@@ -213,6 +216,10 @@ class V2AIHandler:
 """
         return prompt
     
+    def _is_local_racing(self, venue: str) -> bool:
+        """地方競馬場かどうかを判定"""
+        return venue in self.LOCAL_VENUES
+    
     async def process_imlogic_message(
         self,
         message: str,
@@ -220,14 +227,24 @@ class V2AIHandler:
         settings: Optional[Dict[str, Any]] = None
     ) -> Tuple[str, Optional[Dict]]:
         """
-        IMLogicメッセージ処理（既存のIMLogicEngineを使用）
+        IMLogicメッセージ処理（地方競馬対応版）
         """
         try:
             # 分析を実行する場合
             if self._should_analyze(message):
-                # シングルトンパターンを使用してメモリ効率を改善
-                from services.imlogic_engine import get_imlogic_engine
-                imlogic_engine_temp = get_imlogic_engine()
+                venue = race_data.get('venue', '')
+                
+                # 地方競馬場の場合は地方競馬版エンジンを使用
+                if self._is_local_racing(venue):
+                    from services.local_imlogic_engine_v2 import local_imlogic_engine_v2
+                    imlogic_engine_temp = local_imlogic_engine_v2
+                    logger.info(f"🏇 地方競馬版IMLogicエンジンを使用: {venue}")
+                else:
+                    # JRA版（既存）
+                    from services.imlogic_engine import get_imlogic_engine
+                    imlogic_engine_temp = get_imlogic_engine()
+                    logger.info(f"🏇 JRA版IMLogicエンジンを使用: {venue}")
+                
                 # デフォルトの設定を使用（設定が無い場合）
                 if not settings:
                     settings = self._get_default_imlogic_settings()
@@ -422,18 +439,25 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         sub_type: str = 'trend'
     ) -> Tuple[str, Optional[Dict]]:
         """
-        ViewLogicメッセージ処理
+        ViewLogicメッセージ処理（地方競馬対応版）
         
         Returns:
             (content, analysis_data) のタプル
         """
         try:
-            # ViewLogicエンジンをインポート・初期化
-            from services.viewlogic_engine import ViewLogicEngine
-            viewlogic_engine = ViewLogicEngine()
-            
             venue = race_data.get('venue', '不明')
             race_number = race_data.get('race_number', '不明')
+            
+            # 地方競馬場の場合は地方競馬版エンジンを使用
+            if self._is_local_racing(venue):
+                from services.local_viewlogic_engine_v2 import local_viewlogic_engine_v2
+                viewlogic_engine = local_viewlogic_engine_v2
+                logger.info(f"🏇 地方競馬版ViewLogicエンジンを使用: {venue}")
+            else:
+                # JRA版（既存）
+                from services.viewlogic_engine import ViewLogicEngine
+                viewlogic_engine = ViewLogicEngine()
+                logger.info(f"🏇 JRA版ViewLogicエンジンを使用: {venue}")
             
             if sub_type == 'flow':
                 # 展開予想（高度な分析版を使用）
@@ -1131,20 +1155,65 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         race_data: Dict[str, Any]
     ) -> Tuple[str, Optional[Dict]]:
         """
-        D-Logicメッセージ処理
+        D-Logicメッセージ処理（地方競馬対応版）
         """
         try:
             # D-Logic分析を実行する場合
             if self._should_analyze(message):
-                # V2のD-Logicバッチ計算を使用
-                from api.v2.dlogic import calculate_dlogic_batch
+                venue = race_data.get('venue', '')
                 
-                # レース情報から馬名を抽出
-                horses = race_data.get('horses', [])
-                if not horses:
-                    return ("分析対象の馬が指定されていません。", None)
-                
-                try:
+                # 地方競馬場の場合は地方競馬版エンジンを使用
+                if self._is_local_racing(venue):
+                    from services.local_fast_dlogic_engine_v2 import local_fast_dlogic_engine_v2
+                    logger.info(f"🏇 地方競馬版D-Logicエンジンを使用: {venue}")
+                    
+                    # レース情報から馬名を抽出
+                    horses = race_data.get('horses', [])
+                    if not horses:
+                        return ("分析対象の馬が指定されていません。", None)
+                    
+                    # 地方競馬版D-Logic計算
+                    dlogic_result = {}
+                    for horse_name in horses:
+                        score_data = local_fast_dlogic_engine_v2.raw_manager.calculate_dlogic_realtime(horse_name)
+                        if score_data:
+                            dlogic_result[horse_name] = {
+                                'score': score_data.get('score', 0),
+                                'data_available': True,
+                                'details': score_data
+                            }
+                        else:
+                            dlogic_result[horse_name] = {
+                                'score': 0,
+                                'data_available': False
+                            }
+                    
+                    # 結果をフォーマット
+                    content = self._format_dlogic_batch_result(dlogic_result, race_data)
+                    
+                    # 分析データを抽出
+                    analysis_data = {
+                        'type': 'dlogic',
+                        'scores': dlogic_result,
+                        'top_horses': sorted(
+                            [h for h in dlogic_result.keys() if dlogic_result[h].get('data_available', False)],
+                            key=lambda h: dlogic_result[h].get('score', 0),
+                            reverse=True
+                        )[:5]
+                    }
+                    
+                    return (content, analysis_data)
+                    
+                else:
+                    # JRA版（既存）
+                    from api.v2.dlogic import calculate_dlogic_batch
+                    logger.info(f"🏇 JRA版D-Logicエンジンを使用: {venue}")
+                    
+                    # レース情報から馬名を抽出
+                    horses = race_data.get('horses', [])
+                    if not horses:
+                        return ("分析対象の馬が指定されていません。", None)
+                    
                     # D-Logicバッチ計算を実行
                     dlogic_result = await calculate_dlogic_batch(horses)
                     
@@ -1166,12 +1235,6 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     }
                     
                     return (content, analysis_data)
-                    
-                except Exception as e:
-                    logger.error(f"D-Logic分析エラー: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    return ("D-Logic分析の実行中にエラーが発生しました。", None)
             
             # 通常の会話の場合
             else:
@@ -1210,83 +1273,118 @@ D-Logicは、12項目による馬の総合評価システムです。
         race_data: Dict[str, Any]
     ) -> Tuple[str, Optional[Dict]]:
         """
-        I-Logicメッセージ処理 - V1と同じAPIエンドポイントを使用
+        I-Logicメッセージ処理（地方競馬対応版）
         """
         try:
             # I-Logic分析を実行する場合
             if self._should_analyze(message):
-                # レース情報を準備
-                horses = race_data.get('horses', [])
-                jockeys = race_data.get('jockeys', [])
-                posts = race_data.get('posts', [])
-                horse_numbers = race_data.get('horse_numbers', [])
                 venue = race_data.get('venue', '')
-                race_number = race_data.get('race_number', 0)
                 
-                if not horses:
-                    return ("分析対象の馬が指定されていません。", None)
-                
-                # 騎手・枠順データが不足している場合
-                if not jockeys or not posts:
-                    return ("I-Logic分析には騎手・枠順情報が必要です。このレースでは分析できません。", None)
-                
-                try:
-                    # HTTPリクエストではなく直接関数呼び出しを使用（Render環境対応）
-                    logger.info(f"I-Logic直接関数呼び出し開始: {venue} {race_number}R")
+                # 地方競馬場の場合は地方競馬版エンジンを使用
+                if self._is_local_racing(venue):
+                    from services.local_race_analysis_engine_v2 import local_race_analysis_engine_v2 as local_ilogic_engine_v2
+                    logger.info(f"🏇 地方競馬版I-Logicエンジンを使用: {venue}")
                     
-                    # race-analysis-v2/chat 関数を直接呼び出し
-                    from api.race_analysis_v2 import race_analysis_chat
+                    # レース情報を準備
+                    horses = race_data.get('horses', [])
+                    jockeys = race_data.get('jockeys', [])
                     
-                    # APIの期待する形式に合わせる
-                    request_data = {
-                        'message': f"{venue} {race_number}Rを分析して",
-                        'race_info': {
-                            'venue': venue,
-                            'race_number': race_number,
-                            'horses': horses,
-                            'jockeys': jockeys,
-                            'posts': posts,
-                            'horse_numbers': horse_numbers or list(range(1, len(horses) + 1))
+                    if not horses:
+                        return ("分析対象の馬が指定されていません。", None)
+                    
+                    if not jockeys:
+                        return ("I-Logic分析には騎手情報が必要です。", None)
+                    
+                    # 地方競馬版I-Logic計算
+                    result = local_ilogic_engine_v2.analyze_race(race_data)
+                    
+                    if result['status'] == 'success':
+                        scores = result.get('scores', [])
+                        content = self._format_ilogic_scores(scores)
+                        
+                        analysis_data = {
+                            'type': 'ilogic',
+                            'scores': scores,
+                            'top_horses': [s['horse'] for s in scores[:5]]
                         }
-                    }
+                        
+                        return (content, analysis_data)
+                    else:
+                        return (f"I-Logic分析に失敗しました: {result.get('message', '不明なエラー')}", None)
+                else:
+                    # JRA版（既存の処理）
+                    # レース情報を準備
+                    horses = race_data.get('horses', [])
+                    jockeys = race_data.get('jockeys', [])
+                    posts = race_data.get('posts', [])
+                    horse_numbers = race_data.get('horse_numbers', [])
+                    venue = race_data.get('venue', '')
+                    race_number = race_data.get('race_number', 0)
                     
-                    logger.info(f"I-Logic関数呼び出しデータ: {request_data}")
+                    if not horses:
+                        return ("分析対象の馬が指定されていません。", None)
                     
-                    # 直接関数を呼び出し
-                    result_data = await race_analysis_chat(request_data)
+                    # 騎手・枠順データが不足している場合
+                    if not jockeys or not posts:
+                        return ("I-Logic分析には騎手・枠順情報が必要です。このレースでは分析できません。", None)
                     
-                    logger.info(f"I-Logic関数レスポンス: {result_data}")
-                    
-                    # レスポンスの処理
-                    if not result_data:
-                        return ("I-Logic分析から空のレスポンスを受信しました。", None)
-                    
-                    if result_data.get('status') != 'success':
-                        error_msg = result_data.get('response', 'I-Logic分析でエラーが発生しました')
-                        return (error_msg, None)
-                    
-                    response_text = result_data.get('response', '')
-                    
-                    if not response_text:
-                        return ("I-Logic分析結果が空です。", None)
-                    
-                    # レスポンステキストから馬名とスコアを抽出
-                    scores = self._parse_ilogic_response(response_text, horses)
-                    
-                    # 分析データを抽出
-                    analysis_data = {
-                        'type': 'ilogic',
-                        'response_text': response_text,
-                        'top_horses': scores[:5] if scores else []
-                    }
-                    
-                    return (response_text, analysis_data)
-                    
-                except Exception as e:
-                    logger.error(f"I-Logic分析エラー: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    return ("I-Logic分析の実行中にエラーが発生しました。", None)
+                    try:
+                        # HTTPリクエストではなく直接関数呼び出しを使用（Render環境対応）
+                        logger.info(f"I-Logic直接関数呼び出し開始: {venue} {race_number}R")
+                        
+                        # race-analysis-v2/chat 関数を直接呼び出し
+                        from api.race_analysis_v2 import race_analysis_chat
+                        
+                        # APIの期待する形式に合わせる
+                        request_data = {
+                            'message': f"{venue} {race_number}Rを分析して",
+                            'race_info': {
+                                'venue': venue,
+                                'race_number': race_number,
+                                'horses': horses,
+                                'jockeys': jockeys,
+                                'posts': posts,
+                                'horse_numbers': horse_numbers or list(range(1, len(horses) + 1))
+                            }
+                        }
+                        
+                        logger.info(f"I-Logic関数呼び出しデータ: {request_data}")
+                        
+                        # 直接関数を呼び出し
+                        result_data = await race_analysis_chat(request_data)
+                        
+                        logger.info(f"I-Logic関数レスポンス: {result_data}")
+                        
+                        # レスポンスの処理
+                        if not result_data:
+                            return ("I-Logic分析から空のレスポンスを受信しました。", None)
+                        
+                        if result_data.get('status') != 'success':
+                            error_msg = result_data.get('response', 'I-Logic分析でエラーが発生しました')
+                            return (error_msg, None)
+                        
+                        response_text = result_data.get('response', '')
+                        
+                        if not response_text:
+                            return ("I-Logic分析結果が空です。", None)
+                        
+                        # レスポンステキストから馬名とスコアを抽出
+                        scores = self._parse_ilogic_response(response_text, horses)
+                        
+                        # 分析データを抽出
+                        analysis_data = {
+                            'type': 'ilogic',
+                            'response_text': response_text,
+                            'top_horses': scores[:5] if scores else []
+                        }
+                        
+                        return (response_text, analysis_data)
+                        
+                    except Exception as e:
+                        logger.error(f"I-Logic分析エラー: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        return ("I-Logic分析の実行中にエラーが発生しました。", None)
             
             # 通常の会話の場合
             else:

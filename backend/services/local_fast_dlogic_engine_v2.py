@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+"""
+地方競馬版高速D-Logic計算エンジン V2
+V2マネージャーを使用（JRAデータ混入なし）
+"""
+from typing import Dict, Any
+from .fast_dlogic_engine import FastDLogicEngine
+from .local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
+
+class LocalFastDLogicEngineV2(FastDLogicEngine):
+    """地方競馬版高速D-Logic計算エンジン V2"""
+    
+    def __init__(self):
+        """初期化：地方競馬版V2マネージャーを使用"""
+        # 親クラスの初期化をスキップ
+        # super().__init__() は呼ばない
+        
+        # 地方競馬版V2マネージャーを設定
+        self.raw_manager = local_dlogic_manager_v2
+        
+        # MySQL設定は本番環境では不要
+        self.mysql_config = None
+        
+        # 初期化完了メッセージ
+        horse_count = len(self.raw_manager.knowledge_data.get('horses', {}))
+        print(f"🏇 地方競馬版D-Logic計算エンジンV2初期化完了 (ナレッジ: {horse_count}頭)")
+    
+    def get_engine_info(self) -> Dict[str, Any]:
+        """エンジン情報を返す"""
+        return {
+            "engine_type": "LocalFastDLogicEngineV2",
+            "venue": "南関東4場",
+            "knowledge_horses": len(self.raw_manager.knowledge_data.get('horses', {})),
+            "manager_type": "V2"
+        }
+
+# グローバルインスタンス
+local_fast_dlogic_engine_v2 = LocalFastDLogicEngineV2()

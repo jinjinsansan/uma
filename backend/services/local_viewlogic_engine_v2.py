@@ -265,30 +265,31 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             # 各レースの重要データのみ抽出
             formatted_races = []
             for race in recent_races:
-                # レース名の取得
-                race_name = race.get('KYOSOMEI_HONDAI', '') or race.get('レース名', '')
-                if not race_name:
-                    race_name = f"{race.get('RACE_BANGO', race.get('レース番号', ''))}R"
+                # レース名の取得（地方競馬版のキー）
+                race_name = f"{race.get('RACE_BANGO', '')}R" if race.get('RACE_BANGO') else '不明'
                 
-                # 着順の取得（複数のフィールド名に対応）
-                finish_position = race.get('KAKUTEI_CHAKUJUN') or race.get('着順')
+                # 着順の取得
+                finish_position = race.get('KAKUTEI_CHAKUJUN', '')
+                
+                # 競馬場名の取得（track_nameフィールドを使用）
+                venue = race.get('track_name', '') or race.get('KEIBAJO_CODE', '')
                 
                 formatted_race = {
-                    'date': race.get('KAISAI_NEN', '') or race.get('開催年', ''),
-                    'venue': race.get('KEIBAJO', '') or race.get('競馬場', ''),
+                    'date': f"{race.get('KAISAI_NEN', '')}年{race.get('KAISAI_GAPPI', '')[:2]}月{race.get('KAISAI_GAPPI', '')[2:]}日" if race.get('KAISAI_GAPPI') else '',
+                    'venue': venue,
                     'race_name': race_name,
-                    'distance': race.get('KYORI', 0) or race.get('距離', 0),
-                    'track_type': race.get('TRACK_CODE', '') or race.get('馬場', ''),
+                    'distance': race.get('KYORI', 0),
+                    'track_type': 'ダート' if race.get('TRACK_CODE') == '23' else '芝',
                     'finish': finish_position,
-                    'horse_count': race.get('TOSU', 0) or race.get('頭数', 0),
-                    'horse_number': race.get('UMA_BAN', 0) or race.get('馬番', 0),
-                    'jockey': race.get('KISHU_MEI', '') or race.get('騎手名', ''),
-                    'weight': race.get('FUTANZYURYO', 0) or race.get('斤量', 0),
-                    'odds': race.get('TANSHO_ODDS', 0) or race.get('単勝オッズ', 0),
-                    'popularity': race.get('NINKI_ZYUNI', 0) or race.get('人気', 0),
+                    'horse_count': race.get('TOSU', 0),
+                    'horse_number': race.get('UMA_BAN', 0),
+                    'jockey': race.get('KISHUMEI_RYAKUSHO', ''),
+                    'weight': race.get('FUTAN_JURYO', 0),
+                    'odds': float(race.get('TANSHO_ODDS', 0)) / 10 if race.get('TANSHO_ODDS') else 0,
+                    'popularity': race.get('TANSHO_NINKIJUN', 0),
                     'corner1': race.get('CORNER1_JUNI', 0),
                     'corner4': race.get('CORNER4_JUNI', 0),
-                    'time': race.get('RACE_TIME', '') or race.get('タイム', '')
+                    'time': f"{race.get('SOHA_TIME', '')[:2]}.{race.get('SOHA_TIME', '')[2:]}" if race.get('SOHA_TIME') else ''
                 }
                 formatted_races.append(formatted_race)
             

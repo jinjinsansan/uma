@@ -261,11 +261,9 @@ class LocalRaceAnalysisEngineV2:
             weight_sum = 0
             
             for item_key, weight in item_weights.items():
-                # キーから項目名を抽出（例: "1_distance_aptitude" -> "distance_aptitude"）
-                item_name = '_'.join(item_key.split('_')[1:])
-                
-                # スコアを取得（なければ50点）
-                score = item_scores.get(item_name, 50.0)
+                # D-Logicのキー形式と一致させる（数字付きのまま使用）
+                # item_scoresのキーを確認（"1_distance_aptitude"形式）
+                score = item_scores.get(item_key, 50.0)
                 
                 weighted_sum += score * weight
                 weight_sum += weight

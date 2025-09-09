@@ -392,7 +392,9 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             
             # 全頭を順位付きで表示（I-Logic形式）
             emojis = ['🥇', '🥈', '🥉']
-            valid_scores = [s for s in scores if s.get('total_score') is not None]
+            # -1はデータ不足なので、有効なスコアから除外
+            valid_scores = [s for s in scores if s.get('total_score') is not None and s.get('total_score') >= 0]
+            no_data_scores = [s for s in scores if s.get('total_score') == -1]
             
             for i, score_data in enumerate(valid_scores):
                 # 上位3位まで絵文字、4位以降は数字表示
@@ -419,12 +421,11 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     lines.append("【6位以下】")
             
             # データがない馬がいる場合の注記
-            no_data_horses = [s.get('horse_name') or s.get('horse', '不明') 
-                            for s in scores if s.get('total_score') is None]
-            if no_data_horses:
+            if no_data_scores:
+                no_data_horses = [s.get('horse_name') or s.get('horse', '不明') for s in no_data_scores]
                 lines.append("")
                 lines.append("【データ不足】")
-                lines.append(f"以下の馬はデータ不足のため分析できませんでした: {', '.join(no_data_horses)}")
+                lines.append(f"以下の馬はデータベースにデータがありません: {', '.join(no_data_horses)}")
             
             return "\n".join(lines)
             
@@ -1301,7 +1302,7 @@ D-Logicは、12項目による馬の総合評価システムです。
                     
                     if result['status'] == 'success':
                         scores = result.get('scores', [])
-                        content = self._format_ilogic_scores(scores)
+                        content = self._format_ilogic_scores_local(scores, race_data)
                         
                         analysis_data = {
                             'type': 'ilogic',
@@ -1641,7 +1642,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             if no_data_horses:
                 lines.append("")
                 lines.append("【データ不足】")
-                lines.append(f"以下の馬はデータ不足のため分析できませんでした:")
+                lines.append(f"以下の馬はデータベースにデータがありません:")
                 lines.append(f"{', '.join(no_data_horses)}")
             
             return "\n".join(lines)
@@ -1710,6 +1711,60 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         except Exception as e:
             logger.error(f"I-Logic API結果フォーマットエラー: {e}")
             return "I-Logic分析結果の表示中にエラーが発生しました。"
+    
+    def _format_ilogic_scores_local(self, scores: List[Dict[str, Any]], race_data: Dict[str, Any]) -> str:
+        """地方競馬版I-Logicスコアのフォーマット"""
+        venue = race_data.get('venue', '不明')
+        race_number = race_data.get('race_number', '不明')
+        
+        content = f"🎯 I-Logic分析結果
+"
+        content += f"{venue} {race_number}R
+
+"
+        
+        if not scores:
+            return content + "分析データがありません。"
+        
+        # スコア順にソート
+        scores.sort(key=lambda x: x.get('total_score', 0), reverse=True)
+        
+        # 上位5頭を表示
+        for i, score in enumerate(scores[:5], 1):
+            horse = score.get('horse', '不明')
+            jockey = score.get('jockey', '不明')
+            total = score.get('total_score', 0)
+            horse_score = score.get('horse_score', 0)
+            jockey_score = score.get('jockey_score', 0)
+            
+            if i == 1:
+                content += f"🥇 {i}位: {horse}: {total:.1f}点
+"
+            elif i == 2:
+                content += f"🥈 {i}位: {horse}: {total:.1f}点
+"
+            elif i == 3:
+                content += f"🥉 {i}位: {horse}: {total:.1f}点
+"
+            else:
+                content += f"{i}位: {horse}: {total:.1f}点
+"
+            
+            content += f"   馬: {horse_score:.1f}点 | 騎手: {jockey_score:.1f}点
+
+"
+        
+        # 6位以下
+        if len(scores) > 5:
+            content += "【6位以下】
+"
+            for i, score in enumerate(scores[5:], 6):
+                horse = score.get('horse', '不明')
+                total = score.get('total_score', 0)
+                content += f"{i}位: {horse}: {total:.1f}点
+"
+        
+        return content
     
     def _format_ilogic_batch_result(self, ilogic_result: Dict[str, Any], race_data: Dict[str, Any]) -> str:
         """

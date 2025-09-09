@@ -75,8 +75,12 @@ class LocalRaceAnalysisEngineV2:  # RaceAnalysisEngineを継承しない独立�
             horse_score = dlogic_scores.get(horse, 0)
             jockey_score = jockey_scores.get(jockey, 0) if jockey else 0
             
-            # 総合スコア（70:30の比率）
-            total_score = horse_score * 0.7 + jockey_score * 0.3
+            # データがない場合は-1
+            if horse_score == -1:
+                total_score = -1
+            else:
+                # 総合スコア（70:30の比率）
+                total_score = horse_score * 0.7 + jockey_score * 0.3
             
             scores.append({
                 'horse': horse,

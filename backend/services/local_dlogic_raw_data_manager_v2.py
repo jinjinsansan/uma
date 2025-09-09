@@ -173,7 +173,12 @@ class LocalDLogicRawDataManagerV2:
         """生データからリアルタイムD-Logic計算"""
         raw_data = self.get_horse_raw_data(horse_name)
         if not raw_data:
-            return {"error": f"{horse_name}のデータが見つかりません"}
+            return {
+                "horse_name": horse_name,
+                "total_score": -1,  # データ不足マーカー
+                "error": f"{horse_name}のデータベースにデータがありません",
+                "data_available": False
+            }
         
         # 12項目をリアルタイム計算
         scores = {
@@ -199,6 +204,7 @@ class LocalDLogicRawDataManagerV2:
             "d_logic_scores": scores,
             "total_score": total_score,
             "grade": self._grade_performance(total_score),
+            "data_available": True,  # データ利用可能フラグ
             "calculation_time": datetime.now().isoformat()
         }
     

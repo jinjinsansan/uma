@@ -42,7 +42,8 @@ class LocalFastDLogicEngineV2:  # FastDLogicEngineを継承しない独立実装
             if not score_data.get('error'):
                 results[horse] = score_data.get('total_score', 0)
             else:
-                results[horse] = 0
+                # データがない場合は-1を返す
+                results[horse] = -1
         return results
 
 # グローバルインスタンス

@@ -16,9 +16,9 @@ class LocalJockeyDataManager:
     
     def __init__(self):
         """初期化"""
-        # キャッシュファイルパス
+        # キャッシュファイルパス（Renderでは/tmpを使用）
         if os.environ.get('RENDER'):
-            self.cache_file = '/var/data/local_jockey_knowledge.json'
+            self.cache_file = '/tmp/local_jockey_knowledge.json'
         else:
             self.cache_file = os.path.join(
                 os.path.dirname(__file__), '..', 'data', 'local_jockey_knowledge.json'
@@ -51,12 +51,13 @@ class LocalJockeyDataManager:
             except Exception as e:
                 print(f"⚠️ キャッシュ読み込みエラー: {e}")
         
-        # CDNからダウンロード
+        # CDNからダウンロード（ストリーミング対応）
         try:
-            print("📥 地方騎手データをCDNからダウンロード中...")
-            response = requests.get(cdn_url, timeout=120)
+            print(f"📥 地方騎手データをCDNからダウンロード開始: {cdn_url}")
+            response = requests.get(cdn_url, stream=True, timeout=300)
             
             if response.status_code == 200:
+                print("🔄 JSONパース中...")
                 data = response.json()
                 
                 # データ構造を確認（騎手名が直接キーになっている）

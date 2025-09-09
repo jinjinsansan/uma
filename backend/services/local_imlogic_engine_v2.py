@@ -123,15 +123,17 @@ class LocalIMLogicEngineV2:
             horse_score = 0
             horse_data = self.dlogic_manager.get_horse_data(horse_name)
             if horse_data:
+                races = horse_data.get('races', [])
                 # 簡易スコア計算
-                horse_score = min(100, len(horse_data.get('races', [])) * 2)
+                horse_score = min(100, len(races) * 2)
             
             # 騎手スコア（地方競馬騎手データから取得）
             jockey_score = 0
             if jockey_name:
                 jockey_data = self.jockey_manager.get_jockey_data(jockey_name)
                 if jockey_data:
-                    jockey_score = min(100, jockey_data.get('win_rate', 0) * 5)
+                    win_rate = jockey_data.get('win_rate', 0)
+                    jockey_score = min(100, win_rate * 5)
             
             # 総合スコア計算
             total_score = (horse_score * horse_weight / 100) + (jockey_score * jockey_weight / 100)

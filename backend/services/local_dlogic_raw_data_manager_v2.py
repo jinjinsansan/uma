@@ -17,9 +17,10 @@ class LocalDLogicRawDataManagerV2:
     
     def __init__(self):
         """初期化：地方競馬版専用"""
-        # キャッシュファイルパス
+        # キャッシュファイルパス（Renderでは/tmpを使用）
         if os.environ.get('RENDER'):
-            self.knowledge_file = '/var/data/local_dlogic_raw_knowledge_v2.json'
+            # Renderでは書き込み可能な/tmpディレクトリを使用
+            self.knowledge_file = '/tmp/local_dlogic_raw_knowledge_v2.json'
         else:
             self.knowledge_file = os.path.join(
                 os.path.dirname(__file__), '..', 'data', 'local_dlogic_raw_knowledge_v2.json'
@@ -59,13 +60,35 @@ class LocalDLogicRawDataManagerV2:
         return self._download_from_cdn()
     
     def _download_from_cdn(self) -> Dict[str, Any]:
-        """CDNからダウンロード"""
+        """CDNからダウンロード（ストリーミング対応）"""
         try:
-            print(f"📥 CDNからダウンロード中: {self.cdn_url}")
-            response = requests.get(self.cdn_url, timeout=120)
+            print(f"📥 CDNからダウンロード開始: {self.cdn_url}")
+            
+            # ストリーミングダウンロード（メモリ効率化）
+            response = requests.get(self.cdn_url, stream=True, timeout=300)
             
             if response.status_code == 200:
-                data = response.json()
+                # コンテンツサイズを確認
+                content_length = response.headers.get('content-length')
+                if content_length:
+                    print(f"📦 ファイルサイズ: {int(content_length) / 1024 / 1024:.1f}MB")
+                
+                # ストリーミングで内容を取得
+                content = b''
+                downloaded = 0
+                chunk_size = 1024 * 1024  # 1MB chunks
+                
+                for chunk in response.iter_content(chunk_size=chunk_size):
+                    if chunk:
+                        content += chunk
+                        downloaded += len(chunk)
+                        if content_length and downloaded % (10 * chunk_size) == 0:
+                            progress = (downloaded / int(content_length)) * 100
+                            print(f"📥 ダウンロード中: {progress:.1f}%")
+                
+                # JSONパース
+                print("🔄 JSONパース中...")
+                data = json.loads(content.decode('utf-8'))
                 
                 # データ構造を確認（馬名が直接キーになっている）
                 if isinstance(data, dict) and 'horses' not in data:
@@ -93,10 +116,15 @@ class LocalDLogicRawDataManagerV2:
                     return data
             else:
                 print(f"❌ ダウンロード失敗: HTTP {response.status_code}")
+        except requests.exceptions.Timeout:
+            print(f"❌ ダウンロードタイムアウト（300秒）")
+        except json.JSONDecodeError as e:
+            print(f"❌ JSONパースエラー: {e}")
         except Exception as e:
             print(f"❌ ダウンロードエラー: {e}")
         
         # フォールバック
+        print("⚠️ CDNダウンロード失敗、空データで初期化")
         return {"horses": {}}
     
     def _save_cache(self, data: Dict[str, Any]):

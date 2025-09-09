@@ -4,10 +4,10 @@
 V2マネージャーを使用（JRAデータ混入なし）
 """
 from typing import Dict, Any
-from .fast_dlogic_engine import FastDLogicEngine
+# from .fast_dlogic_engine import FastDLogicEngine  # MySQL依存のため、独立実装
 from .local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
 
-class LocalFastDLogicEngineV2(FastDLogicEngine):
+class LocalFastDLogicEngineV2:  # FastDLogicEngineを継承しない独立実装
     """地方競馬版高速D-Logic計算エンジン V2"""
     
     def __init__(self):
@@ -33,6 +33,17 @@ class LocalFastDLogicEngineV2(FastDLogicEngine):
             "knowledge_horses": len(self.raw_manager.knowledge_data.get('horses', {})),
             "manager_type": "V2"
         }
+    
+    def analyze_batch(self, horses: list, jockeys: list = None) -> Dict[str, Any]:
+        """バッチ分析（I-Logicで必要）"""
+        results = {}
+        for horse in horses:
+            score_data = self.raw_manager.calculate_dlogic_realtime(horse)
+            if not score_data.get('error'):
+                results[horse] = score_data.get('total_score', 0)
+            else:
+                results[horse] = 0
+        return results
 
 # グローバルインスタンス
 local_fast_dlogic_engine_v2 = LocalFastDLogicEngineV2()

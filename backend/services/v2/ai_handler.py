@@ -1176,9 +1176,10 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     dlogic_result = {}
                     for horse_name in horses:
                         score_data = local_fast_dlogic_engine_v2.raw_manager.calculate_dlogic_realtime(horse_name)
-                        if score_data:
+                        if score_data and not score_data.get('error'):
+                            # total_scoreをscoreとして使用
                             dlogic_result[horse_name] = {
-                                'score': score_data.get('score', 0),
+                                'score': score_data.get('total_score', 0),
                                 'data_available': True,
                                 'details': score_data
                             }

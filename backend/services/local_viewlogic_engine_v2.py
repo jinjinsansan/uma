@@ -234,33 +234,46 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
         """馬データを取得（ViewLogicDataManagerとの互換性のため）"""
         return self.data_manager.get_horse_raw_data(horse_name)
     
-    def get_horse_history(self, horse_name: str) -> Dict[str, Any]:
+    def get_horse_history(self, horse_name: str, limit: int = 5) -> Dict[str, Any]:
         """
         馬の過去データを取得（地方競馬版）
         JRA版と同じ形式で実装
+        
+        Args:
+            horse_name: 馬名
+            limit: 取得するレース数（デフォルト5）
         
         Returns:
             {
                 'status': 'success' or 'error',
                 'horse_name': str,
-                'races': List[Dict],  # 直近5走のデータ
+                'races': List[Dict],  # 直近limit走のデータ
                 'running_style': Dict,  # 脚質情報
                 'message': str
             }
         """
         try:
-            # 馬データを取得
-            horse_data = self.data_manager.get_horse_raw_data(horse_name)
+            # D-Logicマネージャーからリアルタイムデータを取得
+            score_data = self.data_manager.calculate_dlogic_realtime(horse_name)
             
-            if not horse_data:
+            if score_data.get('error') or not score_data.get('data_available'):
                 return {
                     'status': 'error',
                     'message': f'{horse_name}のデータベースにデータがありません'
                 }
             
-            # 直近5走のデータを取得
-            races = horse_data.get('races', [])
-            recent_races = races[:5] if len(races) >= 5 else races
+            # 生データから過去レースを取得
+            raw_data = score_data.get('raw_data', {})
+            races = raw_data.get('races', [])
+            
+            if not races:
+                return {
+                    'status': 'error',
+                    'message': f'{horse_name}の過去レースデータがありません'
+                }
+            
+            # 直近limit走のデータを取得
+            recent_races = races[:limit] if len(races) >= limit else races
             
             # 各レースの重要データのみ抽出
             formatted_races = []
@@ -278,7 +291,7 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'date': f"{race.get('KAISAI_NEN', '')}年{race.get('KAISAI_GAPPI', '')[:2]}月{race.get('KAISAI_GAPPI', '')[2:]}日" if race.get('KAISAI_GAPPI') else '',
                     'venue': venue,
                     'race_name': race_name,
-                    'distance': race.get('KYORI', 0),
+                    'distance': f"{race.get('KYORI', 0)}m",
                     'track_type': 'ダート' if race.get('TRACK_CODE') == '23' else '芝',
                     'finish': finish_position,
                     'horse_count': race.get('TOSU', 0),
@@ -289,7 +302,13 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'popularity': race.get('TANSHO_NINKIJUN', 0),
                     'corner1': race.get('CORNER1_JUNI', 0),
                     'corner4': race.get('CORNER4_JUNI', 0),
-                    'time': f"{race.get('SOHA_TIME', '')[:2]}.{race.get('SOHA_TIME', '')[2:]}" if race.get('SOHA_TIME') else ''
+                    'time': f"{race.get('SOHA_TIME', '')[:2]}.{race.get('SOHA_TIME', '')[2:]}" if race.get('SOHA_TIME') else '',
+                    # ペース予測で使用するフィールドを追加
+                    'ZENHAN_3F': race.get('ZENHAN_3F'),
+                    'KOHAN_3F': race.get('KOHAN_3F'),
+                    'KYORI': race.get('KYORI'),
+                    'KAISAI_NEN': race.get('KAISAI_NEN'),
+                    'KAKUTEI_CHAKUJUN': race.get('KAKUTEI_CHAKUJUN')
                 }
                 formatted_races.append(formatted_race)
             
@@ -444,9 +463,14 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
         horses_data = []
         horse_numbers = race_data.get('horse_numbers') or []  # Noneの場合は空リスト
         for idx, horse_name in enumerate(horses, 1):
-            horse_data = self.data_manager.get_horse_data(horse_name)
-            if horse_data:
-                horse_data['horse_name'] = horse_name
+            # get_horse_historyを使って過去レースデータを取得
+            history_data = self.get_horse_history(horse_name, limit=10)
+            
+            if history_data and history_data.get('status') == 'success' and history_data.get('races'):
+                horse_data = {
+                    'horse_name': horse_name,
+                    'races': history_data['races']  # 過去レースデータ
+                }
                 # horse_numbersがNoneや空の場合は連番を使用
                 if horse_numbers and idx-1 < len(horse_numbers):
                     horse_data['horse_number'] = horse_numbers[idx-1]
@@ -768,27 +792,35 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
         
         for horse_name in horses:
             try:
-                horse_data = self.data_manager.get_horse_raw_data(horse_name)
+                # get_horse_historyを使って過去レースデータを取得
+                history_data = self.get_horse_history(horse_name, limit=20)
                 
-                if not horse_data:
+                if not history_data or history_data.get('status') != 'success':
                     performances.append({
                         'horse_name': horse_name,
                         'error': 'データベースにデータがありません'
                     })
                     continue
                 
-                races = horse_data.get('races', [])
+                races = history_data.get('races', [])
                 # 該当コースのレースを抽出
                 course_races = []
                 for race in races:
-                    race_venue = race.get('競馬場', '') or race.get('KEIBAJO', '')
-                    race_distance = race.get('距離', 0) or race.get('KYORI', 0)
+                    race_venue = race.get('venue', '') or race.get('KEIBAJO_CODE', '') or race.get('競馬場', '')
+                    race_distance_str = race.get('distance', '') or str(race.get('KYORI', ''))
+                    
+                    # 距離を数値に変換
+                    try:
+                        race_distance = int(race_distance_str.replace('m', '').replace('M', '').strip()) if race_distance_str else 0
+                    except (ValueError, AttributeError):
+                        race_distance = 0
+                    
                     if race_venue == venue and race_distance == distance:
                         course_races.append(race)
                 
                 if course_races:
-                    wins = sum(1 for r in course_races if r.get('着順', r.get('KAKUTEI_CHAKUJUN', 99)) == 1)
-                    places = sum(1 for r in course_races if r.get('着順', r.get('KAKUTEI_CHAKUJUN', 99)) <= 3)
+                    wins = sum(1 for r in course_races if r.get('finish', r.get('KAKUTEI_CHAKUJUN', 99)) == 1)
+                    places = sum(1 for r in course_races if r.get('finish', r.get('KAKUTEI_CHAKUJUN', 99)) <= 3)
                     total = len(course_races)
                     
                     performances.append({

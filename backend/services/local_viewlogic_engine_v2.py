@@ -296,8 +296,8 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'corner4': race.get('CORNER4_JUNI', 0),
                     'time': f"{race.get('SOHA_TIME', '')[:2]}.{race.get('SOHA_TIME', '')[2:]}" if race.get('SOHA_TIME') else '',
                     # ペース予測で使用するフィールドを追加
-                    'ZENHAN_3F': race.get('ZENHAN_3F'),
-                    'KOHAN_3F': race.get('KOHAN_3F'),
+                    'ZENHAN_3F': race.get('ZENHAN_3F_TIME'),  # 正しいフィールド名
+                    'KOHAN_3F': race.get('KOHAN_3F_TIME'),    # 正しいフィールド名
                     'KYORI': race.get('KYORI'),
                     'KAISAI_NEN': race.get('KAISAI_NEN'),
                     'KAKUTEI_CHAKUJUN': race.get('KAKUTEI_CHAKUJUN')
@@ -404,6 +404,13 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
     
     def _ensure_data_manager_compatibility(self):
         """data_managerに必要なメソッドを追加（ViewLogicEngineとの互換性のため）"""
+        # get_horse_dataメソッドが存在しない場合、プロキシを追加（最重要）
+        if not hasattr(self.data_manager, 'get_horse_data'):
+            def get_horse_data_proxy(horse_name):
+                """馬データを取得するプロキシメソッド（get_horse_raw_dataを呼び出す）"""
+                return self.data_manager.get_horse_raw_data(horse_name)
+            self.data_manager.get_horse_data = get_horse_data_proxy
+            
         # get_total_horsesメソッドが存在しない場合、プロキシを追加
         if not hasattr(self.data_manager, 'get_total_horses'):
             def get_total_horses_proxy():
@@ -1018,14 +1025,14 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             # 直近レースの前半3F・後半3Fを収集
             for race in horse['races'][:5]:  # 直近5レース
                 # 前半3Fの正規化
-                zenhan_raw = race.get('ZENHAN_3F')
+                zenhan_raw = race.get('ZENHAN_3F_TIME')  # 正しいフィールド名に修正
                 if zenhan_raw is not None:
                     zenhan_normalized = self._normalize_3f_time(float(zenhan_raw))
                     if zenhan_normalized is not None:
                         zenhan_times.append(zenhan_normalized)
                 
                 # 後半3Fの正規化
-                kohan_raw = race.get('KOHAN_3F')
+                kohan_raw = race.get('KOHAN_3F_TIME')  # 正しいフィールド名に修正
                 if kohan_raw is not None:
                     kohan_normalized = self._normalize_3f_time(float(kohan_raw))
                     if kohan_normalized is not None:

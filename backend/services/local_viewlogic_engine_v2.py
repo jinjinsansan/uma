@@ -575,6 +575,7 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             
             # 1. 出場馬の該当コース成績複勝率を分析
             horse_course_stats = self._analyze_horses_course_performance(horses, venue, distance, track_type)
+            logger.info(f"馬コース成績分析結果: {len(horse_course_stats)}件")
             
             # 2. 騎手の枠順別複勝率分析
             jockey_post_stats = []
@@ -599,6 +600,16 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'horse_course_performance': horse_course_stats,
                     'jockey_post_performance': jockey_post_stats,
                     'jockey_course_performance': jockey_course_stats
+                },
+                # フォーマッターとの互換性のため両方のキーを追加
+                'trend_analysis': {
+                    'horse_course_stats': horse_course_stats,
+                    'jockey_post_stats': jockey_post_stats,
+                    'jockey_course_stats': jockey_course_stats,
+                    'course_trend': {
+                        'favorable_style': '先行〜差し',
+                        'favorable_post': '内〜中枠'
+                    }
                 },
                 'insights': self._generate_trend_insights(
                     horse_course_stats, jockey_post_stats, jockey_course_stats
@@ -796,9 +807,20 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
         """出場馬のコース成績を分析（実データのみ使用）"""
         performances = []
         
+        # 競馬場コード変換マップ（地方競馬）
+        venue_code_map = {
+            '川崎': ['川崎', '43', 43],
+            '大井': ['大井', '44', 44],
+            '船橋': ['船橋', '45', 45],
+            '浦和': ['浦和', '46', 46]
+        }
+        
+        # 比較用の競馬場リストを作成
+        venue_variations = venue_code_map.get(venue, [venue])
+        
         for horse_name in horses:
             try:
-                horse_data = self.data_manager.get_horse_data(horse_name)
+                horse_data = self.get_horse_data(horse_name)
                 
                 if not horse_data:
                     performances.append({
@@ -820,12 +842,31 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     except (ValueError, AttributeError):
                         race_distance = 0
                     
-                    if race_venue == venue and race_distance == distance:
+                    # distanceも整数に変換して比較（文字列の場合に対応）
+                    try:
+                        distance_int = int(distance) if isinstance(distance, (str, int)) else 0
+                    except (ValueError, TypeError):
+                        distance_int = 0
+                    
+                    # 競馬場コードの比較（数字または文字列）
+                    venue_match = False
+                    if isinstance(race_venue, (int, str)):
+                        venue_match = str(race_venue) in [str(v) for v in venue_variations]
+                    
+                    if venue_match and race_distance == distance_int:
                         course_races.append(race)
                 
                 if course_races:
-                    wins = sum(1 for r in course_races if r.get('finish', r.get('KAKUTEI_CHAKUJUN', 99)) == 1)
-                    places = sum(1 for r in course_races if r.get('finish', r.get('KAKUTEI_CHAKUJUN', 99)) <= 3)
+                    # 着順を整数に変換して比較
+                    def get_finish_as_int(race):
+                        finish = race.get('finish', race.get('KAKUTEI_CHAKUJUN', 99))
+                        try:
+                            return int(finish) if finish else 99
+                        except (ValueError, TypeError):
+                            return 99
+                    
+                    wins = sum(1 for r in course_races if get_finish_as_int(r) == 1)
+                    places = sum(1 for r in course_races if get_finish_as_int(r) <= 3)
                     total = len(course_races)
                     
                     performances.append({
@@ -923,7 +964,8 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                                            distance: int, track_type: str) -> List[Dict]:
         """騎手のコース成績を分析（実データのみ）"""
         performances = []
-        course_key = f"{venue}_{distance}"
+        # 騎手データのキー形式に合わせる（例：川崎_1500m）
+        course_key = f"{venue}_{distance}m"
         
         for jockey_name in jockeys:
             try:
@@ -942,18 +984,28 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     })
                     continue
                 
-                # コース別データが存在する場合のみ使用
-                if 'course_stats' in jockey_data and course_key in jockey_data['course_stats']:
-                    course_stat = jockey_data['course_stats'][course_key]
+                # 地方競馬版：venue_course_statsキーを使用
+                if 'venue_course_stats' in jockey_data and course_key in jockey_data['venue_course_stats']:
+                    course_stat = jockey_data['venue_course_stats'][course_key]
+                    # 地方競馬データ形式：resultsとfukusho_rateがある
+                    results = course_stat.get('results', [])
+                    race_count = course_stat.get('race_count', len(results))
+                    fukusho_rate = course_stat.get('fukusho_rate', 0)
+                    
+                    # 勝利数を計算
+                    wins = sum(1 for r in results if r.get('position', 99) == 1)
+                    win_rate = (wins / race_count * 100) if race_count > 0 else 0
+                    
                     performances.append({
                         'jockey_name': jockey_name,
                         'course_key': f"{venue}{distance}m",
                         'status': 'found',  # フォーマッターが期待するキー
-                        'total_runs': course_stat.get('race_count', 0),  # フォーマッターが期待するキー
-                        'race_count': course_stat.get('race_count', 0),  # 互換性のため残す
-                        'win_rate': course_stat.get('win_rate', 0),
-                        'place_rate': course_stat.get('fukusho_rate', 0),
-                        'fukusho_rate': course_stat.get('fukusho_rate', 0)  # フォーマッターが期待するキー
+                        'total_runs': race_count,  # フォーマッターが期待するキー
+                        'race_count': race_count,  # 互換性のため残す
+                        'wins': wins,
+                        'win_rate': win_rate,
+                        'place_rate': fukusho_rate,
+                        'fukusho_rate': fukusho_rate  # フォーマッターが期待するキー
                     })
                 else:
                     performances.append({

@@ -587,6 +587,34 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             if jockeys:
                 jockey_course_stats = self._analyze_jockeys_course_performance(jockeys, venue, distance, track_type)
             
+            # フォーマッター向けの結果形式変換
+            horse_results = {}
+            jockey_results = {}
+            
+            # 実績があった馬のみhorse_resultsに含める
+            for horse_stat in horse_course_stats:
+                if horse_stat.get('status') == 'found' and horse_stat.get('total_runs', 0) > 0:
+                    horse_name = horse_stat['horse_name']
+                    horse_results[horse_name] = {
+                        'score': horse_stat.get('place_rate', 0),
+                        'fukusho_rate': horse_stat.get('fukusho_rate', 0),
+                        'total_runs': horse_stat.get('total_runs', 0),
+                        'places': horse_stat.get('places', 0),
+                        'status': 'success'
+                    }
+            
+            # 実績があった騎手のみjockey_resultsに含める
+            for jockey_stat in jockey_course_stats:
+                if jockey_stat.get('status') == 'found' and jockey_stat.get('total_runs', 0) > 0:
+                    jockey_name = jockey_stat['jockey_name']
+                    jockey_results[jockey_name] = {
+                        'score': jockey_stat.get('place_rate', 0),
+                        'fukusho_rate': jockey_stat.get('fukusho_rate', 0),
+                        'total_runs': jockey_stat.get('total_runs', 0),
+                        'places': jockey_stat.get('places', 0),
+                        'status': 'success'
+                    }
+            
             result = {
                 'status': 'success',
                 'type': 'trend_analysis',
@@ -611,6 +639,9 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                         'favorable_post': '内〜中枠'
                     }
                 },
+                # フォーマッター向けキー（実績がある場合のみ含まれる）
+                'horse_results': horse_results,
+                'jockey_results': jockey_results,
                 'insights': self._generate_trend_insights(
                     horse_course_stats, jockey_post_stats, jockey_course_stats
                 ),
@@ -818,9 +849,14 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
         # 比較用の競馬場リストを作成
         venue_variations = venue_code_map.get(venue, [venue])
         
+        logger.info(f"🔍 馬コース成績分析開始: {venue}{distance}m{track_type}")
+        logger.info(f"   対象馬: {horses}")
+        logger.info(f"   競馬場変換: {venue} → {venue_variations}")
+        
         for horse_name in horses:
             try:
                 horse_data = self.get_horse_data(horse_name)
+                logger.info(f"📊 {horse_name}: データ取得{'成功' if horse_data else '失敗'}")
                 
                 if not horse_data:
                     performances.append({
@@ -830,11 +866,19 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     continue
                 
                 races = horse_data.get('races', [])
+                logger.info(f"   レース総数: {len(races)}")
+                
                 # 該当コースのレースを抽出
                 course_races = []
+                debug_count = 0
                 for race in races:
                     race_venue = race.get('venue', '') or race.get('KEIBAJO_CODE', '') or race.get('競馬場', '')
                     race_distance_str = race.get('distance', '') or str(race.get('KYORI', ''))
+                    
+                    # 最初の5レースだけデバッグ出力
+                    if debug_count < 5:
+                        logger.info(f"   レース{debug_count+1}: 競馬場={race_venue} 距離={race_distance_str}")
+                        debug_count += 1
                     
                     # 距離を数値に変換
                     try:
@@ -855,6 +899,8 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     
                     if venue_match and race_distance == distance_int:
                         course_races.append(race)
+                
+                logger.info(f"   → {venue}{distance}m該当レース: {len(course_races)}件")
                 
                 if course_races:
                     # 着順を整数に変換して比較

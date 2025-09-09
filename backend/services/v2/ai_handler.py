@@ -293,6 +293,9 @@ class V2AIHandler:
                     }
                 
                 # 一時的なエンジンインスタンスで分析
+                logger.info(f"IMLogic分析開始 - venue: {venue}, horses: {race_data.get('horses', [])}")
+                logger.info(f"IMLogic重み設定 - horse: {horse_weight}%, jockey: {jockey_weight}%")
+                
                 analysis_result = imlogic_engine_temp.analyze_race(
                     race_data=race_data,
                     horse_weight=horse_weight,
@@ -300,9 +303,12 @@ class V2AIHandler:
                     item_weights=item_weights
                 )
                 
+                logger.info(f"IMLogic分析結果: status={analysis_result.get('status')}, results数={len(analysis_result.get('results', []))}")
+                
                 # 結果が空の場合のチェック（'scores'と'results'の両方をチェック）
                 if not analysis_result or (not analysis_result.get('scores') and not analysis_result.get('results')):
                     logger.error(f"IMLogic分析結果が空: {analysis_result}")
+                    logger.error(f"race_data詳細: {race_data}")
                     return ("分析に失敗しました。馬名が正しいか確認してください。", None)
                 
                 # 結果のフォーマット
@@ -339,7 +345,10 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     return ("会話機能は現在利用できません", None)
             
         except Exception as e:
+            import traceback
             logger.error(f"IMLogic処理エラー: {e}")
+            logger.error(f"IMLogicスタックトレース: {traceback.format_exc()}")
+            logger.error(f"IMLogicエラー時のrace_data: {race_data}")
             return (f"申し訳ございません。IMLogic分析中にエラーが発生しました: {str(e)}", None)
     
     def _should_analyze(self, message: str) -> bool:
@@ -462,13 +471,17 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             
             if sub_type == 'flow':
                 # 展開予想（高度な分析版を使用）
+                logger.info(f"ViewLogic展開予想開始: venue={venue}, horses={race_data.get('horses', [])}")
                 result = viewlogic_engine.predict_race_flow_advanced(race_data)
-                if result['status'] == 'success':
+                logger.info(f"ViewLogic展開予想結果: status={result.get('status')}, type={result.get('type')}")
+                
+                if result.get('status') == 'success':
                     # 外部フォーマット関数を使用
                     from services.v2.ai_handler_format_advanced import format_flow_prediction_advanced
                     content = format_flow_prediction_advanced(result)
                     return (content, result)
                 else:
+                    logger.error(f"ViewLogic展開予想エラー詳細: {result}")
                     return (f"展開予想に失敗しました: {result.get('message', '不明なエラー')}", None)
                     
             elif sub_type == 'trend':
@@ -596,9 +609,11 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             logger.error(f"ViewLogicエンジンのインポートエラー: {e}")
             return ("ViewLogicエンジンの読み込みに失敗しました。システム管理者にお問い合わせください。", None)
         except Exception as e:
-            logger.error(f"ViewLogic処理エラー: {e}")
             import traceback
-            traceback.print_exc()
+            logger.error(f"ViewLogic処理エラー: {e}")
+            logger.error(f"ViewLogicスタックトレース: {traceback.format_exc()}")
+            logger.error(f"ViewLogicエラー時のrace_data: {race_data}")
+            logger.error(f"ViewLogicエラー時のsub_type: {sub_type}")
             return (f"ViewLogic分析中にエラーが発生しました: {str(e)}", None)
     
     def _format_flow_prediction(self, result: Dict[str, Any]) -> str:
@@ -1298,9 +1313,11 @@ D-Logicは、12項目による馬の総合評価システムです。
                         return ("I-Logic分析には騎手情報が必要です。", None)
                     
                     # 地方競馬版I-Logic計算
+                    logger.info(f"地方I-Logic分析開始: horses={horses}, jockeys={jockeys}")
                     result = local_ilogic_engine_v2.analyze_race(race_data)
+                    logger.info(f"地方I-Logic分析結果: status={result.get('status')}, scores数={len(result.get('scores', []))}")
                     
-                    if result['status'] == 'success':
+                    if result.get('status') == 'success':
                         scores = result.get('scores', [])
                         content = self._format_ilogic_scores_local(scores, race_data)
                         
@@ -1416,7 +1433,10 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                     return ("会話機能は現在利用できません", None)
             
         except Exception as e:
+            import traceback
             logger.error(f"I-Logic処理エラー: {e}")
+            logger.error(f"I-Logicスタックトレース: {traceback.format_exc()}")
+            logger.error(f"I-Logicエラー時のrace_data: {race_data}")
             return (f"申し訳ございません。I-Logic分析中にエラーが発生しました: {str(e)}", None)
     
     def _parse_dlogic_result(self, content: str) -> Optional[Dict]:

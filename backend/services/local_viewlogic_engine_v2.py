@@ -280,6 +280,18 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                 venue = race.get('track_name', '') or race.get('KEIBAJO_CODE', '')
                 
                 formatted_race = {
+                    # フォーマッターが期待する絵文字付きキーを使用
+                    '📅 開催日': f"{race.get('KAISAI_NEN', '')}年{race.get('KAISAI_GAPPI', '')[:2]}月{race.get('KAISAI_GAPPI', '')[2:]}日" if race.get('KAISAI_GAPPI') else '不明',
+                    '🏟️ 競馬場': venue if venue else '不明',
+                    '🏁 レース': race_name,
+                    '📏 距離': f"{race.get('KYORI', 0)}m" if race.get('KYORI') else '不明',
+                    '🌤️ 馬場': 'ダート' if race.get('TRACK_CODE') == '23' else '芝',
+                    '🥇 着順': finish_position if finish_position else '',
+                    '📊 人気': f"{race.get('TANSHO_NINKIJUN', '')}番人気" if race.get('TANSHO_NINKIJUN') else '',
+                    '⏱️ タイム': race.get('SOHA_TIME', '') if race.get('SOHA_TIME') else '',
+                    '🏃 上り': race.get('KOHAN_3F_TIME', '') if race.get('KOHAN_3F_TIME') else '',
+                    '🏇 騎手': race.get('KISHUMEI_RYAKUSHO', '') if race.get('KISHUMEI_RYAKUSHO') else '',
+                    # 互換性のため通常のキーも保持
                     'date': f"{race.get('KAISAI_NEN', '')}年{race.get('KAISAI_GAPPI', '')[:2]}月{race.get('KAISAI_GAPPI', '')[2:]}日" if race.get('KAISAI_GAPPI') else '',
                     'venue': venue,
                     'race_name': race_name,
@@ -819,21 +831,27 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     performances.append({
                         'horse_name': horse_name,
                         'course_key': f"{venue}{distance}m",
-                        'total_races': total,
+                        'status': 'found',  # フォーマッターが期待するキー
+                        'total_runs': total,  # フォーマッターが期待するキー名
+                        'total_races': total,  # 互換性のため残す
                         'wins': wins,
                         'places': places,
                         'win_rate': (wins / total * 100) if total > 0 else 0,
-                        'place_rate': (places / total * 100) if total > 0 else 0
+                        'place_rate': (places / total * 100) if total > 0 else 0,
+                        'fukusho_rate': (places / total * 100) if total > 0 else 0  # フォーマッターが期待するキー
                     })
                 else:
                     performances.append({
                         'horse_name': horse_name,
                         'course_key': f"{venue}{distance}m",
-                        'total_races': 0,
+                        'status': 'not_found',  # フォーマッターが期待するキー
+                        'total_runs': 0,  # フォーマッターが期待するキー名
+                        'total_races': 0,  # 互換性のため残す
                         'wins': 0,
                         'places': 0,
                         'win_rate': 0,
                         'place_rate': 0,
+                        'fukusho_rate': 0,  # フォーマッターが期待するキー
                         'message': '該当コースの実績なし'
                     })
                     
@@ -914,6 +932,12 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                 if not jockey_data:
                     performances.append({
                         'jockey_name': jockey_name,
+                        'status': 'not_found',  # フォーマッターが期待するキー
+                        'total_runs': 0,  # フォーマッターが期待するキー
+                        'race_count': 0,
+                        'win_rate': 0,
+                        'place_rate': 0,
+                        'fukusho_rate': 0,  # フォーマッターが期待するキー
                         'error': 'データベースにデータがありません'
                     })
                     continue
@@ -924,13 +948,23 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     performances.append({
                         'jockey_name': jockey_name,
                         'course_key': f"{venue}{distance}m",
+                        'status': 'found',  # フォーマッターが期待するキー
+                        'total_runs': course_stat.get('race_count', 0),  # フォーマッターが期待するキー
+                        'race_count': course_stat.get('race_count', 0),  # 互換性のため残す
+                        'win_rate': course_stat.get('win_rate', 0),
                         'place_rate': course_stat.get('fukusho_rate', 0),
-                        'race_count': course_stat.get('race_count', 0)
+                        'fukusho_rate': course_stat.get('fukusho_rate', 0)  # フォーマッターが期待するキー
                     })
                 else:
                     performances.append({
                         'jockey_name': jockey_name,
                         'course_key': f"{venue}{distance}m",
+                        'status': 'not_found',  # フォーマッターが期待するキー
+                        'total_runs': 0,  # フォーマッターが期待するキー
+                        'race_count': 0,
+                        'win_rate': 0,
+                        'place_rate': 0,
+                        'fukusho_rate': 0,  # フォーマッターが期待するキー
                         'message': '該当コースのデータなし'
                     })
                     

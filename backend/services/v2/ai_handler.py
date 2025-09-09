@@ -1717,11 +1717,8 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         venue = race_data.get('venue', '不明')
         race_number = race_data.get('race_number', '不明')
         
-        content = f"🎯 I-Logic分析結果
-"
-        content += f"{venue} {race_number}R
-
-"
+        content = f"🎯 I-Logic分析結果\n"
+        content += f"{venue} {race_number}R\n\n"
         
         if not scores:
             return content + "分析データがありません。"
@@ -1738,31 +1735,23 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             jockey_score = score.get('jockey_score', 0)
             
             if i == 1:
-                content += f"🥇 {i}位: {horse}: {total:.1f}点
-"
+                content += f"🥇 {i}位: {horse}: {total:.1f}点\n"
             elif i == 2:
-                content += f"🥈 {i}位: {horse}: {total:.1f}点
-"
+                content += f"🥈 {i}位: {horse}: {total:.1f}点\n"
             elif i == 3:
-                content += f"🥉 {i}位: {horse}: {total:.1f}点
-"
+                content += f"🥉 {i}位: {horse}: {total:.1f}点\n"
             else:
-                content += f"{i}位: {horse}: {total:.1f}点
-"
+                content += f"{i}位: {horse}: {total:.1f}点\n"
             
-            content += f"   馬: {horse_score:.1f}点 | 騎手: {jockey_score:.1f}点
-
-"
+            content += f"   馬: {horse_score:.1f}点 | 騎手: {jockey_score:.1f}点\n\n"
         
         # 6位以下
         if len(scores) > 5:
-            content += "【6位以下】
-"
+            content += "【6位以下】\n"
             for i, score in enumerate(scores[5:], 6):
                 horse = score.get('horse', '不明')
                 total = score.get('total_score', 0)
-                content += f"{i}位: {horse}: {total:.1f}点
-"
+                content += f"{i}位: {horse}: {total:.1f}点\n"
         
         return content
     

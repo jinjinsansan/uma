@@ -1767,8 +1767,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         
         # 6位以下
         if len(scores) > 5:
-            content += "【6位以下】
-"
+            content += "【6位以下】\n"
             for i, score in enumerate(scores[5:], 6):
                 horse = score.get('horse', '不明')
                 total = score.get('total_score', 0)

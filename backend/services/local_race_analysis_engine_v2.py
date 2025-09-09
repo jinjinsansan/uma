@@ -91,15 +91,15 @@ class LocalRaceAnalysisEngineV2:
             results = []
             horses = race_data.get('horses', [])
             jockeys = race_data.get('jockeys', [])
-            posts = race_data.get('posts', [])
-            horse_numbers = race_data.get('horse_numbers', [])
+            posts = race_data.get('posts') or []  # Noneの場合は空リスト
+            horse_numbers = race_data.get('horse_numbers') or []  # Noneの場合は空リスト
             
             for i in range(len(horses)):
                 try:
                     horse_name = horses[i]
-                    jockey_name = jockeys[i] if i < len(jockeys) else ''
-                    post = posts[i] if i < len(posts) else 1
-                    horse_number = horse_numbers[i] if i < len(horse_numbers) else i + 1
+                    jockey_name = jockeys[i] if jockeys and i < len(jockeys) else ''
+                    post = posts[i] if posts and i < len(posts) else i + 1
+                    horse_number = horse_numbers[i] if horse_numbers and i < len(horse_numbers) else i + 1
                     
                     # 馬のスコアを計算（12項目重み付け）
                     horse_score, has_data = self._calculate_horse_score_with_weights(
@@ -154,10 +154,10 @@ class LocalRaceAnalysisEngineV2:
                     logger.error(f"馬の分析エラー（{horses[i]}）: {e}")
                     results.append({
                         'rank': 999,
-                        'horse_number': horse_numbers[i] if i < len(horse_numbers) else i + 1,
-                        'post': posts[i] if i < len(posts) else 1,
+                        'horse_number': horse_numbers[i] if horse_numbers and i < len(horse_numbers) else i + 1,
+                        'post': posts[i] if posts and i < len(posts) else i + 1,
                         'horse': horses[i],
-                        'jockey': jockeys[i] if i < len(jockeys) else '',
+                        'jockey': jockeys[i] if jockeys and i < len(jockeys) else '',
                         'total_score': -1,
                         'horse_score': -1,
                         'jockey_score': 0,

@@ -441,11 +441,16 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
         
         # 各馬のデータを取得（馬番付き）
         horses_data = []
+        horse_numbers = race_data.get('horse_numbers') or []  # Noneの場合は空リスト
         for idx, horse_name in enumerate(horses, 1):
             horse_data = self.data_manager.get_horse_data(horse_name)
             if horse_data:
                 horse_data['horse_name'] = horse_name
-                horse_data['horse_number'] = race_data.get('horse_numbers', [])[idx-1] if idx-1 < len(race_data.get('horse_numbers', [])) else idx
+                # horse_numbersがNoneや空の場合は連番を使用
+                if horse_numbers and idx-1 < len(horse_numbers):
+                    horse_data['horse_number'] = horse_numbers[idx-1]
+                else:
+                    horse_data['horse_number'] = idx
                 horses_data.append(horse_data)
         
         # データ不足の場合は誠実に報告

@@ -282,38 +282,22 @@ class LocalRaceAnalysisEngineV2:
     
     def _calculate_jockey_score(self, jockey_name: str, context: Dict[str, Any]) -> float:
         """
-        騎手スコアを計算（JRA版と同じロジック）
+        騎手スコアを計算（JRA版と全く同じロジック）
         """
         try:
             if not jockey_name:
                 return 0.0
             
-            # 騎手データを取得
-            jockey_data = self.jockey_manager.get_jockey_data(jockey_name)
+            # JRA版と全く同じ計算方式を使用
+            jockey_analysis = self.jockey_manager.calculate_jockey_score(
+                jockey_name,
+                context
+            )
             
-            if not jockey_data:
-                return 0.0
+            jockey_score = jockey_analysis.get('total_score', 0)
             
-            # 基本スコア（勝率と複勝率から計算）
-            overall_stats = jockey_data.get('overall_stats', {})
-            win_rate = overall_stats.get('overall_win_rate', 0)
-            place_rate = overall_stats.get('overall_fukusho_rate', 0)
-            
-            # 勝率と複勝率を組み合わせてスコア化（JRA版と同じ）
-            base_score = (win_rate * 0.6 + place_rate * 0.4)
-            
-            # 会場別成績があれば加味
-            venue = context.get('venue', '')
-            if venue and 'venue_stats' in jockey_data:
-                venue_stats = jockey_data['venue_stats'].get(venue, {})
-                venue_win_rate = venue_stats.get('win_rate', 0)
-                if venue_win_rate > 0:
-                    # 会場成績で調整（最大±20%）
-                    venue_adjustment = (venue_win_rate - win_rate) * 0.2
-                    base_score = base_score * (1 + venue_adjustment / 100)
-            
-            # 0-100の範囲に正規化
-            return min(100, max(0, base_score))
+            # JRA版と同様に-10～+10の範囲に制限
+            return max(-10, min(10, jockey_score))
             
         except Exception as e:
             logger.error(f"騎手スコア計算エラー（{jockey_name}）: {e}")

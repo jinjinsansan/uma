@@ -101,22 +101,101 @@ class LocalJockeyDataManager:
         """騎手データを取得"""
         return self.knowledge_data.get('jockeys', {}).get(jockey_name)
     
-    def calculate_jockey_score(self, jockey_name: str) -> float:
-        """騎手スコア計算（I-Logic用）"""
+    def calculate_venue_aptitude(self, jockey_name: str, venue: str) -> float:
+        """騎手の開催場適性を計算"""
         jockey_data = self.get_jockey_data(jockey_name)
         if not jockey_data:
-            return 50.0
+            return 0.0
         
-        # 統計データから総合スコアを計算
-        stats = jockey_data.get('statistics', {})
-        if stats:
-            win_rate = stats.get('win_rate', 0)
-            top3_rate = stats.get('top3_rate', 0)
-            # 勝率と複勝率を組み合わせてスコア化
-            score = (win_rate * 0.6 + top3_rate * 0.4) * 100 / 30  # 30%を100点とする
-            return min(100, max(0, score))
+        venue_stats = jockey_data.get('venue_course_stats', {})
         
-        return jockey_data.get('avg_score', 50.0)
+        # 開催場名を含むすべてのキーを集計
+        total_races = 0
+        total_fukusho = 0
+        
+        for key, stats in venue_stats.items():
+            if venue in key:  # 「川崎」が「川崎_1500m」にマッチ
+                race_count = stats.get('race_count', 0)
+                if race_count > 0:
+                    total_races += race_count
+                    fukusho_rate = stats.get('fukusho_rate', 0)
+                    total_fukusho += (fukusho_rate * race_count / 100)
+        
+        if total_races == 0:
+            return 0.0
+        
+        # 総合複勝率を計算
+        overall_fukusho_rate = total_fukusho / total_races
+        
+        # 複勝率30%を基準（0点）として計算（-10～+10）
+        aptitude_score = (overall_fukusho_rate - 0.3) * 20
+        
+        return max(-10, min(10, aptitude_score))  # -10～+10の範囲に制限
+    
+    def calculate_post_position_aptitude(self, jockey_name: str, post: int) -> float:
+        """騎手の枠順適性を計算"""
+        jockey_data = self.get_jockey_data(jockey_name)
+        if not jockey_data:
+            return 0.0
+        
+        post_stats = jockey_data.get('post_position_stats', {})
+        # 「枠1」形式のキーに対応
+        post_key = f'枠{post}'
+        post_data = post_stats.get(post_key, {})
+        
+        # race_countまたはtotal_racesをチェック
+        race_count = post_data.get('race_count', post_data.get('total_races', 0))
+        if not post_data or race_count == 0:
+            return 0.0
+        
+        # 複勝率を基準に適性スコアを計算
+        fukusho_rate = post_data.get('fukusho_rate', 0) / 100
+        aptitude_score = (fukusho_rate - 0.3) * 15  # 枠順の影響は少し小さめ
+        
+        return max(-7.5, min(7.5, aptitude_score))
+    
+    def calculate_sire_aptitude(self, jockey_name: str, sire: str) -> float:
+        """騎手の種牡馬適性を計算"""
+        jockey_data = self.get_jockey_data(jockey_name)
+        if not jockey_data:
+            return 0.0
+        
+        sire_stats = jockey_data.get('sire_stats', {})
+        sire_data = sire_stats.get(sire, {})
+        
+        if not sire_data or sire_data.get('total_races', 0) == 0:
+            return 0.0
+        
+        # 複勝率を基準に適性スコアを計算
+        fukusho_rate = sire_data.get('fukusho_rate', 0) / 100
+        aptitude_score = (fukusho_rate - 0.3) * 15
+        
+        return max(-7.5, min(7.5, aptitude_score))
+    
+    def calculate_jockey_score(self, jockey_name: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """騎手の総合スコアを計算"""
+        # 騎手データの存在確認
+        jockey_data = self.get_jockey_data(jockey_name)
+        if not jockey_data:
+            logger.warning(f"騎手データが見つかりません: {jockey_name}")
+        
+        venue_score = self.calculate_venue_aptitude(jockey_name, context.get('venue', ''))
+        post_score = self.calculate_post_position_aptitude(jockey_name, context.get('post', 1))
+        sire_score = self.calculate_sire_aptitude(jockey_name, context.get('sire', ''))
+        
+        total_score = venue_score + post_score + sire_score
+        
+        return {
+            'total_score': round(total_score, 1),
+            'venue_score': round(venue_score, 1),
+            'post_score': round(post_score, 1),
+            'sire_score': round(sire_score, 1),
+            'breakdown': {
+                'venue': f"{venue_score:+.1f}",
+                'post_position': f"{post_score:+.1f}",
+                'sire': f"{sire_score:+.1f}"
+            }
+        }
     
     def is_loaded(self) -> bool:
         """データがロードされているか確認"""

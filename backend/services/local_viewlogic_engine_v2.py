@@ -253,24 +253,16 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             }
         """
         try:
-            # D-Logicマネージャーからリアルタイムデータを取得
-            score_data = self.data_manager.calculate_dlogic_realtime(horse_name)
+            # 馬データを取得
+            horse_data = self.data_manager.get_horse_data(horse_name)
             
-            if score_data.get('error') or not score_data.get('data_available'):
+            if not horse_data:
                 return {
                     'status': 'error',
                     'message': f'{horse_name}のデータベースにデータがありません'
                 }
             
-            # 生データから過去レースを取得
-            raw_data = score_data.get('raw_data', {})
-            races = raw_data.get('races', [])
-            
-            if not races:
-                return {
-                    'status': 'error',
-                    'message': f'{horse_name}の過去レースデータがありません'
-                }
+            races = horse_data.get('races', [])
             
             # 直近limit走のデータを取得
             recent_races = races[:limit] if len(races) >= limit else races
@@ -463,14 +455,9 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
         horses_data = []
         horse_numbers = race_data.get('horse_numbers') or []  # Noneの場合は空リスト
         for idx, horse_name in enumerate(horses, 1):
-            # get_horse_historyを使って過去レースデータを取得
-            history_data = self.get_horse_history(horse_name, limit=10)
-            
-            if history_data and history_data.get('status') == 'success' and history_data.get('races'):
-                horse_data = {
-                    'horse_name': horse_name,
-                    'races': history_data['races']  # 過去レースデータ
-                }
+            horse_data = self.data_manager.get_horse_data(horse_name)
+            if horse_data:
+                horse_data['horse_name'] = horse_name
                 # horse_numbersがNoneや空の場合は連番を使用
                 if horse_numbers and idx-1 < len(horse_numbers):
                     horse_data['horse_number'] = horse_numbers[idx-1]
@@ -792,17 +779,16 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
         
         for horse_name in horses:
             try:
-                # get_horse_historyを使って過去レースデータを取得
-                history_data = self.get_horse_history(horse_name, limit=20)
+                horse_data = self.data_manager.get_horse_data(horse_name)
                 
-                if not history_data or history_data.get('status') != 'success':
+                if not horse_data:
                     performances.append({
                         'horse_name': horse_name,
                         'error': 'データベースにデータがありません'
                     })
                     continue
                 
-                races = history_data.get('races', [])
+                races = horse_data.get('races', [])
                 # 該当コースのレースを抽出
                 course_races = []
                 for race in races:

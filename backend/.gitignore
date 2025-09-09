@@ -21,3 +21,17 @@ backend/data/dlogic_raw_knowledge.json
 data/unified_knowledge_*.json
 data/jockey_knowledge.json
 data/jockey_knowledge_backup_*.json
+
+# Large local files (>100MB)
+data/local_dlogic_raw_knowledge.json
+data/local_dlogic_raw_knowledge_v2.json
+data/local_jockey_knowledge.json
+data/jockey_knowledge_nankan_20250907.json
+
+# Large script files
+scripts/jra_knowledge_*.json
+scripts/nankan_*.json
+
+# Test files
+test_*.py
+check_*.py

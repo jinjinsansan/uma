@@ -390,25 +390,34 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             statistics = {}
             if isinstance(jockey_data, dict):
                 overall_stats = jockey_data.get('overall_stats', {})
+                # 地方競馬版のデータ構造に合わせて修正
+                total_races = overall_stats.get('total_races_analyzed', 0)
+                fukusho_rate = overall_stats.get('overall_fukusho_rate', 0)
+                
                 statistics = {
-                    'total_races': overall_stats.get('total_races', 0),
-                    'total_wins': overall_stats.get('total_wins', 0),
-                    'win_rate': overall_stats.get('overall_win_rate', 0),
-                    'place_rate': overall_stats.get('overall_fukusho_rate', 0),
-                    'earnings': overall_stats.get('total_earnings', 0)
+                    'total_races': total_races,
+                    'total_wins': overall_stats.get('total_wins', 0),  # データにない場合は0
+                    'win_rate': overall_stats.get('overall_win_rate', 0),  # データにない場合は0
+                    'place_rate': fukusho_rate,
+                    'earnings': overall_stats.get('total_earnings', 0)  # データにない場合は0
                 }
                 
-                # 直近の騎乗データ（もしあれば）
+                # 直近の騎乗データ（地方競馬版にはrecent_racesがないため空リスト）
                 recent_rides = []
-                if 'recent_races' in jockey_data:
-                    for race in jockey_data['recent_races'][:10]:
-                        recent_rides.append({
-                            'date': race.get('date', ''),
-                            'venue': race.get('venue', ''),
-                            'horse_name': race.get('horse_name', ''),
-                            'finish': race.get('finish', 0),
-                            'horse_count': race.get('horse_count', 0)
-                        })
+                
+                # 場所別成績データを追加（地方競馬版の特徴）
+                venue_stats = jockey_data.get('venue_course_stats', {})
+                if venue_stats:
+                    # 上位5場所の成績を統計情報に追加
+                    top_venues = []
+                    for venue_key, stats in list(venue_stats.items())[:5]:
+                        if isinstance(stats, dict):
+                            race_count = stats.get('race_count', 0)
+                            fukusho = stats.get('fukusho_rate', 0)
+                            if race_count > 0:
+                                top_venues.append(f"{venue_key}: {race_count}戦 複勝率{fukusho:.1f}%")
+                    if top_venues:
+                        statistics['top_venues'] = top_venues
             else:
                 # データ構造が異なる場合
                 statistics = {

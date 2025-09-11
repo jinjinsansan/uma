@@ -2148,6 +2148,25 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         if result["status"] == "success" and result.get("statistics"):
             stats = result["statistics"]
             
+            # 総合成績を表示
+            lines.append("📈 **総合成績（直近データ）**")
+            total_races = stats.get('total_races', 0)
+            place_rate = stats.get('place_rate', 0)
+            
+            if total_races > 0:
+                lines.append(f"　分析対象: {total_races}戦")
+                lines.append(f"　複勝率: {place_rate:.1f}%")
+            else:
+                lines.append("　分析対象: 0戦")
+            lines.append("")
+            
+            # 場所別成績（地方競馬版の特徴）
+            if stats.get('top_venues'):
+                lines.append("🏟️ **主な競馬場別成績**")
+                for venue_stat in stats['top_venues']:
+                    lines.append(f"　{venue_stat}")
+                lines.append("")
+            
             # recent_ridesからデータ表示（出走数が0でない場合のみ表示）
             if result.get("recent_rides"):
                 lines.append("🏟️ **競馬場・距離別成績（直近データ）**")

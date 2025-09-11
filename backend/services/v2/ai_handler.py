@@ -2219,14 +2219,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 
                 lines.append("")
             
-            # 総合統計
-            total_races = stats.get("総出走数", 0)
-            overall_rate = stats.get("総合複勝率", "0.0%")
-            
-            lines.append("📈 **総合成績（直近データ）**")
-            lines.append(f"　分析対象: {total_races}戦")
-            if total_races > 0:
-                lines.append(f"　総合複勝率: {overall_rate}")
+            # 総合統計は既に上部で表示済みのため、ここでは表示しない
 
         
         else:

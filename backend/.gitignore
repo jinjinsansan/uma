@@ -35,3 +35,4 @@ scripts/nankan_*.json
 # Test files
 test_*.py
 check_*.py
+nankan_unified_knowledge_20250907.json

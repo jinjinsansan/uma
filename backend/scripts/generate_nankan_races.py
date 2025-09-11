@@ -28,7 +28,9 @@ NANKAN_KEIBAJO_MAP = {
     '42': '大井',
     '43': '川崎',
     '44': '船橋',
-    '45': '浦和'
+    '45': '川崎',  # 2025年9月10日・11日は川崎がコード45を使用
+    '46': '川崎',  # 2025年9月8日は川崎がコード46を使用
+    '47': '浦和'
 }
 
 def get_nankan_races_for_date(date_str, venue_code):
@@ -290,13 +292,13 @@ def main():
     print("🏇 南関東レース情報TSファイル生成")
     print("=" * 60)
     
-    # テスト用: 9月8日のデータを生成
-    today = datetime(2025, 9, 8)  # 9月8日でテスト
+    # 9月10日・11日のデータを生成
+    today = datetime(2025, 9, 10)  # 9月10日から開始
     
     print("\n📊 レースデータ生成中...")
     
     generated_files = []
-    for days_ahead in range(0, 1):  # 今日のみ
+    for days_ahead in range(0, 2):  # 9月10日・11日の2日間
         target_date = today + timedelta(days=days_ahead)
         date_str = target_date.strftime("%Y%m%d")
         

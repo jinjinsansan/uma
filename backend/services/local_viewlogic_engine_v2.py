@@ -662,7 +662,7 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                 },
                 'trends': {
                     'horse_course_performance': horse_course_stats,
-                    'jockey_post_performance': jockey_post_stats,
+                    'jockey_post_performance': jockey_post_stats_dict,  # 辞書形式に変更
                     'jockey_course_performance': jockey_course_stats
                 },
                 # フォーマッターとの互換性のため両方のキーを追加

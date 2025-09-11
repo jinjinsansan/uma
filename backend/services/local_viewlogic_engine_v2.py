@@ -270,11 +270,30 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             # 各レースの重要データのみ抽出
             formatted_races = []
             for race in recent_races:
-                # レース名の取得（地方競馬版のキー）
-                race_name = f"{race.get('RACE_BANGO', '')}R" if race.get('RACE_BANGO') else '不明'
+                # レース名の取得（RACE_NAMEフィールドを使用）
+                actual_race_name = race.get('RACE_NAME', '').strip() if race.get('RACE_NAME') else ''
+                grade_code = race.get('GRADE_CODE', '').strip() if race.get('GRADE_CODE') else ''
                 
-                # 着順の取得
-                finish_position = race.get('KAKUTEI_CHAKUJUN', '')
+                # レース名の組み立て（グレードがある場合は追加）
+                if actual_race_name:
+                    if grade_code and grade_code not in ['', '00', '0']:
+                        # グレード表示を追加
+                        grade_display = f"【{grade_code}】" if grade_code in ['A', 'B', 'S', 'P'] else f"({grade_code})"
+                        race_name = f"{actual_race_name} {grade_display}"
+                    else:
+                        race_name = actual_race_name
+                else:
+                    # RACE_NAMEがない場合は従来通りレース番号で表示
+                    race_name = f"{race.get('RACE_BANGO', '')}R" if race.get('RACE_BANGO') else '不明'
+                
+                # 着順の取得（フォーマット付き）
+                raw_finish = race.get('KAKUTEI_CHAKUJUN', '')
+                # 着順を整数に変換してフォーマット
+                try:
+                    finish_num = int(raw_finish) if raw_finish and raw_finish != '00' else 0
+                    finish_position = f"{finish_num}着" if finish_num > 0 else ''
+                except:
+                    finish_position = ''
                 
                 # 競馬場名の取得（track_nameフィールドを使用）
                 venue = race.get('track_name', '') or race.get('KEIBAJO_CODE', '')
@@ -973,23 +992,57 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     # 枠順別データが存在する場合のみ使用
                     if 'post_position_stats' in jockey_data:
                         post_stats = jockey_data['post_position_stats']
-                        post_category = '内枠' if post <= 6 else '中枠' if post <= 12 else '外枠'
                         
-                        if post_category in post_stats:
+                        # 枠番号のキーを探す（「枠1」〜「枠18」形式）
+                        post_key = f'枠{post}'
+                        
+                        if post_key in post_stats:
+                            # 該当枠のデータが存在する場合
                             performances.append({
                                 'jockey_name': jockey_name,
                                 'post': post,
-                                'post_category': post_category,
-                                'place_rate': post_stats[post_category].get('fukusho_rate', 0),
-                                'race_count': post_stats[post_category].get('race_count', 0)
+                                'post_category': f'枠{post}',
+                                'place_rate': post_stats[post_key].get('fukusho_rate', 0),
+                                'race_count': post_stats[post_key].get('race_count', 0)
                             })
                         else:
-                            performances.append({
-                                'jockey_name': jockey_name,
-                                'post': post,
-                                'post_category': post_category,
-                                'message': '枠順別データなし'
-                            })
+                            # カテゴリ別に集計（内枠、中枠、外枠）
+                            post_category = '内枠' if post <= 6 else '中枠' if post <= 12 else '外枠'
+                            
+                            # 該当カテゴリの枠を集計
+                            total_races = 0
+                            fukusho_count = 0
+                            
+                            if post_category == '内枠':
+                                target_posts = [f'枠{i}' for i in range(1, 7)]
+                            elif post_category == '中枠':
+                                target_posts = [f'枠{i}' for i in range(7, 13)]
+                            else:  # 外枠
+                                target_posts = [f'枠{i}' for i in range(13, 19)]
+                            
+                            for target_post in target_posts:
+                                if target_post in post_stats:
+                                    stats = post_stats[target_post]
+                                    race_count = stats.get('race_count', 0)
+                                    fukusho_rate = stats.get('fukusho_rate', 0)
+                                    total_races += race_count
+                                    fukusho_count += int(race_count * fukusho_rate / 100)
+                            
+                            if total_races > 0:
+                                performances.append({
+                                    'jockey_name': jockey_name,
+                                    'post': post,
+                                    'post_category': post_category,
+                                    'place_rate': (fukusho_count / total_races) * 100,
+                                    'race_count': total_races
+                                })
+                            else:
+                                performances.append({
+                                    'jockey_name': jockey_name,
+                                    'post': post,
+                                    'post_category': post_category,
+                                    'message': '枠順別データなし'
+                                })
                     else:
                         performances.append({
                             'jockey_name': jockey_name,

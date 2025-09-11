@@ -2086,6 +2086,9 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 lines.append("")
             
             # 統計情報
+            # 2024-09-11: 地方競馬版の勝率・複勝率計算にバグがあるため一時的にコメントアウト
+            # TODO: 計算ロジック修正後に復活させる
+            """
             total_races = result.get("total_races", len(races))
             if total_races > 0:
                 lines.append("📈 **戦績サマリー**")
@@ -2121,6 +2124,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                     lines.append(f"　📊 平均着順: {avg_position:.1f}着")
                 else:
                     lines.append("　※ 着順データが不足しています")
+            """
         
         else:
             lines.append("❌ **データが見つかりません**")

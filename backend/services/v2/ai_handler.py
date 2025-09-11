@@ -806,6 +806,12 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             lines.append("**【騎手の枠順別成績】**")
             jockey_post_data = trends['jockey_post_performance']
             
+            # デバッグログ追加
+            logger.info(f"🐎 騎手枠順別成績データ取得: type={type(jockey_post_data)}, keys={list(jockey_post_data.keys()) if isinstance(jockey_post_data, dict) else 'not dict'}")
+            if isinstance(jockey_post_data, dict) and jockey_post_data:
+                first_key = list(jockey_post_data.keys())[0]
+                logger.info(f"   サンプル（{first_key}）: {jockey_post_data[first_key]}")
+            
             # jockey_post_dataの型チェック
             if jockey_post_data and isinstance(jockey_post_data, dict):
                 # 各騎手の個別成績を表示

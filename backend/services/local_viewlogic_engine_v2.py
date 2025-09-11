@@ -603,19 +603,29 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                 jockey_post_stats = self._analyze_jockeys_post_performance(jockeys, posts)
                 
                 # リスト形式から辞書形式に変換（JRA版と同じ形式）
-                for stat in jockey_post_stats:
+                for i, stat in enumerate(jockey_post_stats):
                     if 'jockey_name' in stat:
                         jockey_name = stat['jockey_name']
-                        if jockey_name not in jockey_post_stats_dict:
-                            jockey_post_stats_dict[jockey_name] = {}
+                        assigned_post = posts[i] if i < len(posts) else None
+                        
+                        # 騎手ごとの枠順データを構築
+                        jockey_post_stats_dict[jockey_name] = {
+                            'assigned_post': assigned_post,  # 今回の枠番
+                            'post_category': stat.get('post_category'),  # カテゴリ
+                            'all_post_stats': {}  # 全枠順別成績
+                        }
                         
                         # エラーがない場合のみデータを追加
                         if 'place_rate' in stat and 'post_category' in stat:
                             post_category = stat['post_category']
-                            jockey_post_stats_dict[jockey_name][post_category] = {
+                            jockey_post_stats_dict[jockey_name]['all_post_stats'][post_category] = {
                                 'fukusho_rate': stat['place_rate'],
-                                'race_count': stat.get('race_count', 0),
-                                'post': stat.get('post', 0)
+                                'race_count': stat.get('race_count', 0)
+                            }
+                            # assigned_post_statsも設定
+                            jockey_post_stats_dict[jockey_name]['assigned_post_stats'] = {
+                                'fukusho_rate': stat['place_rate'],
+                                'race_count': stat.get('race_count', 0)
                             }
             
             # 3. 騎手の該当コース成績複勝率分析

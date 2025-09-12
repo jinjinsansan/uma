@@ -1471,6 +1471,7 @@ F-Logic（Fair Value Logic）は、理論的な公正オッズと市場オッズ
                 # I-Logicスコア
                 if 'ilogic_score' in horse:
                     # I-Logicスコアは非表示（I-Logicエンジンと重複するため）
+                    pass
                 
                 # 投資価値評価
                 if horse.get('odds_divergence', 0) >= 2.0:

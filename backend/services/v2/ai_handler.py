@@ -1387,9 +1387,7 @@ F-Logic分析をご希望の場合は「F-Logic分析して」とお聞きくだ
                 
                 # オッズが取得できない場合はエラーメッセージを返す
                 if not market_odds:
-                    return ("オッズデータが取得できないため、F-Logic分析を実行できません。
-
-F-Logicは市場オッズとフェア値の比較が必要なため、オッズデータがない場合は分析できません。", None)
+                    return ("オッズデータが取得できないため、F-Logic分析を実行できません。\n\nF-Logicは市場オッズとフェア値の比較が必要なため、オッズデータがない場合は分析できません。", None)
                 
                 # F-Logic分析実行
                 from services.flogic_engine import flogic_engine

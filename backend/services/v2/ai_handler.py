@@ -42,7 +42,8 @@ class V2AIHandler:
             'viewlogic_flow': ['展開', 'ペース', '逃げ', '先行', '差し', '追込', '脚質', 'ハイペース', 'スローペース', '流れ'],
             'viewlogic_history': ['過去データ', '直近', '前走', '戦績', '成績', '最近のレース', '過去のレース', '５走', '5走', '使い方'],  # 新規追加
             'dlogic': ['d-logic', 'ディーロジック', 'D-Logic', 'Dロジック', '指数', 'スコア', '12項目', '評価点'],
-            'ilogic': ['i-logic', 'ilogic', 'アイロジック', 'I-Logic', 'Iロジック', '騎手', '総合', 'レースアナリシス', 'アナリシス']
+            'ilogic': ['i-logic', 'ilogic', 'アイロジック', 'I-Logic', 'Iロジック', '騎手', '総合', 'レースアナリシス', 'アナリシス'],
+            'flogic': ['f-logic', 'flogic', 'エフロジック', 'F-Logic', 'Fロジック', 'フェア値']
         }
     
         
@@ -58,7 +59,11 @@ class V2AIHandler:
         message_lower = message.lower()
         
         # 特定のAIキーワードを最優先で判定（他のキーワードより優先）
-        # D-Logic分析（明示的な指定を最優先）
+        # F-Logic分析（明示的な指定を最優先）
+        if 'f-logic' in message_lower or 'flogic' in message_lower or 'エフロジック' in message or 'フェア値' in message:
+            return ('flogic', 'analysis')
+        
+        # D-Logic分析（明示的な指定を優先）
         if 'd-logic' in message_lower or 'dlogic' in message_lower or 'ディーロジック' in message:
             return ('dlogic', 'analysis')
         
@@ -161,6 +166,11 @@ class V2AIHandler:
         for keyword in self.AI_KEYWORDS['viewlogic_trend']:
             if keyword in message_lower:
                 return ('viewlogic', 'trend')
+        
+        # F-Logic分析（投資価値判定）
+        for keyword in self.AI_KEYWORDS['flogic']:
+            if keyword.lower() in message_lower:
+                return ('flogic', 'analysis')
         
         # I-Logic分析
         for keyword in self.AI_KEYWORDS['ilogic']:
@@ -1049,7 +1059,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 
                 # 助詞チェックを緩和（馬名単体でも検出）
                 if not is_in_race:
-                    common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー', 'ViewLogic', 'IMLogic', 'DLogic', 'ILogic']
+                    common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー', 'ViewLogic', 'IMLogic', 'DLogic', 'ILogic', 'FLogic', 'フェア', 'オッズ', 'ロジック', 'エフロジック']
                     if potential_horse not in common_words:
                         return {
                             'content': f"「{potential_horse}」は、{venue} {race_number}Rには出走しません。\nこのレースの出走馬は以下の通りです:\n" + "、".join(race_horses),
@@ -1077,6 +1087,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 # ViewLogic以外が判定された場合はデフォルトに
                 if sub_type not in ['flow', 'trend', 'opinion']:
                     sub_type = 'manual'
+            elif ai_type == 'flogic':
+                sub_type = 'analysis'  # F-Logicは分析タイプ
             else:
                 sub_type = 'manual'
         else:
@@ -1096,6 +1108,12 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 content = result
         elif determined_ai == 'dlogic':
             result = await self.process_dlogic_message(message, race_data)
+            if isinstance(result, tuple):
+                content, analysis_data = result
+            else:
+                content = result
+        elif determined_ai == 'flogic':
+            result = await self.process_flogic_message(message, race_data)
             if isinstance(result, tuple):
                 content, analysis_data = result
             else:
@@ -1164,7 +1182,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     # 明らかに馬名として言及されている場合（〜の、〜は、など）
                     if not is_in_race and re.search(f'{potential_horse}(の|は|が|を|と|って|という)', message):
                         # 一般的な単語や助詞でないことを確認
-                        common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー', 'ViewLogic', 'IMLogic', 'DLogic', 'ILogic']
+                        common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー', 'ViewLogic', 'IMLogic', 'DLogic', 'ILogic', 'FLogic', 'フェア', 'オッズ', 'ロジック', 'エフロジック']
                         if potential_horse not in common_words:
                             logger.info(f"レース外の馬を検出: {potential_horse}")
                             return True
@@ -1289,6 +1307,192 @@ D-Logicは、12項目による馬の総合評価システムです。
         except Exception as e:
             logger.error(f"D-Logic処理エラー: {e}")
             return (f"申し訳ございません。D-Logic分析中にエラーが発生しました: {str(e)}", None)
+    
+    async def process_flogic_message(
+        self,
+        message: str,
+        race_data: Dict[str, Any]
+    ) -> Tuple[str, Optional[Dict[str, Any]]]:
+        """
+        F-Logicメッセージ処理（投資価値判定）
+        """
+        try:
+            # レース情報確認
+            horses = race_data.get('horses', [])
+            jockeys = race_data.get('jockeys', [])
+            venue = race_data.get('venue')
+            race_number = race_data.get('race_number')
+            
+            # F-Logicの説明要求かどうか判定
+            explanation_keywords = ['って何', 'とは', '説明', 'どういう', '何ですか', '教えて']
+            is_explanation = any(keyword in message for keyword in explanation_keywords)
+            
+            if is_explanation:
+                explanation = """🎯 F-Logic（Fair Value Logic）について
+
+F-Logicは、競馬における理論的な「フェア値（適正オッズ）」を計算し、市場オッズとの乖離から投資価値を判定するAIシステムです。
+
+【主な機能】
+• I-Logicスコアを基にした理論的勝率計算
+• フェア値（理論オッズ）の算出
+• 市場オッズとの乖離率分析
+• 期待値とROI（投資収益率）の計算
+• Kelly基準による最適投資比率提案
+
+【投資判定の仕組み】
+フェア値 < 市場オッズ → 割安（買い推奨）
+フェア値 > 市場オッズ → 割高（見送り推奨）
+
+例：フェア値5.0倍の馬が市場で10.0倍
+→ オッズ乖離率2.0倍 = 強い投資価値あり
+
+F-Logic分析をご希望の場合は「F-Logic分析して」とお聞きください。"""
+                return (explanation, None)
+            
+            if not horses:
+                return ("F-Logic分析にはレース情報が必要です。", None)
+            
+            # 分析要求かどうか判定
+            analyze_keywords = ['分析', '計算', '判定', '価値', 'オッズ', 'フェア', '期待値']
+            should_analyze = any(keyword in message for keyword in analyze_keywords)
+            
+            if should_analyze:
+                # オッズ取得
+                from services.odds_manager import odds_manager
+                market_odds = odds_manager.get_real_time_odds(
+                    venue=venue,
+                    race_number=race_number,
+                    horses=horses
+                )
+                
+                # F-Logic分析実行
+                from services.flogic_engine import flogic_engine
+                result = flogic_engine.analyze_race(race_data, market_odds)
+                
+                if result.get('status') == 'success':
+                    content = self._format_flogic_result(result, race_data)
+                    
+                    # 分析データも返す
+                    analysis_data = {
+                        'type': 'flogic',
+                        'rankings': result.get('rankings', []),
+                        'has_market_odds': result.get('has_market_odds', False)
+                    }
+                    
+                    return (content, analysis_data)
+                else:
+                    return (f"F-Logic分析エラー: {result.get('message', '不明なエラー')}", None)
+            else:
+                # F-Logicの説明
+                flogic_prompt = """
+F-Logic（Fair Value Logic）は、理論的な公正オッズと市場オッズを比較して投資価値を判定するシステムです。
+
+【主な機能】
+🎯 公正価値計算: I-Logicスコアから理論的な適正オッズを算出
+💰 投資価値判定: 市場オッズとの乖離から割安・割高を判定
+📊 期待値計算: 投資リターンの期待値とROIを推定
+
+【投資判断基準】
+・フェア値 < 市場オッズ = 割安（買い）
+・フェア値 > 市場オッズ = 割高（見送り）
+
+分析をご希望の場合は「F-Logic分析して」「投資価値を判定」などとお聞きください。
+"""
+                
+                # レースコンテキストを追加
+                race_context = f"現在選択中: {venue}{race_number}R"
+                if horses:
+                    race_context += f"（{len(horses)}頭）"
+                    
+                full_prompt = f"""{race_context}
+
+{flogic_prompt}
+
+ユーザーの質問: {message}"""
+                
+                # Anthropic APIで応答生成
+                if self.anthropic_client:
+                    response_obj = self.anthropic_client.messages.create(
+                        model="claude-3-5-sonnet-20241022",
+                        max_tokens=4096,
+                        system="あなたはF-Logic（投資価値判定AI）のアシスタントです。",
+                        messages=[
+                            {"role": "user", "content": full_prompt}
+                        ]
+                    )
+                    response = response_obj.content[0].text
+                else:
+                    response = "Anthropic APIが設定されていません。"
+                
+                return (response, None)
+                
+        except Exception as e:
+            logger.error(f"F-Logic処理エラー: {e}")
+            import traceback
+            traceback.print_exc()
+            return (f"F-Logic分析中にエラーが発生しました: {str(e)}", None)
+    
+    def _format_flogic_result(self, result: Dict[str, Any], race_data: Dict[str, Any]) -> str:
+        """
+        F-Logic分析結果をフォーマット
+        """
+        try:
+            rankings = result.get('rankings', [])
+            if not rankings:
+                return "F-Logic分析結果が取得できませんでした。"
+            
+            lines = []
+            lines.append(f"🎯 F-Logic 投資価値分析結果")
+            lines.append("=" * 40)
+            
+            # 全馬を投資価値順に出力
+            for i, horse in enumerate(rankings, 1):
+                # 順位と馬名
+                lines.append(f"\n【{i}位】 {horse['horse']}")
+                lines.append("-" * 30)
+                
+                # フェア値と市場オッズ
+                lines.append(f"フェア値: {horse['fair_odds']}倍")
+                if 'market_odds' in horse:
+                    lines.append(f"市場オッズ: {horse['market_odds']}倍")
+                    divergence = horse.get('odds_divergence', 0)
+                    lines.append(f"オッズ乖離率: {divergence:.2f}倍")
+                
+                # 投資判断
+                signal = horse.get('investment_signal', '評価なし')
+                lines.append(f"投資判断: {signal}")
+                
+                # 期待値とROI
+                if 'expected_value' in horse:
+                    lines.append(f"期待値: {horse['expected_value']}")
+                if 'roi_estimate' in horse:
+                    lines.append(f"推定ROI: {horse['roi_estimate']}%")
+                
+                # I-Logicスコア
+                if 'ilogic_score' in horse:
+                    lines.append(f"I-Logicスコア: {horse['ilogic_score']}点")
+                
+                # 投資価値評価
+                if horse.get('odds_divergence', 0) >= 2.0:
+                    lines.append("⭐ 【非常に割安】投資価値が高い")
+                elif horse.get('odds_divergence', 0) >= 1.5:
+                    lines.append("✨ 【割安】良い投資機会")
+                elif horse.get('odds_divergence', 0) >= 1.2:
+                    lines.append("📊 【やや割安】検討価値あり")
+                elif horse.get('odds_divergence', 0) >= 0.8:
+                    lines.append("➖ 【適正】投資価値は普通")
+                else:
+                    lines.append("⚠️ 【割高】投資は見送り推奨")
+            
+            # 注意事項
+            lines.append("\n\n※F-Logicは理論値と市場価格の乖離を分析するものです")
+            lines.append("※投資は自己責任でお願いします")
+            
+            return "\n".join(lines)
+            
+        except Exception as e:
+            logger.error(f"F-Logic結果フォーマットエラー: {e}")
+            return "F-Logic分析結果の表示中にエラーが発生しました。"
     
     async def process_ilogic_message(
         self,

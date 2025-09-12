@@ -257,18 +257,16 @@ class OddsManager:
             if odds_dict and horses:
                 return self.get_odds_with_horse_names(odds_dict, horses)
             
-            # 4. デフォルト値を返す（オッズが取得できなかった場合）
+            # 4. オッズデータがない場合はNoneを返す
             if not odds_dict and horses:
-                logger.info("オッズデータが取得できないため、デフォルト値を使用")
-                return {horse: 10.0 for horse in horses}  # デフォルトオッズ10倍
+                logger.warning("オッズデータが取得できません")
+                return None
             
             return odds_dict or {}
             
         except Exception as e:
             logger.error(f"リアルタイムオッズ取得エラー: {e}")
-            if horses:
-                return {horse: 10.0 for horse in horses}
-            return {}
+            return None  # エラー時もNoneを返す
     
     def close(self):
         """データベース接続をクローズ"""

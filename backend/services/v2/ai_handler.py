@@ -1361,9 +1361,12 @@ F-Logic分析をご希望の場合は「F-Logic分析して」とお聞きくだ
                 odds_values = race_data.get('odds', [])
                 market_odds = {}
                 
-                # デバッグログ
-                logger.info(f"F-Logic: race_data keys: {race_data.keys()}")
-                logger.info(f"F-Logic: odds_values: {odds_values[:5] if odds_values else 'None'}")
+                # 詳細デバッグログ
+                logger.info(f"F-Logic Debug: race_data keys: {list(race_data.keys())}")
+                logger.info(f"F-Logic Debug: odds in race_data: {'odds' in race_data}")
+                logger.info(f"F-Logic Debug: odds_values type: {type(odds_values)}")
+                logger.info(f"F-Logic Debug: odds_values length: {len(odds_values) if odds_values else 0}")
+                logger.info(f"F-Logic Debug: odds_values content: {odds_values[:5] if odds_values else 'None'}")
                 
                 # オッズが存在する場合はマッピング
                 if odds_values and horses:
@@ -1381,6 +1384,12 @@ F-Logic分析をご希望の場合は「F-Logic分析して」とお聞きくだ
                         race_number=race_number,
                         horses=horses
                     )
+                
+                # オッズが取得できない場合はエラーメッセージを返す
+                if not market_odds:
+                    return ("オッズデータが取得できないため、F-Logic分析を実行できません。
+
+F-Logicは市場オッズとフェア値の比較が必要なため、オッズデータがない場合は分析できません。", None)
                 
                 # F-Logic分析実行
                 from services.flogic_engine import flogic_engine

@@ -1,0 +1,15 @@
+{
+  "total_score": 77,
+  "scores": {
+    "既存エンジン干渉": 0,
+    "JRA/地方互換性": 20,
+    "デプロイ準備": 17,
+    "API動作": 20,
+    "その他エラー": 20
+  },
+  "issues": [
+    "既存エンジン干渉エラー: No module named 'services.dlogic_engine'",
+    "PostgreSQL接続はローカル環境限定"
+  ],
+  "timestamp": "N/A"
+}

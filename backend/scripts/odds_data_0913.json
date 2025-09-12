@@ -1,0 +1,592 @@
+{
+  "04": [
+    {
+      "umaban": "01",
+      "bamei": "タンバリュー",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "02",
+      "bamei": "メメテラステラ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "03",
+      "bamei": "テーオーウィルソン",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "04",
+      "bamei": "メイショウアボット",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "05",
+      "bamei": "エスタンシア",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "06",
+      "bamei": "リアルサファリ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "07",
+      "bamei": "アットザラヴアスク",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "08",
+      "bamei": "メイショウヨリキリ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "09",
+      "bamei": "クリノバーグマン",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "10",
+      "bamei": "テイエムダイタカ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "11",
+      "bamei": "ローズゴジャール",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "12",
+      "bamei": "エールラヴィクトワ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "13",
+      "bamei": "バルミラクル",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "14",
+      "bamei": "スピントロニクス",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "15",
+      "bamei": "エポエポサン",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "16",
+      "bamei": "ミッキーサークル",
+      "odds": 0.0,
+      "ninki": 0
+    }
+  ],
+  "07": [
+    {
+      "umaban": "01",
+      "bamei": "スピードイエロー",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "02",
+      "bamei": "コンタンゴ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "03",
+      "bamei": "ルクスフレンジー",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "04",
+      "bamei": "セリオヴェローチェ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "05",
+      "bamei": "エアビッグマム",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "06",
+      "bamei": "ジュンライトニング",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "07",
+      "bamei": "アズユーライク",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "08",
+      "bamei": "サフランクイン",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "09",
+      "bamei": "アスクアットバット",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "10",
+      "bamei": "シャンパンライフ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "11",
+      "bamei": "ジュヌフィーユ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "12",
+      "bamei": "ドンファーラウェイ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "13",
+      "bamei": "タマモチャオ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "14",
+      "bamei": "エンベッカ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "15",
+      "bamei": "ダノンブランニュー",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "16",
+      "bamei": "プライムクオリティ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "17",
+      "bamei": "ラミントン",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "18",
+      "bamei": "ルージュシークエル",
+      "odds": 0.0,
+      "ninki": 0
+    }
+  ],
+  "08": [
+    {
+      "umaban": "01",
+      "bamei": "サンセットビュー",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "02",
+      "bamei": "エリーナストーム",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "03",
+      "bamei": "コーチェラバレー",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "04",
+      "bamei": "ヤマニンアラクリア",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "05",
+      "bamei": "ヘルツアス",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "06",
+      "bamei": "テイクザクラウン",
+      "odds": 0.0,
+      "ninki": 0
+    }
+  ],
+  "09": [
+    {
+      "umaban": "01",
+      "bamei": "サンライズプルート",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "02",
+      "bamei": "オベイユアマスター",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "03",
+      "bamei": "メイショウオオミネ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "04",
+      "bamei": "ブライアーヒル",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "05",
+      "bamei": "ケイアイクビラ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "06",
+      "bamei": "サーナーティオン",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "07",
+      "bamei": "モンタルチーノ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "08",
+      "bamei": "ウィンビュー",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "09",
+      "bamei": "ブルクトーア",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "10",
+      "bamei": "シャインベック",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "11",
+      "bamei": "ワイルデンウーリー",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "12",
+      "bamei": "リーサムギニー",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "13",
+      "bamei": "ショウナンラウール",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "14",
+      "bamei": "ビーグラッド",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "15",
+      "bamei": "レイザリオ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "16",
+      "bamei": "サトノエンパイア",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "17",
+      "bamei": "イリフィ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "18",
+      "bamei": "ヴァージル",
+      "odds": 0.0,
+      "ninki": 0
+    }
+  ],
+  "10": [
+    {
+      "umaban": "01",
+      "bamei": "ブリッツクリーク",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "02",
+      "bamei": "ラヴオントップ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "03",
+      "bamei": "ジョータルマエ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "04",
+      "bamei": "タガノマカシヤ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "05",
+      "bamei": "マイノワール",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "06",
+      "bamei": "ショーダンサー",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "07",
+      "bamei": "キングブルー",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "08",
+      "bamei": "フェイト",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "09",
+      "bamei": "テーオーライマン",
+      "odds": 0.0,
+      "ninki": 0
+    }
+  ],
+  "11": [
+    {
+      "umaban": "01",
+      "bamei": "アスクカムオンモア",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "02",
+      "bamei": "マイネルクリソーラ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "03",
+      "bamei": "イングランドアイズ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "04",
+      "bamei": "ホウオウプロサンゲ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "05",
+      "bamei": "ヴェルテンベルク",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "06",
+      "bamei": "エアファンディタ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "07",
+      "bamei": "ショウナンマグマ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "08",
+      "bamei": "ドクタードリトル",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "09",
+      "bamei": "ジューンテイク",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "10",
+      "bamei": "カネフラ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "11",
+      "bamei": "オールナット",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "12",
+      "bamei": "グランヴィノス",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "13",
+      "bamei": "サブマリーナ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "14",
+      "bamei": "タガノデュード",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "15",
+      "bamei": "オニャンコポン",
+      "odds": 0.0,
+      "ninki": 0
+    }
+  ],
+  "12": [
+    {
+      "umaban": "01",
+      "bamei": "リリーアロー",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "02",
+      "bamei": "ヴェーヌドール",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "03",
+      "bamei": "メイショウヤシマ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "04",
+      "bamei": "キーチパルフェ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "05",
+      "bamei": "レガッタ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "06",
+      "bamei": "グリーズマン",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "07",
+      "bamei": "マキシマムレーヴ",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "08",
+      "bamei": "アンジェリカル",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "09",
+      "bamei": "ヒロインズクレスト",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "10",
+      "bamei": "タガノアニマシオン",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "11",
+      "bamei": "クロウソング",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "12",
+      "bamei": "イエローブリック",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "13",
+      "bamei": "イエスウィズキャン",
+      "odds": 0.0,
+      "ninki": 0
+    },
+    {
+      "umaban": "14",
+      "bamei": "バンドブラザー",
+      "odds": 0.0,
+      "ninki": 0
+    }
+  ]
+}

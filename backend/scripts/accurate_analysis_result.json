@@ -1,0 +1,32 @@
+{
+  "dlogic": {
+    "engine_name": "DLOGIC",
+    "total_score": 14.378698224852071,
+    "tansho_hits": 4,
+    "tansho_rate": 6.153846153846154,
+    "tansho_recovery": 19.230769230769234,
+    "fukusho_rate": 23.076923076923077,
+    "total_races": 65,
+    "profit": -5250
+  },
+  "ilogic": {
+    "engine_name": "ILOGIC",
+    "total_score": 36.72189349112426,
+    "tansho_hits": 10,
+    "tansho_rate": 15.384615384615385,
+    "tansho_recovery": 89.38461538461539,
+    "fukusho_rate": 29.230769230769234,
+    "total_races": 65,
+    "profit": -690
+  },
+  "viewlogic": {
+    "engine_name": "VIEWLOGIC",
+    "total_score": 14.173570019723865,
+    "tansho_hits": 3,
+    "tansho_rate": 4.615384615384616,
+    "tansho_recovery": 30.307692307692307,
+    "fukusho_rate": 16.41025641025641,
+    "total_races": 65,
+    "profit": -4530
+  }
+}

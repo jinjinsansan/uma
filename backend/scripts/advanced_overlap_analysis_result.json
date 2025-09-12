@@ -1,0 +1,91 @@
+{
+  "overlap_patterns": {
+    "all_3_overlap": {
+      "total": 0,
+      "hits": 0,
+      "details": []
+    },
+    "dlogic_ilogic": {
+      "total": 2,
+      "hits": 4,
+      "details": []
+    },
+    "dlogic_viewlogic": {
+      "total": 3,
+      "hits": 6,
+      "details": []
+    },
+    "ilogic_viewlogic": {
+      "total": 2,
+      "hits": 4,
+      "details": []
+    },
+    "no_overlap": {
+      "total": 0,
+      "hits": 0,
+      "details": []
+    },
+    "top1_overlap": {
+      "total": 0,
+      "hits": 0,
+      "details": []
+    },
+    "top3_overlap": {
+      "total": 16,
+      "hits": 3,
+      "details": [
+        {
+          "race": "2025-08-31 中京 9R",
+          "common_horses": [
+            4
+          ]
+        },
+        {
+          "race": "2025-08-31 札幌 6R",
+          "common_horses": [
+            11
+          ]
+        },
+        {
+          "race": "2025-09-06 阪神 9R",
+          "common_horses": [
+            3
+          ]
+        }
+      ]
+    },
+    "top5_all_match": {
+      "total": 2,
+      "hits": 4,
+      "details": [
+        {
+          "race": "2025-09-07 阪神 8R",
+          "matched_count": 2
+        },
+        {
+          "race": "2025-09-06 中山 8R",
+          "matched_count": 2
+        }
+      ]
+    }
+  },
+  "consensus_levels": {
+    "3_engine_consensus": {
+      "total": 0,
+      "hits": 0,
+      "details": []
+    },
+    "2_engine_consensus": {
+      "total": 13,
+      "hits": 0,
+      "details": []
+    },
+    "no_consensus": {
+      "total": 46,
+      "hits": 13,
+      "details": []
+    }
+  },
+  "analysis_date": "2025-09-12T19:56:57.101572",
+  "total_races_analyzed": 65
+}

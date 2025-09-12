@@ -3,7 +3,7 @@
 PostgreSQLデータベースとTSファイルからオッズを取得
 """
 import logging
-import psycopg2
+# import psycopg2  # Render環境では使用しない
 import json
 import re
 import os
@@ -47,78 +47,11 @@ class OddsManager:
         Returns:
             馬番 -> オッズのマッピング、取得失敗時はNone
         """
-        try:
-            # 日付を変換（YYYY-MM-DD -> YYYYMMDD）
-            date_parts = kaisai_date.split('-')
-            if len(date_parts) == 3:
-                kaisai_nen = date_parts[0]
-                kaisai_tsukihi = date_parts[1] + date_parts[2]
-            else:
-                logger.error(f"不正な日付形式: {kaisai_date}")
-                return None
+        # Render環境ではPostgreSQLを使用しない
+        logger.info(f"PostgreSQL無効（Render環境）: {kaisai_date} {jyocode} {race_number}R")
+        return None
             
-            # データベース接続
-            if not self.conn or self.conn.closed:
-                self.conn = psycopg2.connect(**self.PG_CONNECTION)
-            
-            cur = self.conn.cursor()
-            
-            # jvd_o1テーブルから単勝オッズを取得
-            query = """
-                SELECT 
-                    race_bango,
-                    shusso_tosu,
-                    odds_tansho
-                FROM jvd_o1
-                WHERE kaisai_nen = %s
-                AND kaisai_tsukihi = %s
-                AND keibajo_code = %s
-                AND race_bango = %s
-            """
-            
-            race_bango = f"{race_number:02d}"
-            cur.execute(query, (kaisai_nen, kaisai_tsukihi, jyocode, race_bango))
-            
-            result = cur.fetchone()
-            if not result:
-                logger.info(f"データベースにオッズデータなし: {kaisai_date} {jyocode} {race_number}R")
-                return None
-            
-            race_no, tosu, tansho_str = result
-            
-            if not tansho_str:
-                logger.info(f"オッズ文字列が空: {kaisai_date} {jyocode} {race_number}R")
-                return None
-            
-            # オッズ文字列をパース（6桁固定長フォーマット）
-            odds_dict = {}
-            odds_per_horse = 6
-            num_horses = len(tansho_str) // odds_per_horse
-            
-            for i in range(num_horses):
-                start = i * odds_per_horse
-                end = start + odds_per_horse
-                odds_raw = tansho_str[start:end]
-                
-                try:
-                    # オッズは10倍して格納されている
-                    odds_value = float(odds_raw) / 10.0
-                    # 馬番は1から始まる
-                    horse_number = i + 1
-                    odds_dict[str(horse_number)] = odds_value
-                except Exception as e:
-                    logger.warning(f"オッズパースエラー（{i+1}番馬）: {odds_raw}")
-                    continue
-            
-            logger.info(f"データベースから{len(odds_dict)}頭のオッズを取得: {kaisai_date} {jyocode} {race_number}R")
-            return odds_dict
-            
-        except Exception as e:
-            logger.error(f"データベースからのオッズ取得エラー: {e}")
-            return None
-        finally:
-            if cur:
-                cur.close()
+
     
     def get_odds_from_ts_file(
         self,
@@ -262,9 +195,8 @@ class OddsManager:
     
     def close(self):
         """データベース接続をクローズ"""
-        if self.conn and not self.conn.closed:
-            self.conn.close()
-            logger.info("データベース接続をクローズしました")
+        # Render環境ではDB接続なし
+        pass
     
     def __del__(self):
         """デストラクタ"""

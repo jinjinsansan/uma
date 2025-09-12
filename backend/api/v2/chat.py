@@ -419,11 +419,20 @@ async def send_message(
             "posts": race_snapshot.get("posts") or session.get("posts"),
             "horse_numbers": race_snapshot.get("horse_numbers") or session.get("horse_numbers"),
             "distance": race_snapshot.get("distance") or session.get("distance"),
-            "track_condition": race_snapshot.get("track_condition") or session.get("track_condition")
+            "track_condition": race_snapshot.get("track_condition") or session.get("track_condition"),
+            # V2フィールド追加（F-Logic等で必要）
+            "sex_ages": race_snapshot.get("sex_ages") or session.get("sex_ages"),
+            "weights": race_snapshot.get("weights") or session.get("weights"),
+            "trainers": race_snapshot.get("trainers") or session.get("trainers"),
+            "odds": race_snapshot.get("odds") or session.get("odds"),
+            "popularities": race_snapshot.get("popularities") or session.get("popularities")
         }
         
         logger.info(f"=== 最終的なrace_data ===")
         logger.info(f"horses: {race_data.get('horses', [])}")
+        logger.info(f"odds: {race_data.get('odds', [])}")
+        logger.info(f"odds length: {len(race_data.get('odds', []))}")
+        logger.info(f"horses length: {len(race_data.get('horses', []))}")
         
         # IMLogic設定を取得（リクエストから渡されるか、セッションから取得）
         imlogic_settings = request.imlogic_settings

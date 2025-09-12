@@ -1361,14 +1361,20 @@ F-Logic分析をご希望の場合は「F-Logic分析して」とお聞きくだ
                 odds_values = race_data.get('odds', [])
                 market_odds = {}
                 
+                # デバッグログ
+                logger.info(f"F-Logic: race_data keys: {race_data.keys()}")
+                logger.info(f"F-Logic: odds_values: {odds_values[:5] if odds_values else 'None'}")
+                
                 # オッズが存在する場合はマッピング
                 if odds_values and horses:
                     for i, horse_name in enumerate(horses):
                         if i < len(odds_values):
                             market_odds[horse_name] = odds_values[i]
+                    logger.info(f"F-Logic: market_odds from race_data: {list(market_odds.items())[:3]}")
                 
                 # オッズがない場合はodds_managerから取得を試みる
                 if not market_odds:
+                    logger.info("F-Logic: No odds in race_data, trying odds_manager")
                     from services.odds_manager import odds_manager
                     market_odds = odds_manager.get_real_time_odds(
                         venue=venue,

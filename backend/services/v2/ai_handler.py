@@ -1357,13 +1357,24 @@ F-Logic分析をご希望の場合は「F-Logic分析して」とお聞きくだ
             should_analyze = any(keyword in message for keyword in analyze_keywords)
             
             if should_analyze:
-                # オッズ取得
-                from services.odds_manager import odds_manager
-                market_odds = odds_manager.get_real_time_odds(
-                    venue=venue,
-                    race_number=race_number,
-                    horses=horses
-                )
+                # レースデータからオッズを取得
+                odds_values = race_data.get('odds', [])
+                market_odds = {}
+                
+                # オッズが存在する場合はマッピング
+                if odds_values and horses:
+                    for i, horse_name in enumerate(horses):
+                        if i < len(odds_values):
+                            market_odds[horse_name] = odds_values[i]
+                
+                # オッズがない場合はodds_managerから取得を試みる
+                if not market_odds:
+                    from services.odds_manager import odds_manager
+                    market_odds = odds_manager.get_real_time_odds(
+                        venue=venue,
+                        race_number=race_number,
+                        horses=horses
+                    )
                 
                 # F-Logic分析実行
                 from services.flogic_engine import flogic_engine

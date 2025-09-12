@@ -1361,13 +1361,7 @@ F-Logic分析をご希望の場合は「F-Logic分析して」とお聞きくだ
                 odds_values = race_data.get('odds', [])
                 market_odds = {}
                 
-                # 詳細デバッグログ
-                logger.info(f"F-Logic Debug: race_data keys: {list(race_data.keys())}")
-                logger.info(f"F-Logic Debug: odds in race_data: {'odds' in race_data}")
-                logger.info(f"F-Logic Debug: odds_values type: {type(odds_values)}")
-                logger.info(f"F-Logic Debug: odds_values length: {len(odds_values) if odds_values else 0}")
-                logger.info(f"F-Logic Debug: odds_values content: {odds_values[:5] if odds_values else 'None'}")
-                logger.info(f"F-Logic Debug: horses length: {len(horses)}")
+
                 
                 # オッズが存在する場合はマッピング
                 if odds_values and horses:
@@ -1412,8 +1406,13 @@ F-Logic分析をご希望の場合は「F-Logic分析して」とお聞きくだ
                 else:
                     return (f"F-Logic分析エラー: {result.get('message', '不明なエラー')}", None)
             else:
-                # F-Logicの説明
-                flogic_prompt = """
+                # F-Logicの説明（Claude API不要、直接返答）
+                race_context = f"現在選択中: {venue}{race_number}R"
+                if horses:
+                    race_context += f"（{len(horses)}頭）"
+                    
+                explanation = f"""🎯 {race_context}
+
 F-Logic（Fair Value Logic）は、理論的な公正オッズと市場オッズを比較して投資価値を判定するシステムです。
 
 【主な機能】
@@ -1425,30 +1424,9 @@ F-Logic（Fair Value Logic）は、理論的な公正オッズと市場オッズ
 ・フェア値 < 市場オッズ = 割安（買い）
 ・フェア値 > 市場オッズ = 割高（見送り）
 
-分析をご希望の場合は「F-Logic分析して」「投資価値を判定」などとお聞きください。
-"""
+分析をご希望の場合は「F-Logic分析して」「投資価値を判定」などとお聞きください。"""
                 
-                # レースコンテキストを追加
-                race_context = f"現在選択中: {venue}{race_number}R"
-                if horses:
-                    race_context += f"（{len(horses)}頭）"
-                    
-                full_prompt = f"""{race_context}
-
-{flogic_prompt}
-
-ユーザーの質問: {message}"""
-                
-                # Anthropic APIで応答生成
-                if self.anthropic_client:
-                    response_obj = self.anthropic_client.messages.create(
-                        model="claude-3-5-sonnet-20241022",
-                        max_tokens=4096,
-                        system="あなたはF-Logic（投資価値判定AI）のアシスタントです。",
-                        messages=[
-                            {"role": "user", "content": full_prompt}
-                        ]
-                    )
+                return (explanation, None)
                     response = response_obj.content[0].text
                 else:
                     response = "Anthropic APIが設定されていません。"

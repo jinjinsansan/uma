@@ -428,11 +428,7 @@ async def send_message(
             "popularities": race_snapshot.get("popularities") or session.get("popularities")
         }
         
-        logger.info(f"=== 最終的なrace_data ===")
-        logger.info(f"horses: {race_data.get('horses', [])}")
-        logger.info(f"odds: {race_data.get('odds', [])}")
-        logger.info(f"odds length: {len(race_data.get('odds', []))}")
-        logger.info(f"horses length: {len(race_data.get('horses', []))}")
+
         
         # IMLogic設定を取得（リクエストから渡されるか、セッションから取得）
         imlogic_settings = request.imlogic_settings

@@ -1427,11 +1427,6 @@ F-Logic（Fair Value Logic）は、理論的な公正オッズと市場オッズ
 分析をご希望の場合は「F-Logic分析して」「投資価値を判定」などとお聞きください。"""
                 
                 return (explanation, None)
-                    response = response_obj.content[0].text
-                else:
-                    response = "Anthropic APIが設定されていません。"
-                
-                return (response, None)
                 
         except Exception as e:
             logger.error(f"F-Logic処理エラー: {e}")

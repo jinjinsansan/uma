@@ -1367,23 +1367,28 @@ F-Logic分析をご希望の場合は「F-Logic分析して」とお聞きくだ
                 logger.info(f"F-Logic Debug: odds_values type: {type(odds_values)}")
                 logger.info(f"F-Logic Debug: odds_values length: {len(odds_values) if odds_values else 0}")
                 logger.info(f"F-Logic Debug: odds_values content: {odds_values[:5] if odds_values else 'None'}")
+                logger.info(f"F-Logic Debug: horses length: {len(horses)}")
                 
                 # オッズが存在する場合はマッピング
                 if odds_values and horses:
                     for i, horse_name in enumerate(horses):
                         if i < len(odds_values):
-                            market_odds[horse_name] = odds_values[i]
+                            odds_value = odds_values[i]
+                            # オッズ値が有効な場合のみ追加
+                            if odds_value and odds_value > 0:
+                                market_odds[horse_name] = float(odds_value)
                     logger.info(f"F-Logic: market_odds from race_data: {list(market_odds.items())[:3]}")
+                    logger.info(f"F-Logic: Total odds mapped: {len(market_odds)}")
                 
-                # オッズがない場合はodds_managerから取得を試みる
-                if not market_odds:
-                    logger.info("F-Logic: No odds in race_data, trying odds_manager")
-                    from services.odds_manager import odds_manager
-                    market_odds = odds_manager.get_real_time_odds(
-                        venue=venue,
-                        race_number=race_number,
-                        horses=horses
-                    )
+                # オッズがない場合はodds_managerから取得を試みる（デバッグのため一時的に無効化）
+                # if not market_odds:
+                #     logger.info("F-Logic: No odds in race_data, trying odds_manager")
+                #     from services.odds_manager import odds_manager
+                #     market_odds = odds_manager.get_real_time_odds(
+                #         venue=venue,
+                #         race_number=race_number,
+                #         horses=horses
+                #     )
                 
                 # オッズが取得できない場合はエラーメッセージを返す
                 if not market_odds:

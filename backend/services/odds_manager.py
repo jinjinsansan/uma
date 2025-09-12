@@ -243,7 +243,15 @@ class OddsManager:
                         break
                 
                 if ts_path and os.path.exists(ts_path):
+                    logger.info(f"{race_number}Rのオッズを取得中...")
                     odds_dict = self.get_odds_from_ts_file(ts_path, race_number)
+                    if odds_dict:
+                        logger.info(f"取得成功: {len(odds_dict)}頭のオッズ")
+                        # デバッグ: 最初の3頭のオッズを表示
+                        for i, (num, odds) in enumerate(list(odds_dict.items())[:3]):
+                            logger.info(f"  馬番{num}: {odds}倍")
+                    else:
+                        logger.warning(f"{race_number}Rのオッズ取得失敗")
             
             # 3. 馬名にマッピング（馬名リストがある場合）
             if odds_dict and horses:

@@ -135,7 +135,7 @@ class CreateChatRequest(BaseModel):
 class ChatMessageRequest(BaseModel):
     """チャットメッセージリクエスト"""
     message: str
-    ai_type: Optional[str] = None  # 'imlogic', 'dlogic', 'ilogic', 'viewlogic', or None for auto-detect
+    ai_type: Optional[str] = None  # 'imlogic', 'dlogic', 'ilogic', 'viewlogic', 'metalogic', or None for auto-detect
     imlogic_settings: Optional[Dict] = None  # IMLogic設定（オプション）
 
 @router.post("/create")
@@ -382,7 +382,7 @@ async def send_message(
             raise HTTPException(status_code=404, detail="チャットセッションが見つかりません")
         
         # AIタイプ確認（Noneの場合は自然言語判定するため許可）
-        if request.ai_type is not None and request.ai_type not in ["imlogic", "viewlogic", "dlogic", "ilogic"]:
+        if request.ai_type is not None and request.ai_type not in ["imlogic", "viewlogic", "dlogic", "ilogic", "flogic", "metalogic"]:
             raise HTTPException(status_code=400, detail="無効なAIタイプです")
         
         # V2 AIハンドラーで処理（グローバルインスタンスを使用してメモリ節約）

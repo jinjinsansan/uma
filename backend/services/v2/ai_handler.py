@@ -5,6 +5,7 @@ V2 AI統合ハンドラー
 import re
 import json
 import logging
+import traceback
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 from services.imlogic_engine import IMLogicEngine
@@ -59,6 +60,10 @@ class V2AIHandler:
         message_lower = message.lower()
         
         # 特定のAIキーワードを最優先で判定（他のキーワードより優先）
+        # MetaLogic分析（メタ予想システム - 最優先）
+        if 'metalogic' in message_lower or 'meta-logic' in message_lower or 'メタロジック' in message or 'メタ予想' in message or 'メタログic' in message:
+            return ('metalogic', 'analysis')
+        
         # F-Logic分析（明示的な指定を最優先）
         if 'f-logic' in message_lower or 'flogic' in message_lower or 'エフロジック' in message or 'フェア値' in message:
             return ('flogic', 'analysis')
@@ -451,6 +456,81 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         except Exception as e:
             logger.error(f"結果フォーマットエラー: {e}")
             return "分析結果の表示中にエラーが発生しました。"
+    
+    async def process_metalogic_message(
+        self,
+        message: str,
+        race_data: Dict[str, Any]
+    ) -> Tuple[str, Optional[Dict]]:
+        """
+        MetaLogicメッセージ処理（メタ予想システム）
+        I-Logic 40%, D-Logic 30%, ViewLogic 30%の重み付けアンサンブル
+        
+        Returns:
+            (content, analysis_data) のタプル
+        """
+        try:
+            from services.metalogic_engine import metalogic_engine
+            
+            # レースデータの準備
+            analysis_result = await metalogic_engine.analyze_race(race_data)
+            
+            if analysis_result.get('status') != 'success':
+                return (analysis_result.get('message', '分析に失敗しました'), None)
+            
+            # 結果のフォーマット
+            content = self._format_metalogic_result(analysis_result)
+            
+            return (content, analysis_result)
+            
+        except Exception as e:
+            logger.error(f"MetaLogic処理エラー: {e}")
+            traceback.print_exc()
+            return ("MetaLogicの分析中にエラーが発生しました。", None)
+    
+    def _format_metalogic_result(self, result: Dict[str, Any]) -> str:
+        """MetaLogic結果のフォーマット"""
+        try:
+            rankings = result.get('rankings', [])
+            
+            if not rankings:
+                return "分析結果がありません。"
+            
+            content = "🎯 **MetaLogic メタ予想システム**\n"
+            content += "（I-Logic 40% + D-Logic 30% + ViewLogic 30% + 市場評価）\n\n"
+            content += "**推奨馬（メタスコア順）**\n\n"
+            
+            for item in rankings[:5]:
+                horse = item.get('horse', '不明')
+                score = item.get('meta_score', 0)
+                details = item.get('details', {})
+                
+                # 信頼度インジケーター
+                if details.get('engine_count', 0) >= 3:
+                    confidence = "⭐⭐⭐"
+                elif details.get('engine_count', 0) >= 2:
+                    confidence = "⭐⭐"
+                else:
+                    confidence = "⭐"
+                
+                content += f"**{item.get('rank')}位 {horse}** {confidence}\n"
+                content += f"  メタスコア: **{score:.1f}点**\n"
+                content += f"  - D-Logic: {details.get('d_logic', 0):.1f}点\n"
+                content += f"  - I-Logic: {details.get('i_logic', 0):.1f}点\n"
+                content += f"  - ViewLogic: {details.get('view_logic', 0):.1f}点\n"
+                content += f"  - オッズ評価: {details.get('odds_factor', 0):.1f}点\n\n"
+            
+            content += "\n💡 **解説**\n"
+            content += "MetaLogicは3つのAIエンジンと市場評価を統合した\n"
+            content += "アンサンブル予想システムです。\n"
+            content += "I-Logicの高精度を活かしつつ、複数視点での検証により\n"
+            content += "安定性を向上させています。\n"
+            
+            return content
+            
+        except Exception as e:
+            logger.error(f"MetaLogic結果フォーマットエラー: {e}")
+            return "結果の表示中にエラーが発生しました。"
     
     async def process_viewlogic_message(
         self,
@@ -1089,6 +1169,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     sub_type = 'manual'
             elif ai_type == 'flogic':
                 sub_type = 'analysis'  # F-Logicは分析タイプ
+            elif ai_type == 'metalogic':
+                sub_type = 'analysis'  # MetaLogicは分析タイプ
             else:
                 sub_type = 'manual'
         else:
@@ -1120,6 +1202,12 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 content = result
         elif determined_ai == 'ilogic':
             result = await self.process_ilogic_message(message, race_data)
+            if isinstance(result, tuple):
+                content, analysis_data = result
+            else:
+                content = result
+        elif determined_ai == 'metalogic':
+            result = await self.process_metalogic_message(message, race_data)
             if isinstance(result, tuple):
                 content, analysis_data = result
             else:

@@ -1154,6 +1154,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             return {
                 'content': f"このチャットは{venue} {race_number}R専用です。他のレースについては新しいチャットを作成してください。",
                 'ai_type': 'imlogic',  # デフォルトでimlogicを返す
+                'ai_display_name': 'IMLogic AI',
                 'sub_type': 'out_of_scope',
                 'analysis_data': None
             }
@@ -1219,9 +1220,20 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             else:
                 content = result
         
+        # 表示名の設定
+        ai_display_names = {
+            'metalogic': 'MetaLogic AI',
+            'flogic': 'F-Logic AI',
+            'dlogic': 'D-Logic AI',
+            'ilogic': 'I-Logic AI',
+            'imlogic': 'IMLogic AI',
+            'viewlogic': 'ViewLogic AI'
+        }
+        
         return {
             'content': content,
             'ai_type': determined_ai,
+            'ai_display_name': ai_display_names.get(determined_ai, 'IMLogic AI'),
             'sub_type': sub_type,
             'analysis_data': analysis_data
         }

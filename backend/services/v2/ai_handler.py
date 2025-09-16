@@ -1166,6 +1166,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         # AI タイプの決定（レース外チェックの後に移動）
         if ai_type:
             determined_ai = ai_type
+            logger.info(f"AI判定(手動指定): ai_type={ai_type}, determined_ai={determined_ai}")
             # ViewLogicの場合は、メッセージからサブタイプを決定
             if ai_type == 'viewlogic':
                 _, sub_type = self.determine_ai_type(message)
@@ -1180,7 +1181,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 sub_type = 'manual'
         else:
             determined_ai, sub_type = self.determine_ai_type(message)
-        
+            logger.info(f"AI判定(自動): message='{message[:50]}...', determined_ai={determined_ai}, sub_type={sub_type}")
+
         # AI種別に応じて処理
         analysis_data = None
         if determined_ai == 'imlogic':
@@ -1218,6 +1220,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             else:
                 content = result
         elif determined_ai == 'column':
+            logger.info(f"コラム処理開始: determined_ai={determined_ai}")
             # コラム表示の処理 - Supabaseからコラムを取得して返す
             from supabase import create_client
             import os
@@ -1295,6 +1298,9 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             'column': 'コラムシステム'
         }
         
+        # デバッグログ追加
+        logger.info(f"最終レスポンス生成: determined_ai={determined_ai}, display_name={ai_display_names.get(determined_ai, 'IMLogic AI')}")
+
         return {
             'content': content,
             'ai_type': determined_ai,

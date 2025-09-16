@@ -1260,7 +1260,9 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     if users_response.data and len(users_response.data) > 0:
                         user_data = users_response.data[0]
                         user_id = user_data.get('id')
-                        user_has_line = user_data.get('line_user_id') is not None
+                        line_user_id = user_data.get('line_user_id')
+                        user_has_line = line_user_id is not None and line_user_id != ''
+                        logger.info(f"LINE連携判定: line_user_id={line_user_id}, user_has_line={user_has_line}")
 
                         # user_idでポイント残高を確認
                         if user_id:
@@ -1322,12 +1324,16 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                         logger.info("→ 無料コラムのためアクセス許可")
                     elif col['access_type'] == 'line_only':
                         # LINE連携者限定コラム
-                        if user_has_line:
+                        # 管理者は無料で閲覧可能
+                        if is_admin:
+                            can_access = True
+                            logger.info("→ 管理者のためLINE連携チェックをスキップ")
+                        elif user_has_line:
                             can_access = True
                             logger.info("→ LINE連携済みのためアクセス許可")
                         else:
                             access_reason = "*このコラムを読むにはLINE連携が必要です*"
-                            logger.info("→ LINE未連携のためアクセス拒否")
+                            logger.info(f"→ LINE未連携のためアクセス拒否 (user_has_line={user_has_line}, line_user_id存在={user_has_line})")
                     elif col['access_type'] == 'paid' or col['access_type'] == 'point_required':
                         # ポイント消費コラム
                         required_points = col.get('required_points', 1)

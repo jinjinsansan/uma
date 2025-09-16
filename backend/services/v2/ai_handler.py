@@ -1224,6 +1224,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             logger.info(f"コラム処理開始: determined_ai={determined_ai}, user_email={user_email}")
             # コラム表示の処理 - Supabaseからコラムを取得して返す
             from supabase import create_client
+            from datetime import datetime
             import os
 
             def strip_html_tags(text):
@@ -1244,9 +1245,13 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
             supabase = create_client(supabase_url, supabase_key)
 
+            # 管理者チェック
+            is_admin = user_email in ['goldbenchan@gmail.com', 'kusanokiyoshi1@gmail.com']
+
             # ユーザー情報を取得（LINE連携状態とポイント残高）
             user_has_line = False
             user_points = 0
+            user_id = None
             if user_email:
                 try:
                     # v2_usersテーブルからユーザー情報を一括取得（id, line_user_id）
@@ -1263,7 +1268,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                             if points_response.data and len(points_response.data) > 0:
                                 user_points = points_response.data[0].get('current_points', 0)
 
-                    logger.info(f"ユーザー情報取得: email={user_email}, has_line={user_has_line}, points={user_points}")
+                    logger.info(f"ユーザー情報取得: email={user_email}, is_admin={is_admin}, has_line={user_has_line}, points={user_points}")
                 except Exception as e:
                     logger.error(f"ユーザー情報取得エラー: {str(e)}")
 
@@ -1326,11 +1331,54 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     elif col['access_type'] == 'paid' or col['access_type'] == 'point_required':
                         # ポイント消費コラム
                         required_points = col.get('required_points', 1)
-                        if user_points >= required_points:
+
+                        # 管理者は無料で閲覧可能
+                        if is_admin:
                             can_access = True
-                            # 実際のポイント消費はここでは行わない（読むだけで消費は別処理）
+                            logger.info("→ 管理者のためポイント消費をスキップ")
                         else:
-                            access_reason = f"*このコラムを読むには{required_points}ポイントが必要です（現在の残高: {user_points}ポイント）*"
+                            # 既読チェック
+                            if user_id:
+                                read_check = supabase.table('v2_column_reads').select('id').eq('column_id', col['id']).eq('user_id', user_id).execute()
+                                if read_check.data:
+                                    # 既読の場合は無料で表示
+                                    can_access = True
+                                    logger.info(f"→ 既読のためポイント消費なし")
+                                elif user_points >= required_points:
+                                    # 初回閲覧でポイント十分
+                                    can_access = True
+                                    # ポイント消費処理
+                                    try:
+                                        # ポイント減算
+                                        new_points = user_points - required_points
+                                        update_response = supabase.table('v2_user_points').update({
+                                            'current_points': new_points,
+                                            'updated_at': datetime.now().isoformat()
+                                        }).eq('user_id', user_id).execute()
+
+                                        # 既読記録を作成
+                                        read_record = supabase.table('v2_column_reads').insert({
+                                            'column_id': col['id'],
+                                            'user_id': user_id,
+                                            'read_at': datetime.now().isoformat()
+                                        }).execute()
+
+                                        # ポイント履歴記録
+                                        history_record = supabase.table('v2_point_history').insert({
+                                            'user_id': user_id,
+                                            'points': -required_points,
+                                            'type': 'column_view',
+                                            'description': f"コラム閲覧: {col['title']}",
+                                            'created_at': datetime.now().isoformat()
+                                        }).execute()
+
+                                        logger.info(f"→ {required_points}ポイント消費して表示")
+                                    except Exception as e:
+                                        logger.error(f"ポイント消費処理エラー: {str(e)}")
+                                        can_access = False
+                                        access_reason = "*ポイント消費処理でエラーが発生しました*"
+                                else:
+                                    access_reason = f"*このコラムを読むには{required_points}ポイントが必要です（現在の残高: {user_points}ポイント）*"
 
                     if can_access:
                         # contentのHTMLタグを除去

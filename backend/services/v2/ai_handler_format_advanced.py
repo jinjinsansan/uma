@@ -188,84 +188,106 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
             lines.append(random.choice(templates['平均ペース_effect']))
     lines.append("")
     
-    # 詳細な脚質分類と各馬の解説
+    # 脚質別の馬名整理（馬番順）
     detailed_styles = result.get('detailed_styles', {})
-    lines.append("### 各馬の脚質分析")
-    lines.append("")
-    
-    # 逃げ馬の分析
-    horse_templates = get_horse_description_templates()
-    
-    if '逃げ' in detailed_styles and any(detailed_styles['逃げ'].values()):
-        lines.append("#### 🏃 逃げ馬の動向")
+
+    # 各脚質の馬を馬番順に整理
+    nige_horses = []
+    senko_horses = []
+    sashi_horses = []
+    oikomi_horses = []
+
+    # 馬番情報を取得してソート用に使用
+    horses_data = result.get('horses_data', [])
+    horse_to_number = {}
+    for horse_data in horses_data:
+        if isinstance(horse_data, dict):
+            horse_name = horse_data.get('horse_name', '')
+            horse_number = horse_data.get('horse_number', 999)  # 馬番がない場合は999
+            if horse_name:
+                horse_to_number[horse_name] = horse_number
+
+    # 各脚質の馬を収集
+    if '逃げ' in detailed_styles:
         for sub_style, horses in detailed_styles['逃げ'].items():
             if horses:
-                if sub_style == '超積極逃げ':
-                    template = random.choice(horse_templates['逃げ_積極'])
-                    lines.append(template.format(horse=f"**{horses[0]}**"))
-                    lines.append("この馬がハナを切れば、後続との差を広げて逃げ切りを図る展開が予想されます。")
-                elif sub_style == '状況逃げ':
-                    lines.append(f"**{', '.join(horses)}**は状況を見ながらの逃げが予想され、他に逃げ馬がいなければ積極的に前に出そうです。")
-                elif sub_style == '消極逃げ':
-                    lines.append(f"**{', '.join(horses)}**は消極的な逃げとなる可能性があり、無理に逃げることはなさそうです。")
-        lines.append("")
-    
-    # 先行馬の分析
-    if '先行' in detailed_styles and any(detailed_styles['先行'].values()):
-        lines.append("#### 🎯 先行馬の布陣")
+                nige_horses.extend(horses)
+
+    if '先行' in detailed_styles:
         for sub_style, horses in detailed_styles['先行'].items():
             if horses:
-                if sub_style == '前寄り先行':
-                    template = random.choice(horse_templates['先行_積極'])
-                    lines.append(template.format(horses=f"**{', '.join(horses[:2])}**"))
-                elif sub_style == '安定先行':
-                    lines.append(f"**{', '.join(horses[:2])}**は安定した先行策を取り、好位でレースを進めそうです。")
-                elif sub_style == '後寄り先行':
-                    lines.append(f"**{', '.join(horses[:2])}**は先行グループの後方に控え、展開を見ながらの競馬となりそうです。")
+                senko_horses.extend(horses)
+
+    if '差し' in detailed_styles:
+        for sub_style, horses in detailed_styles['差し'].items():
+            if horses:
+                sashi_horses.extend(horses)
+
+    if '追込' in detailed_styles:
+        for sub_style, horses in detailed_styles['追込'].items():
+            if horses:
+                oikomi_horses.extend(horses)
+
+    # 馬番順にソート
+    nige_horses = sorted(nige_horses, key=lambda x: horse_to_number.get(x, 999))
+    senko_horses = sorted(senko_horses, key=lambda x: horse_to_number.get(x, 999))
+    sashi_horses = sorted(sashi_horses, key=lambda x: horse_to_number.get(x, 999))
+    oikomi_horses = sorted(oikomi_horses, key=lambda x: horse_to_number.get(x, 999))
+
+    # 脚質別馬名を自然な文章に組み込む
+    lines.append("### 展開予想の詳細分析")
+    lines.append("")
+
+    # ペース展開と脚質構成の説明
+    if nige_horses or senko_horses:
+        lines.append("#### 前半の隊列形成")
+        if nige_horses:
+            if len(nige_horses) == 1:
+                lines.append(f"スタートから**{nige_horses[0]}**が単騎で逃げを打つ展開が予想されます。")
+            else:
+                lines.append(f"逃げを狙うのは**{', '.join(nige_horses)}**で、序盤の主導権争いが注目されます。")
+
+        if senko_horses:
+            if len(senko_horses) <= 3:
+                lines.append(f"先行勢として**{', '.join(senko_horses)}**が好位を確保し、逃げ馬をマークする形になりそうです。")
+            else:
+                lines.append(f"先行勢は**{', '.join(senko_horses[:3])}**を中心に、{'、'.join(senko_horses[3:])}も前目のポジションを取りに行きそうです。")
         lines.append("")
-    
-    # 差し・追込馬の分析
-    if ('差し' in detailed_styles and any(detailed_styles['差し'].values())) or ('追込' in detailed_styles and any(detailed_styles['追込'].values())):
-        lines.append("#### ⚡ 差し・追込勢の台頭")
-        if '差し' in detailed_styles:
-            for sub_style, horses in detailed_styles['差し'].items():
-                if horses and len(horses) > 0:
-                    if 'ハイペース' in pace:
-                        template = random.choice(horse_templates['差し_有利'])
-                        lines.append(template.format(horses=f"**{', '.join(horses[:3])}**"))
-                        lines.append("前半で脚を溜め、最後の直線で爆発的な末脚を発揮する可能性があります。")
-                    else:
-                        lines.append(f"**{', '.join(horses[:3])}**は中団から後方に控え、最後の直線勝負に賭けることになりそうです。")
-                    break
-        
-        if '追込' in detailed_styles:
-            for sub_style, horses in detailed_styles['追込'].items():
-                if horses and len(horses) > 0:
-                    if 'ハイペース' in pace:
-                        template = random.choice(horse_templates['追込_期待'])
-                        lines.append(template.format(horses=f"**{', '.join(horses[:2])}**"))
-                    else:
-                        lines.append(f"**{', '.join(horses[:2])}**は後方一気の追込を狙いますが、展開次第では届かない可能性もあります。")
-                    break
+
+    # 中団から後方の馬
+    if sashi_horses or oikomi_horses:
+        lines.append("#### 中団から後方の布陣")
+        if sashi_horses:
+            if len(sashi_horses) <= 3:
+                lines.append(f"中団待機組の**{', '.join(sashi_horses)}**は、前半は脚を溜めて直線での差し脚に賭けます。")
+            else:
+                lines.append(f"差し馬は**{', '.join(sashi_horses[:3])}**が中心となり、{'、'.join(sashi_horses[3:])}も中団から虎視眈々と上位を狙います。")
+
+        if oikomi_horses:
+            if 'ハイペース' in pace:
+                lines.append(f"後方から追い込みを狙う**{', '.join(oikomi_horses)}**にとっては、ペースが速くなることで展開利が生まれそうです。")
+            else:
+                lines.append(f"追い込み勢の**{', '.join(oikomi_horses)}**は後方待機となりますが、展開一つで激走の可能性を秘めています。")
         lines.append("")
-    
-    # 位置取り安定性TOP3
-    stability = result.get('position_stability', {})
-    if stability:
-        lines.append("**【位置取り安定性】**")
-        sorted_stability = sorted(stability.items(), key=lambda x: x[1], reverse=True)[:3]
-        for i, (horse, score) in enumerate(sorted_stability, 1):
-            lines.append(f"{i}. {horse}: {score:.2f}")
-        lines.append("")
-    
-    # 展開適性マッチング（上位3頭）
-    flow_matching = result.get('flow_matching', {})
-    if flow_matching:
-        lines.append("**【展開適性スコア】**")
-        sorted_matching = sorted(flow_matching.items(), key=lambda x: x[1], reverse=True)[:3]
-        for i, (horse, score) in enumerate(sorted_matching, 1):
-            lines.append(f"{i}. {horse}: {score:.1f}点")
-        lines.append("")
+
+    # ペースと脚質の相性分析
+    lines.append("#### 展開予想のポイント")
+    if 'ハイペース' in pace:
+        if nige_horses or senko_horses:
+            lines.append(f"ハイペースが予想される中、逃げ・先行勢の{'、'.join(nige_horses[:2] + senko_horses[:2])}は序盤から厳しい流れに巻き込まれそうです。")
+        if sashi_horses or oikomi_horses:
+            lines.append(f"この展開は差し・追込馬の{'、'.join(sashi_horses[:2] + oikomi_horses[:1])}にとって絶好の展開となり、直線での末脚勝負が期待されます。")
+    elif 'スローペース' in pace:
+        if nige_horses:
+            lines.append(f"スローペースが予想される中、逃げ馬の**{nige_horses[0]}**は楽に逃げられる可能性が高く、粘り込みが期待できます。")
+        if senko_horses:
+            lines.append(f"先行勢の{'、'.join(senko_horses[:3])}も前半で脚を使わずに済むため、直線でもしっかりとした脚を使えそうです。")
+    else:
+        lines.append("ミドルペースでの流れとなりそうで、各馬の地力が試される展開になりそうです。")
+        if senko_horses:
+            lines.append(f"このペースは先行馬の{'、'.join(senko_horses[:3])}にとって理想的で、持ち味を発揮しやすい流れとなりそうです。")
+
+    lines.append("")
     
     # レースシミュレーション詳細
     simulation = result.get('race_simulation', {})
@@ -315,20 +337,24 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
                     lines.append(f"**{corner4_horses[1]}**が虎視眈々と逆転を狙っています。")
             lines.append("")
         
-        # ゴール予想
+        # ゴール予想（上位5頭の表示を削除し、展開の流れとして記述）
         if 'finish' in simulation and len(simulation['finish']) > 0:
             finish_horses = [entry.get('horse_name', '不明') for entry in simulation['finish'][:5]]
             lines.append("#### ゴール前の攻防")
-            if len(finish_horses) >= 1:
-                lines.append(f"最後の直線では、**{finish_horses[0]}**が抜け出す可能性が高く、")
-            if len(finish_horses) >= 3:
-                lines.append(f"**{finish_horses[1]}**と**{finish_horses[2]}**が激しく追い上げる展開が予想されます。")
-            elif len(finish_horses) >= 2:
-                lines.append(f"**{finish_horses[1]}**が激しく追い上げる展開が予想されます。")
-            lines.append("")
-            lines.append("**【上位5頭予想】**")
-            for i, horse in enumerate(finish_horses, 1):
-                lines.append(f"{i}. **{horse}**")
+
+            # 展開を自然な文章で表現（順位は明示しない）
+            if 'ハイペース' in pace:
+                lines.append("ハイペースの流れを活かして、後方待機組が一気に差し切る可能性があります。")
+                if len(finish_horses) >= 3:
+                    lines.append(f"特に**{finish_horses[0]}**、**{finish_horses[1]}**、**{finish_horses[2]}**あたりの末脚が注目されます。")
+            elif 'スローペース' in pace:
+                lines.append("スローペースからの瞬発力勝負となり、前残りの可能性も十分にあります。")
+                if len(finish_horses) >= 2:
+                    lines.append(f"**{finish_horses[0]}**と**{finish_horses[1]}**の叩き合いが予想されます。")
+            else:
+                lines.append("ミドルペースでの総合力勝負となりそうです。")
+                if len(finish_horses) >= 3:
+                    lines.append(f"**{finish_horses[0]}**を中心に、**{finish_horses[1]}**、**{finish_horses[2]}**が有力候補となりそうです。")
         lines.append("")
     
     # 最終的な狙い目と推奨

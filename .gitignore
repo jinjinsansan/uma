@@ -74,3 +74,11 @@ jspm_packages/
 # D-Logic Knowledge File (Large file stored locally)
 backend/data/dlogic_raw_knowledge.json
 backend/data/immediate_batch_*.json
+
+# Knowledge files
+*.pkl
+knowledge/*.json
+backend/knowledge/*.json
+backend/jockey_knowledge.json
+backend/unified_knowledge_*.json
+.serena/cache/

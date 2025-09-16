@@ -1218,8 +1218,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             else:
                 content = result
         elif determined_ai == 'column':
-            # コラム表示の処理
-            content = f"このレースに関連するコラムを表示します。\n\n{venue} {race_number}Rの関連コラムはフロントエンドで取得されます。"
+            # コラム表示の処理（フロントエンドで実際のコラムを取得・表示するため、空のコンテンツを返す）
+            content = ""
             analysis_data = None
         else:  # viewlogic
             result = await self.process_viewlogic_message(message, race_data, sub_type)

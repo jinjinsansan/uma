@@ -1288,9 +1288,13 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                             break
                     
                     # 明らかに馬名として言及されている場合（〜の、〜は、など）
+                    # ただしコラムは除外
+                    if potential_horse == 'コラム':
+                        continue  # コラムは馬名ではないのでスキップ
+
                     if not is_in_race and re.search(f'{potential_horse}(の|は|が|を|と|って|という)', message):
                         # 一般的な単語や助詞でないことを確認
-                        common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー', 'ViewLogic', 'IMLogic', 'DLogic', 'ILogic', 'FLogic', 'フェア', 'オッズ', 'ロジック', 'エフロジック']
+                        common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー', 'ViewLogic', 'IMLogic', 'DLogic', 'ILogic', 'FLogic', 'フェア', 'オッズ', 'ロジック', 'エフロジック', 'コラム']
                         if potential_horse not in common_words:
                             logger.info(f"レース外の馬を検出: {potential_horse}")
                             return True

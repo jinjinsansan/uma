@@ -1221,7 +1221,6 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             else:
                 content = result
         elif determined_ai == 'column':
-            print(f"[DEBUG] コラム処理開始: determined_ai={determined_ai}, user_email={user_email}")
             logger.info(f"コラム処理開始: determined_ai={determined_ai}, user_email={user_email}")
             # コラム表示の処理 - Supabaseからコラムを取得して返す
             from supabase import create_client
@@ -1250,33 +1249,21 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             user_points = 0
             if user_email:
                 try:
-                    print(f"[DEBUG] ユーザー情報検索開始: email={user_email}")
-                    logger.info(f"ユーザー情報検索開始: email={user_email}")
                     # v2_usersテーブルからユーザー情報を一括取得（id, line_user_id）
                     users_response = supabase.table('v2_users').select('id, line_user_id').eq('email', user_email).execute()
-                    print(f"[DEBUG] v2_users検索結果: {users_response.data}")
-                    logger.info(f"v2_users検索結果: {users_response.data}")
 
                     if users_response.data and len(users_response.data) > 0:
                         user_data = users_response.data[0]
                         user_id = user_data.get('id')
                         user_has_line = user_data.get('line_user_id') is not None
-                        print(f"[DEBUG] ユーザーデータ: id={user_id}, line_user_id={user_data.get('line_user_id')}, has_line={user_has_line}")
-                        logger.info(f"ユーザーデータ: id={user_id}, line_user_id={user_data.get('line_user_id')}, has_line={user_has_line}")
 
                         # user_idでポイント残高を確認
                         if user_id:
                             points_response = supabase.table('v2_user_points').select('current_points').eq('user_id', user_id).execute()
-                            logger.info(f"v2_user_points検索結果: {points_response.data}")
                             if points_response.data and len(points_response.data) > 0:
                                 user_points = points_response.data[0].get('current_points', 0)
-                    else:
-                        # ユーザーが見つからない場合
-                        logger.warning(f"ユーザーが見つかりません: email={user_email}")
-                        user_has_line = False
-                        user_points = 0
 
-                    logger.info(f"最終ユーザー情報: email={user_email}, has_line={user_has_line}, points={user_points}")
+                    logger.info(f"ユーザー情報取得: email={user_email}, has_line={user_has_line}, points={user_points}")
                 except Exception as e:
                     logger.error(f"ユーザー情報取得エラー: {str(e)}")
 
@@ -1293,25 +1280,20 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             race_id = f"{year}_{venue_code}_r{race_data.get('race_number', '')}"
 
             # コラムを取得
-            print(f"[DEBUG] コラム検索: race_id={race_id}")
             logger.info(f"コラム検索: race_id={race_id}")
             response = supabase.table('v2_columns').select('*').eq('race_id', race_id).eq('display_in_llm', True).eq('is_published', True).execute()
 
             if response.data and len(response.data) > 0:
                 columns_html = "## このレースのコラム\n\n"
-                print(f"[DEBUG] 取得したコラム数: {len(response.data)}")
-                print(f"[DEBUG] コラムデータ（生）: {response.data}")
                 logger.info(f"取得したコラム数: {len(response.data)}")
-                logger.info(f"コラムデータ（生）: {response.data}")
                 for col in response.data:
-                    print(f"[DEBUG] コラム詳細: title={col.get('title')}, access_type={col.get('access_type')}, required_points={col.get('required_points')}")
                     logger.info(f"コラム: title={col.get('title')}, access_type={col.get('access_type')}, required_points={col.get('required_points')}")
                     # アクセスタイプに応じた表示テキスト
                     if col['access_type'] == 'free':
                         access_text = "無料"
                     elif col['access_type'] == 'line_only':
                         access_text = "LINE連携限定"
-                    elif col['access_type'] == 'paid':
+                    elif col['access_type'] == 'paid' or col['access_type'] == 'point_required':
                         access_text = f"{col.get('required_points', 1)}ポイント"
                     else:
                         access_text = "無料"  # デフォルト
@@ -1327,7 +1309,6 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     can_access = False
                     access_reason = ""
 
-                    print(f"[DEBUG] アクセスチェック開始: access_type={col['access_type']}, user_has_line={user_has_line}, user_points={user_points}")
                     logger.info(f"アクセスチェック開始: access_type={col['access_type']}, user_has_line={user_has_line}, user_points={user_points}")
 
                     if col['access_type'] == 'free':
@@ -1342,7 +1323,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                         else:
                             access_reason = "*このコラムを読むにはLINE連携が必要です*"
                             logger.info("→ LINE未連携のためアクセス拒否")
-                    elif col['access_type'] == 'paid':
+                    elif col['access_type'] == 'paid' or col['access_type'] == 'point_required':
                         # ポイント消費コラム
                         required_points = col.get('required_points', 1)
                         if user_points >= required_points:

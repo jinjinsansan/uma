@@ -288,7 +288,7 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
             lines.append(f"このペースは先行馬の{'、'.join(senko_horses[:3])}にとって理想的で、持ち味を発揮しやすい流れとなりそうです。")
 
     lines.append("")
-    
+
     # レースシミュレーション詳細
     simulation = result.get('race_simulation', {})
     if simulation:
@@ -410,7 +410,38 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
         lines.append(random.choice(conclusion_templates['スローペース']))
     else:
         lines.append(random.choice(conclusion_templates['平均ペース']))
-    
+
+    # 脚質別馬名の明示的なリストを追加
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    lines.append("### 📊 脚質別出走馬一覧")
+    lines.append("")
+
+    # 逃げ馬
+    if nige_horses:
+        lines.append(f"**逃げ**：{'、'.join(nige_horses)}")
+    else:
+        lines.append("**逃げ**：該当なし")
+
+    # 先行馬
+    if senko_horses:
+        lines.append(f"**先行**：{'、'.join(senko_horses)}")
+    else:
+        lines.append("**先行**：該当なし")
+
+    # 差し馬
+    if sashi_horses:
+        lines.append(f"**差し**：{'、'.join(sashi_horses)}")
+    else:
+        lines.append("**差し**：該当なし")
+
+    # 追込馬
+    if oikomi_horses:
+        lines.append(f"**追込**：{'、'.join(oikomi_horses)}")
+    else:
+        lines.append("**追込**：該当なし")
+
     lines.append("")
     lines.append("---")
     lines.append("")

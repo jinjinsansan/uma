@@ -1221,6 +1221,21 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             # コラム表示の処理 - Supabaseからコラムを取得して返す
             from supabase import create_client
             import os
+            import re
+
+            def strip_html_tags(text):
+                """HTMLタグを除去してプレーンテキストに変換"""
+                # HTMLタグを除去
+                clean = re.compile('<.*?>')
+                text = re.sub(clean, '', text)
+                # HTMLエンティティを変換
+                text = text.replace('&nbsp;', ' ')
+                text = text.replace('&lt;', '<')
+                text = text.replace('&gt;', '>')
+                text = text.replace('&amp;', '&')
+                text = text.replace('&quot;', '"')
+                text = text.replace('&#39;', "'")
+                return text.strip()
 
             supabase_url = os.environ.get("SUPABASE_URL")
             supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
@@ -1246,9 +1261,16 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 for col in response.data:
                     access_text = "無料" if col['access_type'] == 'free' else f"{col.get('required_points', 1)}ポイント"
                     columns_html += f"### 📝 {col['title']} ({access_text})\n"
-                    columns_html += f"{col['summary']}\n\n"
+
+                    # summaryもHTMLタグ除去
+                    summary = strip_html_tags(col.get('summary', ''))
+                    if summary:
+                        columns_html += f"{summary}\n\n"
+
                     if col['access_type'] == 'free':
-                        columns_html += f"{col['content']}\n\n"
+                        # contentのHTMLタグを除去
+                        content_text = strip_html_tags(col.get('content', ''))
+                        columns_html += f"{content_text}\n\n"
                     else:
                         columns_html += f"*このコラムを読むには{col.get('required_points', 1)}ポイントが必要です*\n\n"
                 content = columns_html
@@ -1270,7 +1292,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             'dlogic': 'D-Logic AI',
             'ilogic': 'I-Logic AI',
             'imlogic': 'IMLogic AI',
-            'viewlogic': 'ViewLogic AI'
+            'viewlogic': 'ViewLogic AI',
+            'column': 'コラムシステム'
         }
         
         return {

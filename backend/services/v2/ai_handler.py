@@ -1294,29 +1294,27 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 columns_html = "## このレースのコラム\n\n"
                 logger.info(f"取得したコラム数: {len(response.data)}")
                 for col in response.data:
-                    print(f"[DEBUG] コラム詳細: title={col.get('title')}, access_type='{col.get('access_type')}', required_points={col.get('required_points')}")
                     logger.info(f"コラム: title={col.get('title')}, access_type={col.get('access_type')}, required_points={col.get('required_points')}")
 
-                    # access_typeが実際にどんな値か確認
+                    # access_typeを取得（Null/空文字対応）
                     actual_access_type = col.get('access_type')
                     if actual_access_type is None or actual_access_type == '':
                         actual_access_type = 'free'
-                        print(f"[WARNING] access_typeがNullまたは空のため、freeとして扱います")
+                        logger.warning(f"access_typeがNullまたは空のため、freeとして扱います")
                     # 文字列の前後の空白を削除
                     actual_access_type = str(actual_access_type).strip() if actual_access_type else 'free'
-                    print(f"[DEBUG] actual_access_type='{actual_access_type}', type={type(actual_access_type)}")
 
                     # アクセスタイプに応じた表示テキスト
                     if actual_access_type == 'free':
                         access_text = "無料"
-                    elif actual_access_type == 'line_only':
+                    elif actual_access_type == 'line_only' or actual_access_type == 'line_linked':  # line_linkedもサポート
                         access_text = "LINE連携限定"
                     elif actual_access_type == 'paid' or actual_access_type == 'point_required':
                         access_text = f"{col.get('required_points', 1)}ポイント"
                     else:
                         # デフォルトケース - 値を明示
                         access_text = f"不明({actual_access_type})"
-                        print(f"[WARNING] 予期しないaccess_type: '{actual_access_type}'")
+                        logger.warning(f"予期しないaccess_type: '{actual_access_type}'")
 
                     columns_html += f"### 📝 {col['title']} ({access_text})\n"
 
@@ -1335,7 +1333,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                         # 無料コラムは誰でもアクセス可能
                         can_access = True
                         logger.info("→ 無料コラムのためアクセス許可")
-                    elif actual_access_type == 'line_only':
+                    elif actual_access_type == 'line_only' or actual_access_type == 'line_linked':  # line_linkedもサポート
                         # LINE連携者限定コラム
                         # 管理者は無料で閲覧可能
                         if is_admin:
@@ -1391,6 +1389,10 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                                         access_reason = "⚠️ **ポイント消費処理でエラーが発生しました**\n\nしばらくしてから再度お試しください。"
                                 else:
                                     access_reason = f"💰 **このコラムの本文を読むには{required_points}ポイントが必要です**\n\n現在の残高: {user_points}ポイント\n不足ポイント: {required_points - user_points}ポイント\n\n[ポイントを購入する]"
+                    else:
+                        # 予期しないaccess_typeの場合
+                        logger.error(f"未処理のaccess_type: '{actual_access_type}'")
+                        access_reason = f"⚠️ **このコラムのタイプ({actual_access_type})は認識できません**\n\n管理者にお問い合わせください。"
 
                     if can_access:
                         # ポイント消費メッセージを追加

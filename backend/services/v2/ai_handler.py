@@ -1249,18 +1249,23 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             user_points = 0
             if user_email:
                 try:
-                    # LINE連携状態を確認
-                    # v2_usersテーブルのline_user_idフィールドで判定
-                    users_response = supabase.table('v2_users').select('line_user_id').eq('email', user_email).execute()
-                    if users_response.data and len(users_response.data) > 0:
-                        user_has_line = users_response.data[0].get('line_user_id') is not None
-                    else:
-                        user_has_line = False
+                    # v2_usersテーブルからユーザー情報を一括取得（id, line_user_id）
+                    users_response = supabase.table('v2_users').select('id, line_user_id').eq('email', user_email).execute()
 
-                    # ポイント残高を確認
-                    points_response = supabase.table('v2_user_points').select('total_points').eq('user_email', user_email).execute()
-                    if points_response.data and len(points_response.data) > 0:
-                        user_points = points_response.data[0].get('total_points', 0)
+                    if users_response.data and len(users_response.data) > 0:
+                        user_data = users_response.data[0]
+                        user_id = user_data.get('id')
+                        user_has_line = user_data.get('line_user_id') is not None
+
+                        # user_idでポイント残高を確認
+                        if user_id:
+                            points_response = supabase.table('v2_user_points').select('current_points').eq('user_id', user_id).execute()
+                            if points_response.data and len(points_response.data) > 0:
+                                user_points = points_response.data[0].get('current_points', 0)
+                    else:
+                        # ユーザーが見つからない場合
+                        user_has_line = False
+                        user_points = 0
 
                     logger.info(f"ユーザー情報取得: email={user_email}, has_line={user_has_line}, points={user_points}")
                 except Exception as e:

@@ -1281,7 +1281,16 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             if response.data and len(response.data) > 0:
                 columns_html = "## このレースのコラム\n\n"
                 for col in response.data:
-                    access_text = "無料" if col['access_type'] == 'free' else f"{col.get('required_points', 1)}ポイント"
+                    # アクセスタイプに応じた表示テキスト
+                    if col['access_type'] == 'free':
+                        access_text = "無料"
+                    elif col['access_type'] == 'line_only':
+                        access_text = "LINE連携限定"
+                    elif col['access_type'] == 'paid':
+                        access_text = f"{col.get('required_points', 1)}ポイント"
+                    else:
+                        access_text = "無料"  # デフォルト
+
                     columns_html += f"### 📝 {col['title']} ({access_text})\n"
 
                     # summaryもHTMLタグ除去

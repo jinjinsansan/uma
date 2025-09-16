@@ -73,7 +73,8 @@ class V2ChatService:
                     "distance": race_data.get("distance"),
                     "course_type": race_data.get("course_type"),
                     "weather": race_data.get("weather"),
-                    "track_condition": race_data.get("track_condition")
+                    "track_condition": race_data.get("track_condition"),
+                    "raceResults": race_data.get("raceResults")  # レース結果追加
                 })
             }
             

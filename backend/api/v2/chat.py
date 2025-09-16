@@ -129,6 +129,8 @@ class CreateChatRequest(BaseModel):
     course_type: Optional[str] = None
     weather: Optional[str] = None
     track_condition: Optional[str] = None
+    # レース結果データ（着順と払戻）
+    raceResults: Optional[Dict] = None  # {"first": 1, "second": 3, "third": 5, "payouts": {...}}
     imlogic_settings_id: Optional[str] = None
     is_test_mode: Optional[bool] = False  # 管理者テストモード
 
@@ -250,7 +252,8 @@ async def create_chat(
                 "distance": request.distance,
                 "course_type": request.course_type,
                 "weather": request.weather,
-                "track_condition": request.track_condition
+                "track_condition": request.track_condition,
+                "raceResults": request.raceResults     # レース結果追加
             },
             imlogic_settings_id=request.imlogic_settings_id
         )

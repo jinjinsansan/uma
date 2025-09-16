@@ -51,14 +51,18 @@ class V2AIHandler:
     def determine_ai_type(self, message: str) -> Tuple[str, str]:
         """
         メッセージからAIタイプを判定
-        
+
         Returns:
             (ai_type, sub_type) のタプル
-            - ai_type: 'imlogic', 'viewlogic', 'dlogic', 'ilogic'
-            - sub_type: 'analysis', 'trend', 'opinion' など
+            - ai_type: 'imlogic', 'viewlogic', 'dlogic', 'ilogic', 'column'
+            - sub_type: 'analysis', 'trend', 'opinion', 'display' など
         """
         message_lower = message.lower()
-        
+
+        # コラム表示の判定（最優先）
+        if 'コラム' in message and ('表示' in message or '見せて' in message or '見る' in message or 'を教えて' in message):
+            return ('column', 'display')
+
         # 特定のAIキーワードを最優先で判定（他のキーワードより優先）
         # MetaLogic分析（メタ予想システム - 最優先）
         if 'metalogic' in message_lower or 'meta-logic' in message_lower or 'メタロジック' in message or 'メタ予想' in message or 'メタログic' in message:

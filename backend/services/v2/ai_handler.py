@@ -1250,9 +1250,12 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             if user_email:
                 try:
                     # LINE連携状態を確認
-                    # v2_line_connection_historyテーブルには email カラムを使用
-                    line_response = supabase.table('v2_line_connection_history').select('*').eq('email', user_email).execute()
-                    user_has_line = len(line_response.data) > 0 if line_response.data else False
+                    # v2_usersテーブルのline_user_idフィールドで判定
+                    users_response = supabase.table('v2_users').select('line_user_id').eq('email', user_email).execute()
+                    if users_response.data and len(users_response.data) > 0:
+                        user_has_line = users_response.data[0].get('line_user_id') is not None
+                    else:
+                        user_has_line = False
 
                     # ポイント残高を確認
                     points_response = supabase.table('v2_user_points').select('total_points').eq('user_email', user_email).execute()

@@ -1294,16 +1294,29 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 columns_html = "## このレースのコラム\n\n"
                 logger.info(f"取得したコラム数: {len(response.data)}")
                 for col in response.data:
+                    print(f"[DEBUG] コラム詳細: title={col.get('title')}, access_type='{col.get('access_type')}', required_points={col.get('required_points')}")
                     logger.info(f"コラム: title={col.get('title')}, access_type={col.get('access_type')}, required_points={col.get('required_points')}")
+
+                    # access_typeが実際にどんな値か確認
+                    actual_access_type = col.get('access_type')
+                    if actual_access_type is None or actual_access_type == '':
+                        actual_access_type = 'free'
+                        print(f"[WARNING] access_typeがNullまたは空のため、freeとして扱います")
+                    # 文字列の前後の空白を削除
+                    actual_access_type = str(actual_access_type).strip() if actual_access_type else 'free'
+                    print(f"[DEBUG] actual_access_type='{actual_access_type}', type={type(actual_access_type)}")
+
                     # アクセスタイプに応じた表示テキスト
-                    if col['access_type'] == 'free':
+                    if actual_access_type == 'free':
                         access_text = "無料"
-                    elif col['access_type'] == 'line_only':
+                    elif actual_access_type == 'line_only':
                         access_text = "LINE連携限定"
-                    elif col['access_type'] == 'paid' or col['access_type'] == 'point_required':
+                    elif actual_access_type == 'paid' or actual_access_type == 'point_required':
                         access_text = f"{col.get('required_points', 1)}ポイント"
                     else:
-                        access_text = "無料"  # デフォルト
+                        # デフォルトケース - 値を明示
+                        access_text = f"不明({actual_access_type})"
+                        print(f"[WARNING] 予期しないaccess_type: '{actual_access_type}'")
 
                     columns_html += f"### 📝 {col['title']} ({access_text})\n"
 
@@ -1316,13 +1329,13 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     can_access = False
                     access_reason = ""
 
-                    logger.info(f"アクセスチェック開始: access_type={col['access_type']}, user_has_line={user_has_line}, user_points={user_points}")
+                    logger.info(f"アクセスチェック開始: access_type={actual_access_type}, user_has_line={user_has_line}, user_points={user_points}")
 
-                    if col['access_type'] == 'free':
+                    if actual_access_type == 'free':
                         # 無料コラムは誰でもアクセス可能
                         can_access = True
                         logger.info("→ 無料コラムのためアクセス許可")
-                    elif col['access_type'] == 'line_only':
+                    elif actual_access_type == 'line_only':
                         # LINE連携者限定コラム
                         # 管理者は無料で閲覧可能
                         if is_admin:
@@ -1334,7 +1347,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                         else:
                             access_reason = "📱 **このコラムの本文を読むにはLINE連携が必要です**\n\n[マイページからLINE連携を行ってください]"
                             logger.info(f"→ LINE未連携のためアクセス拒否 (user_has_line={user_has_line}, line_user_id存在={user_has_line})")
-                    elif col['access_type'] == 'paid' or col['access_type'] == 'point_required':
+                    elif actual_access_type == 'paid' or actual_access_type == 'point_required':
                         # ポイント消費コラム
                         required_points = col.get('required_points', 1)
 
@@ -1381,7 +1394,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
 
                     if can_access:
                         # ポイント消費メッセージを追加
-                        if col['access_type'] in ['paid', 'point_required'] and not is_admin:
+                        if actual_access_type in ['paid', 'point_required'] and not is_admin:
                             if 'points_consumed' in locals() and points_consumed:
                                 columns_html += f"✅ **{required_points}ポイント消費しました**\n\n---\n\n"
 

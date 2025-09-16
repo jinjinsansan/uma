@@ -1128,11 +1128,11 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         venue = race_data.get('venue', '')
         race_number = race_data.get('race_number', '')
         race_horses = race_data.get('horses', [])
-        
+
         # レースに存在しない馬名が含まれているかチェック
         # カタカナの馬名を正しく抽出（ァ-ヴーを使用）
         potential_horses = re.findall(r'[ァ-ヴー]+', message)
-        
+
         for potential_horse in potential_horses:
             if len(potential_horse) >= 3:
                 is_in_race = False
@@ -1140,10 +1140,10 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     if potential_horse in race_horse or race_horse in potential_horse:
                         is_in_race = True
                         break
-                
+
                 # 助詞チェックを緩和（馬名単体でも検出）
                 if not is_in_race:
-                    common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー', 'ViewLogic', 'IMLogic', 'DLogic', 'ILogic', 'FLogic', 'フェア', 'オッズ', 'ロジック', 'エフロジック']
+                    common_words = ['データ', 'レース', 'スコア', 'ポイント', 'システム', 'エラー', 'ViewLogic', 'IMLogic', 'DLogic', 'ILogic', 'FLogic', 'フェア', 'オッズ', 'ロジック', 'エフロジック', 'コラム']  # 'コラム'を除外単語に追加
                     if potential_horse not in common_words:
                         return {
                             'content': f"「{potential_horse}」は、{venue} {race_number}Rには出走しません。\nこのレースの出走馬は以下の通りです:\n" + "、".join(race_horses),
@@ -1217,6 +1217,10 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 content, analysis_data = result
             else:
                 content = result
+        elif determined_ai == 'column':
+            # コラム表示の処理
+            content = f"このレースに関連するコラムを表示します。\n\n{venue} {race_number}Rの関連コラムはフロントエンドで取得されます。"
+            analysis_data = None
         else:  # viewlogic
             result = await self.process_viewlogic_message(message, race_data, sub_type)
             if isinstance(result, tuple):

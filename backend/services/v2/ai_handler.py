@@ -1108,7 +1108,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         message: str,
         race_data: Dict[str, Any],
         ai_type: Optional[str] = None,
-        settings: Optional[Dict[str, Any]] = None
+        settings: Optional[Dict[str, Any]] = None,
+        user_email: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         統合メッセージ処理
@@ -1220,7 +1221,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             else:
                 content = result
         elif determined_ai == 'column':
-            logger.info(f"コラム処理開始: determined_ai={determined_ai}")
+            logger.info(f"コラム処理開始: determined_ai={determined_ai}, user_email={user_email}")
             # コラム表示の処理 - Supabaseからコラムを取得して返す
             from supabase import create_client
             import os
@@ -1242,6 +1243,25 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             supabase_url = os.environ.get("SUPABASE_URL")
             supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
             supabase = create_client(supabase_url, supabase_key)
+
+            # ユーザー情報を取得（LINE連携状態とポイント残高）
+            user_has_line = False
+            user_points = 0
+            if user_email:
+                try:
+                    # LINE連携状態を確認
+                    # v2_line_connection_historyテーブルには email カラムを使用
+                    line_response = supabase.table('v2_line_connection_history').select('*').eq('email', user_email).execute()
+                    user_has_line = len(line_response.data) > 0 if line_response.data else False
+
+                    # ポイント残高を確認
+                    points_response = supabase.table('v2_user_points').select('total_points').eq('user_email', user_email).execute()
+                    if points_response.data and len(points_response.data) > 0:
+                        user_points = points_response.data[0].get('total_points', 0)
+
+                    logger.info(f"ユーザー情報取得: email={user_email}, has_line={user_has_line}, points={user_points}")
+                except Exception as e:
+                    logger.error(f"ユーザー情報取得エラー: {str(e)}")
 
             # race_idを構成（管理者パネル形式に合わせる）
             race_date = race_data.get('race_date', '')
@@ -1269,12 +1289,34 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     if summary:
                         columns_html += f"{summary}\n\n"
 
+                    # アクセス権限チェック
+                    can_access = False
+                    access_reason = ""
+
                     if col['access_type'] == 'free':
+                        # 無料コラムは誰でもアクセス可能
+                        can_access = True
+                    elif col['access_type'] == 'line_only':
+                        # LINE連携者限定コラム
+                        if user_has_line:
+                            can_access = True
+                        else:
+                            access_reason = "*このコラムを読むにはLINE連携が必要です*"
+                    elif col['access_type'] == 'paid':
+                        # ポイント消費コラム
+                        required_points = col.get('required_points', 1)
+                        if user_points >= required_points:
+                            can_access = True
+                            # 実際のポイント消費はここでは行わない（読むだけで消費は別処理）
+                        else:
+                            access_reason = f"*このコラムを読むには{required_points}ポイントが必要です（現在の残高: {user_points}ポイント）*"
+
+                    if can_access:
                         # contentのHTMLタグを除去
                         content_text = strip_html_tags(col.get('content', ''))
                         columns_html += f"{content_text}\n\n"
                     else:
-                        columns_html += f"*このコラムを読むには{col.get('required_points', 1)}ポイントが必要です*\n\n"
+                        columns_html += f"{access_reason}\n\n"
                 content = columns_html
             else:
                 content = "このレースには表示するコラムがありません。"

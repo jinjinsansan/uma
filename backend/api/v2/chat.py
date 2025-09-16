@@ -374,8 +374,9 @@ async def send_message(
         logger.info(f"request: {request}")
         
         user_id = user_info["user_id"]
+        user_email = user_info.get("email", "")
         chat_service = V2ChatService()
-        
+
         # セッション確認
         session = await chat_service.get_session(session_id, user_id)
         if not session:
@@ -446,7 +447,8 @@ async def send_message(
             message=request.message,
             race_data=race_data,
             ai_type=request.ai_type,  # Noneの場合、ai_handler内で自然言語判定
-            settings=imlogic_settings
+            settings=imlogic_settings,
+            user_email=user_email
         )
         
         logger.info(f"process_message完了: {ai_response}")

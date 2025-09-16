@@ -1332,7 +1332,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                             can_access = True
                             logger.info("→ LINE連携済みのためアクセス許可")
                         else:
-                            access_reason = "*このコラムを読むにはLINE連携が必要です*"
+                            access_reason = "📱 **このコラムの本文を読むにはLINE連携が必要です**\n\n[マイページからLINE連携を行ってください]"
                             logger.info(f"→ LINE未連携のためアクセス拒否 (user_has_line={user_has_line}, line_user_id存在={user_has_line})")
                     elif col['access_type'] == 'paid' or col['access_type'] == 'point_required':
                         # ポイント消費コラム
@@ -1353,6 +1353,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                                 elif user_points >= required_points:
                                     # 初回閲覧でポイント十分
                                     can_access = True
+                                    points_consumed = False
                                     # ポイント消費処理
                                     try:
                                         # ポイント減算
@@ -1369,15 +1370,21 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                                             'read_at': datetime.now().isoformat()
                                         }).execute()
 
+                                        points_consumed = True
                                         logger.info(f"→ {required_points}ポイント消費して表示")
                                     except Exception as e:
                                         logger.error(f"ポイント消費処理エラー: {str(e)}")
                                         can_access = False
-                                        access_reason = "*ポイント消費処理でエラーが発生しました*"
+                                        access_reason = "⚠️ **ポイント消費処理でエラーが発生しました**\n\nしばらくしてから再度お試しください。"
                                 else:
-                                    access_reason = f"*このコラムを読むには{required_points}ポイントが必要です（現在の残高: {user_points}ポイント）*"
+                                    access_reason = f"💰 **このコラムの本文を読むには{required_points}ポイントが必要です**\n\n現在の残高: {user_points}ポイント\n不足ポイント: {required_points - user_points}ポイント\n\n[ポイントを購入する]"
 
                     if can_access:
+                        # ポイント消費メッセージを追加
+                        if col['access_type'] in ['paid', 'point_required'] and not is_admin:
+                            if 'points_consumed' in locals() and points_consumed:
+                                columns_html += f"✅ **{required_points}ポイント消費しました**\n\n---\n\n"
+
                         # contentのHTMLタグを除去
                         content_text = strip_html_tags(col.get('content', ''))
                         columns_html += f"{content_text}\n\n"

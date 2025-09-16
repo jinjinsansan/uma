@@ -1218,8 +1218,43 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             else:
                 content = result
         elif determined_ai == 'column':
-            # コラム表示の処理（フロントエンドで実際のコラムを取得・表示するため、空のコンテンツを返す）
-            content = ""
+            # コラム表示の処理 - Supabaseからコラムを取得して返す
+            from supabase import create_client
+            import os
+
+            supabase_url = os.environ.get("SUPABASE_URL")
+            supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+            supabase = create_client(supabase_url, supabase_key)
+
+            # race_idを構成（管理者パネル形式に合わせる）
+            race_date = race_data.get('race_date', '')
+            year = race_date.split('-')[0] if race_date else '2025'
+            venue_map = {
+                '中山': 'nakayama', '東京': 'tokyo', '阪神': 'hanshin', '京都': 'kyoto',
+                '中京': 'chukyo', '新潟': 'niigata', '福島': 'fukushima', '札幌': 'sapporo',
+                '函館': 'hakodate', '小倉': 'kokura', '大井': 'ooi', '川崎': 'kawasaki',
+                '浦和': 'urawa', '船橋': 'funabashi'
+            }
+            venue_code = venue_map.get(race_data.get('venue', ''), race_data.get('venue', '').lower())
+            race_id = f"{year}_{venue_code}_r{race_data.get('race_number', '')}"
+
+            # コラムを取得
+            response = supabase.table('v2_columns').select('*').eq('race_id', race_id).eq('display_in_llm', True).eq('is_published', True).execute()
+
+            if response.data and len(response.data) > 0:
+                columns_html = "## このレースのコラム\n\n"
+                for col in response.data:
+                    access_text = "無料" if col['access_type'] == 'free' else f"{col.get('required_points', 1)}ポイント"
+                    columns_html += f"### 📝 {col['title']} ({access_text})\n"
+                    columns_html += f"{col['summary']}\n\n"
+                    if col['access_type'] == 'free':
+                        columns_html += f"{col['content']}\n\n"
+                    else:
+                        columns_html += f"*このコラムを読むには{col.get('required_points', 1)}ポイントが必要です*\n\n"
+                content = columns_html
+            else:
+                content = "このレースには表示するコラムがありません。"
+
             analysis_data = None
         else:  # viewlogic
             result = await self.process_viewlogic_message(message, race_data, sub_type)

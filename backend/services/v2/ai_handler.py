@@ -1221,7 +1221,6 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             # コラム表示の処理 - Supabaseからコラムを取得して返す
             from supabase import create_client
             import os
-            import re
 
             def strip_html_tags(text):
                 """HTMLタグを除去してプレーンテキストに変換"""

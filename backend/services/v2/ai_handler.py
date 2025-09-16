@@ -1369,15 +1369,6 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                                             'read_at': datetime.now().isoformat()
                                         }).execute()
 
-                                        # ポイント履歴記録
-                                        history_record = supabase.table('v2_point_history').insert({
-                                            'user_id': user_id,
-                                            'points': -required_points,
-                                            'type': 'column_view',
-                                            'description': f"コラム閲覧: {col['title']}",
-                                            'created_at': datetime.now().isoformat()
-                                        }).execute()
-
                                         logger.info(f"→ {required_points}ポイント消費して表示")
                                     except Exception as e:
                                         logger.error(f"ポイント消費処理エラー: {str(e)}")

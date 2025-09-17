@@ -2807,8 +2807,8 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             dlogic_manager = DLogicRawDataManager()
 
             lines = []
-            lines.append("🐴 **種牡馬分析**")
-            lines.append(f"{venue} {race_number}R")
+            lines.append("🏇 **血統分析**")
+            lines.append(f"📍 {venue} {race_number}R")
             lines.append("")
 
             # 各馬の血統データを取得
@@ -2827,20 +2827,25 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 # 血統データを取得
                 pedigree_data = self._get_horse_pedigree(dlogic_manager, horse_name)
 
+                # 馬番に応じた絵文字を設定
+                number_emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', 
+                                '1️⃣1️⃣', '1️⃣2️⃣', '1️⃣3️⃣', '1️⃣4️⃣', '1️⃣5️⃣', '1️⃣6️⃣', '1️⃣7️⃣', '1️⃣8️⃣']
+                number_emoji = number_emojis[horse_number - 1] if horse_number <= 18 else f"{horse_number}番"
+                
                 # フォーマット出力
-                lines.append(f"**{horse_number}番 {horse_name}**")
+                lines.append(f"{number_emoji} **{horse_name}** 🐎")
 
                 if pedigree_data:
                     sire = pedigree_data.get('sire', 'データなし')
                     dam = pedigree_data.get('dam', None)
                     broodmare_sire = pedigree_data.get('broodmare_sire', 'データなし')
 
-                    lines.append(f"父：{sire}")
+                    lines.append(f"　👨 父：{sire}")
                     if dam and dam != '':
-                        lines.append(f"母：{dam}")
-                    lines.append(f"母父：{broodmare_sire}")
+                        lines.append(f"　👩 母：{dam}")
+                    lines.append(f"　👴 母父：{broodmare_sire}")
                 else:
-                    lines.append("血統データなし")
+                    lines.append("　❓ 血統データなし")
 
                 lines.append("")  # 1行空ける
 

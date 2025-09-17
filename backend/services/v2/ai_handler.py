@@ -28,8 +28,9 @@ class V2AIHandler:
     def __init__(self):
         # IMLogicEngineは毎回新規作成するため、ここでは初期化しない
         # /logic-chatと同じ動作を保証
-        # DLogicRawDataManagerは削除（IMLogicEngine内で既に初期化される）
-        # self.dlogic_manager = DLogicRawDataManager()  # メモリ重複を避ける
+        # DLogicRawDataManagerは血統分析で使用するため初期化
+        from services.dlogic_raw_data_manager import DLogicRawDataManager
+        self.dlogic_manager = DLogicRawDataManager()  # 血統分析用（一度だけ初期化）
         self.anthropic_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY")) if Anthropic else None
         
         # 地方競馬場リスト（南関東4場）
@@ -2802,9 +2803,8 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             is_local = self._is_local_racing(venue)
 
             # 統合ナレッジファイルからデータを取得
-            # DLogicマネージャーを使用（JRA版・地方競馬版共通）
-            from services.dlogic_raw_data_manager import DLogicRawDataManager
-            dlogic_manager = DLogicRawDataManager()
+            # 初期化済みのDLogicマネージャーを使用（高速化）
+            dlogic_manager = self.dlogic_manager
 
             lines = []
             lines.append("🏇 **血統分析**")

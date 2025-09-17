@@ -2813,22 +2813,22 @@ class ViewLogicEngine:
                 broodmare_sire = race.get('broodmare_sire', '')
                 
                 formatted_race = {
-                    '📅 開催日': f"{race.get('KAISAI_NEN', '')}/{race.get('KAISAI_GAPPI', '')}",
-                    '🏟️ 競馬場': self._get_venue_name(race.get('KEIBAJO_CODE', '')),
-                    '🏁 レース': race_name,  # レース名を使用
-                    '🏆 クラス': class_name,  # クラス名を追加
-                    '🥇 着順': f"{race.get('KAKUTEI_CHAKUJUN', '')}着",
-                    '⏱️ タイム': race.get('SOHA_TIME', ''),
-                    '🏃 上り': f"{race.get('KOHAN_3F', '')}秒",
-                    '📊 人気': f"{race.get('TANSHO_NINKIJUN', '')}番人気",
-                    '🏇 騎手': race.get('KISHUMEI_RYAKUSHO', ''),
-                    '📏 距離': f"{race.get('KYORI', '')}m",
-                    '🌤️ 馬場': self._get_track_condition(race.get('BABA_JOTAI', '')),
-                    '👥 頭数': f"{race.get('TOSU', '')}頭",
-                    '⚖️ 馬体重': race.get('BATAIJU', ''),
-                    '🎯 コーナー': f"{race.get('CORNER1_JUNI', '')}-{race.get('CORNER2_JUNI', '')}-{race.get('CORNER3_JUNI', '')}-{race.get('CORNER4_JUNI', '')}",
-                    '🐴 父': sire if sire else '不明',  # 血統情報を追加
-                    '🐎 母父': broodmare_sire if broodmare_sire else '不明'  # 血統情報を追加
+                    '開催日': f"{race.get('KAISAI_NEN', '')}/{race.get('KAISAI_GAPPI', '')}",
+                    '競馬場': self._get_venue_name(race.get('KEIBAJO_CODE', '')),
+                    'レース': race_name,  # レース名を使用
+                    'クラス': class_name,  # クラス名を追加
+                    '着順': f"{race.get('KAKUTEI_CHAKUJUN', '')}着",
+                    'タイム': race.get('SOHA_TIME', ''),
+                    '上り': f"{race.get('KOHAN_3F', '')}秒",
+                    '人気': f"{race.get('TANSHO_NINKIJUN', '')}番人気",
+                    '騎手': race.get('KISHUMEI_RYAKUSHO', ''),
+                    '距離': f"{race.get('KYORI', '')}m",
+                    '馬場': self._get_track_condition(race.get('BABA_JOTAI', '')),
+                    '頭数': f"{race.get('TOSU', '')}頭",
+                    '馬体重': race.get('BATAIJU', ''),
+                    'コーナー': f"{race.get('CORNER1_JUNI', '')}-{race.get('CORNER2_JUNI', '')}-{race.get('CORNER3_JUNI', '')}-{race.get('CORNER4_JUNI', '')}",
+                    '父': sire if sire else '不明',  # 血統情報を追加
+                    '母父': broodmare_sire if broodmare_sire else '不明'  # 血統情報を追加
                 }
                 formatted_races.append(formatted_race)
             

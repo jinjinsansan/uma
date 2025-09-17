@@ -42,6 +42,7 @@ class V2AIHandler:
             'viewlogic_recommendation': ['推奨', 'おすすめ', '買い目', '馬券', '予想'],
             'viewlogic_flow': ['展開', 'ペース', '逃げ', '先行', '差し', '追込', '脚質', 'ハイペース', 'スローペース', '流れ'],
             'viewlogic_history': ['過去データ', '直近', '前走', '戦績', '成績', '最近のレース', '過去のレース', '５走', '5走', '使い方'],  # 新規追加
+            'viewlogic_sire': ['種牡馬分析', '種牡馬', '父', '母父', '血統分析', '父馬', '母馬', '母父馬', 'sire', 'dam', 'broodmare'],  # 種牡馬分析サブエンジン
             'dlogic': ['d-logic', 'ディーロジック', 'D-Logic', 'Dロジック', '指数', 'スコア', '12項目', '評価点'],
             'ilogic': ['i-logic', 'ilogic', 'アイロジック', 'I-Logic', 'Iロジック', '騎手', '総合', 'レースアナリシス', 'アナリシス'],
             'flogic': ['f-logic', 'flogic', 'エフロジック', 'F-Logic', 'Fロジック', 'フェア値']
@@ -165,7 +166,12 @@ class V2AIHandler:
                                 self.AI_KEYWORDS['viewlogic_recommendation']
                             ] for kw in kw_list):
                                 return ('viewlogic', 'history')
-        
+
+        # ViewLogic種牡馬分析（優先度高）
+        for keyword in self.AI_KEYWORDS['viewlogic_sire']:
+            if keyword in message_lower or keyword in message:  # 「父」「母父」は漢字なのでmessageでも確認
+                return ('viewlogic', 'sire')
+
         # ViewLogic展開予想（優先度高）
         for keyword in self.AI_KEYWORDS['viewlogic_flow']:
             if keyword in message_lower:
@@ -696,6 +702,11 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     # 馬名も騎手名も見つからない場合
                     example_horse = horses[0] if horses else 'ドウデュース'
                     return (f"出走馬または騎手の名前を指定してください。例：「{example_horse}の過去データ」", None)
+
+            elif sub_type == 'sire':
+                # 種牡馬分析
+                return self._generate_sire_analysis(race_data)
+
             else:
                 return ("ViewLogic機能をご利用いただきありがとうございます。「展開」「傾向」「推奨」のいずれかをお試しください。", None)
                 
@@ -2771,5 +2782,124 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         lines.append("• 最新の競走結果が反映されています")
         lines.append("")
         lines.append("✨ さっそく馬名または騎手名を1つ入力して試してみてください！")
-        
+
         return "\n".join(lines)
+
+    def _generate_sire_analysis(self, race_data: Dict[str, Any]) -> Tuple[str, Optional[Dict]]:
+        """
+        種牡馬分析を生成
+        出走馬の父、母、母父を表示
+
+        Returns:
+            (content, analysis_data) のタプル
+        """
+        try:
+            venue = race_data.get('venue', '')
+            race_number = race_data.get('race_number', '')
+            horses = race_data.get('horses', [])
+
+            # 地方競馬かどうかを判定
+            is_local = self._is_local_racing(venue)
+
+            # 統合ナレッジファイルからデータを取得
+            # DLogicマネージャーを使用（JRA版・地方競馬版共通）
+            from services.dlogic_raw_data_manager import DLogicRawDataManager
+            dlogic_manager = DLogicRawDataManager()
+
+            lines = []
+            lines.append("🐴 **種牡馬分析**")
+            lines.append(f"{venue} {race_number}R")
+            lines.append("")
+
+            # 各馬の血統データを取得
+            for i, horse in enumerate(horses):
+                horse_number = i + 1
+
+                # 馬名を取得（辞書形式と文字列形式の両方に対応）
+                if isinstance(horse, dict):
+                    horse_name = horse.get('馬名', horse.get('name', ''))
+                else:
+                    horse_name = str(horse)
+
+                if not horse_name:
+                    continue
+
+                # 血統データを取得
+                pedigree_data = self._get_horse_pedigree(dlogic_manager, horse_name)
+
+                # フォーマット出力
+                lines.append(f"**{horse_number}番 {horse_name}**")
+
+                if pedigree_data:
+                    sire = pedigree_data.get('sire', 'データなし')
+                    dam = pedigree_data.get('dam', None)
+                    broodmare_sire = pedigree_data.get('broodmare_sire', 'データなし')
+
+                    lines.append(f"父：{sire}")
+                    if dam and dam != '':
+                        lines.append(f"母：{dam}")
+                    lines.append(f"母父：{broodmare_sire}")
+                else:
+                    lines.append("血統データなし")
+
+                lines.append("")  # 1行空ける
+
+            content = "\n".join(lines)
+
+            # 分析データも返す（将来的な拡張用）
+            analysis_data = {
+                'venue': venue,
+                'race_number': race_number,
+                'type': 'sire_analysis',
+                'horses_count': len(horses)
+            }
+
+            return (content, analysis_data)
+
+        except Exception as e:
+            logger.error(f"種牡馬分析エラー: {e}")
+            return (f"種牡馬分析中にエラーが発生しました: {str(e)}", None)
+
+    def _get_horse_pedigree(self, dlogic_manager, horse_name: str) -> Optional[Dict[str, str]]:
+        """
+        統合ナレッジファイルから馬の血統データを取得
+
+        Args:
+            dlogic_manager: DLogicRawDataManager インスタンス
+            horse_name: 馬名
+
+        Returns:
+            血統データの辞書 {'sire': 父名, 'dam': 母名, 'broodmare_sire': 母父名}
+        """
+        try:
+            # 馬の過去データを取得
+            horse_data = dlogic_manager.get_horse_raw_data(horse_name)
+
+            if not horse_data or 'races' not in horse_data:
+                logger.warning(f"馬データが見つかりません: {horse_name}")
+                return None
+
+            # 最新のレースから血統データを取得
+            races = horse_data.get('races', [])
+            if not races:
+                return None
+
+            # 最新レースのデータを使用
+            latest_race = races[0]
+
+            # フィールド29, 30, 31から血統データを取得
+            pedigree = {
+                'sire': latest_race.get('sire', latest_race.get('29', 'データなし')),
+                'dam': latest_race.get('dam', latest_race.get('30', '')),
+                'broodmare_sire': latest_race.get('broodmare_sire', latest_race.get('31', 'データなし'))
+            }
+
+            # 空文字の場合はNoneに変換
+            if pedigree['dam'] == '':
+                pedigree['dam'] = None
+
+            return pedigree
+
+        except Exception as e:
+            logger.error(f"血統データ取得エラー ({horse_name}): {e}")
+            return None

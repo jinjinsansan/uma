@@ -46,11 +46,24 @@ def get_dlogic_manager():
             from api.chat import fast_engine_instance
             # FastDLogicEngineが既にDLogicRawDataManagerを保持
             dlogic_manager = fast_engine_instance.raw_manager
-            logger.info("V2 D-Logic: Using pre-initialized knowledge from FastDLogicEngine")
-        except ImportError:
+            horses_count = len(dlogic_manager.knowledge_data.get('horses', {})) if hasattr(dlogic_manager, 'knowledge_data') else 0
+            logger.info(f"V2 D-Logic: Using pre-initialized knowledge from FastDLogicEngine (horses: {horses_count})")
+            print(f"✅ V2 D-Logic: Using shared instance from FastDLogicEngine (horses: {horses_count})")
+        except ImportError as e:
             # フォールバック：新規作成（互換性のため）
+            logger.warning(f"V2 D-Logic: ImportError - {e}")
+            print(f"⚠️ V2 D-Logic: ImportError when getting fast_engine_instance - {e}")
             logger.warning("V2 D-Logic: Creating new DLogicRawDataManager instance")
             dlogic_manager = DLogicRawDataManager()
+            horses_count = len(dlogic_manager.knowledge_data.get('horses', {})) if hasattr(dlogic_manager, 'knowledge_data') else 0
+            print(f"⚠️ V2 D-Logic: Created new instance (horses: {horses_count})")
+        except Exception as e:
+            logger.error(f"V2 D-Logic: Unexpected error - {e}")
+            print(f"❌ V2 D-Logic: Unexpected error - {e}")
+            dlogic_manager = DLogicRawDataManager()
+    else:
+        horses_count = len(dlogic_manager.knowledge_data.get('horses', {})) if hasattr(dlogic_manager, 'knowledge_data') else 0
+        print(f"♻️ V2 D-Logic: Using existing instance (horses: {horses_count})")
     return dlogic_manager
 
 def get_dlogic_engine():

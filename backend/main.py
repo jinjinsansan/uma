@@ -330,6 +330,10 @@ if os.getenv("ENABLE_V2_FEATURES", "true").lower() == "true":
         app.include_router(v2_cleanup_router)
         app.include_router(v2_column_router)
         app.include_router(v2_admin_campaign_router.router)
+
+        # デバッグエンドポイント追加（本番環境での確認用）
+        from api.v2 import debug as v2_debug_router
+        app.include_router(v2_debug_router.router, prefix="/api/v2/debug")
         print("✅ V2ポイント制システムAPI登録完了")
         print("✅ V2 D-Logic バッチ計算API登録完了")
         print("✅ V2 I-Logic バッチ計算API登録完了")

@@ -95,7 +95,7 @@ class V2Config:
     
     @property
     def POINTS_PER_CHAT(self):
-        return self.get_points_value("per_chat", 1)
+        return self.get_points_value("per_chat", 0)
     
     # 友達紹介ポイント（被紹介者）
     @property

@@ -162,8 +162,9 @@ async def create_chat(
             points_service = V2PointsService()
             points_data = await points_service.get_user_points(user_id)
             
-            if points_data["current_points"] < 1:
-                raise HTTPException(status_code=400, detail="チャット作成にはポイントが必要です")
+            required_points = v2_config.POINTS_PER_CHAT
+            if required_points > 0 and points_data["current_points"] < required_points:
+                raise HTTPException(status_code=400, detail=f"チャット作成には{required_points}ポイントが必要です")
         
         # v2_race_scoresテーブルをチェック（パフォーマンス最適化のため無効化）
         # # from services.v2.race_scores_service import V2RaceScoresService  # パフォーマンス最適化のため無効化
@@ -260,9 +261,11 @@ async def create_chat(
         
         # ポイント消費（管理者テストモード以外）
         if not is_admin_test:
-            await points_service.use_points(
-                user_id=user_id,
-                amount=1,
+            required_points = v2_config.POINTS_PER_CHAT
+            if required_points > 0:
+                await points_service.use_points(
+                    user_id=user_id,
+                    amount=required_points,
                 transaction_type="chat_create",
                 description=f"{request.venue}{request.race_number}Rのチャット作成",
                 related_entity_id=chat_session["id"]

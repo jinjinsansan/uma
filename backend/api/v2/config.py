@@ -66,17 +66,29 @@ class V2Config:
     
     def get_points_value(self, key: str, default: int) -> int:
         """ポイント値を取得（DB > 環境変数 > デフォルト）"""
+        # カラム名マッピング（config.py の key -> DBのカラム名）
+        column_mapping = {
+            "per_chat": "chat_cost_points",
+            "google_auth": "google_auth_points",
+            "line_connect": "line_connect_points",
+            "daily_login": "daily_login_points",
+            "referral_received": "referral_points"
+        }
+
         # 1. データベースから取得を試みる
         db_config = self._get_db_config()
-        if db_config and key in db_config:
-            return int(db_config[key])
-        
+        if db_config:
+            # マッピングされたカラム名で探す
+            db_column = column_mapping.get(key, key)
+            if db_column in db_config and db_config[db_column] is not None:
+                return int(db_config[db_column])
+
         # 2. 環境変数から取得
         env_key = f"V2_POINTS_{key.upper()}"
         env_value = os.getenv(env_key)
         if env_value:
             return int(env_value)
-        
+
         # 3. デフォルト値を返す
         return default
     

@@ -379,7 +379,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
     
     def _should_analyze(self, message: str) -> bool:
         """メッセージが分析要求かどうかを判定"""
-        analyze_keywords = ['分析', '評価', '順位', '上位', '予想', 'ランキング', 'スコア']
+        analyze_keywords = ['分析', '評価', '順位', '上位', '予想', 'ランキング', 'スコア', '計算']
         message_lower = message.lower()
         return any(keyword in message_lower for keyword in analyze_keywords)
     
@@ -2789,7 +2789,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
     def _generate_sire_analysis(self, race_data: Dict[str, Any]) -> Tuple[str, Optional[Dict]]:
         """
         種牡馬分析を生成
-        出走馬の父、母、母父を表示
+        出走馬の父、母、母父を表示 + 産駒成績を追加
 
         Returns:
             (content, analysis_data) のタプル
@@ -2798,6 +2798,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             venue = race_data.get('venue', '')
             race_number = race_data.get('race_number', '')
             horses = race_data.get('horses', [])
+            distance = race_data.get('distance', '')
 
             # 地方競馬かどうかを判定
             is_local = self._is_local_racing(venue)
@@ -2810,6 +2811,28 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             lines.append("**血統分析**")
             lines.append(f"【{venue} {race_number}R】")
             lines.append("")
+
+            # ViewLogicEngineから産駒成績を取得する準備
+            viewlogic_engine = None
+            venue_code = None
+            if not is_local and distance:  # JRAの場合のみ産駒成績を表示
+                try:
+                    from services.viewlogic_engine import ViewLogicEngine
+                    viewlogic_engine = ViewLogicEngine()
+                    # 会場コードマッピング
+                    venue_codes = {
+                        '札幌': '01', '函館': '02', '福島': '03', '新潟': '04',
+                        '東京': '05', '中山': '06', '中京': '07', '京都': '08',
+                        '阪神': '09', '小倉': '10'
+                    }
+                    venue_code = venue_codes.get(venue, '')
+                    # 距離を文字列に変換（例: 2400m → '2400'）
+                    if isinstance(distance, str) and distance.endswith('m'):
+                        distance = distance[:-1]
+                    distance = str(distance)
+                except Exception as e:
+                    logger.warning(f"ViewLogicEngine初期化エラー: {e}")
+                    viewlogic_engine = None
 
             # 各馬の血統データを取得
             for i, horse in enumerate(horses):
@@ -2828,7 +2851,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 pedigree_data = self._get_horse_pedigree(dlogic_manager, horse_name)
 
                 # 馬番をシンプルな数字表記に
-                
+
                 # フォーマット出力
                 lines.append(f"【{horse_number}番】 **{horse_name}**")
 
@@ -2841,6 +2864,46 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                     if dam and dam != '':
                         lines.append(f"  ◆ 母　：{dam}")
                     lines.append(f"  ◆ 母父：{broodmare_sire}")
+
+                    # 血統情報と産駒成績を見やすく分離
+                    lines.append("")
+
+                    # 産駒成績を追加（ViewLogicEngineが利用可能な場合）
+                    if viewlogic_engine and venue_code and distance:
+                        try:
+                            bloodline_result = viewlogic_engine.analyze_horse_bloodline_performance(
+                                horse_name, venue_code, distance
+                            )
+
+                            # 父の産駒成績
+                            if bloodline_result.get('sire_performance'):
+                                sire_perf = bloodline_result['sire_performance']
+                                if 'message' not in sire_perf:
+                                    lines.append(f"    └ 父 {venue}{distance}m成績: {sire_perf['total_races']}戦{sire_perf['wins']}勝 複勝率{sire_perf['place_rate']:.1f}%")
+                                    # 馬場状態別を追加
+                                    if sire_perf.get('by_condition'):
+                                        for cond in sire_perf['by_condition']:
+                                            if cond['races'] > 0:
+                                                lines.append(f"      {cond['condition']}: {cond['races']}戦{cond['wins']}勝 複勝率{cond['place_rate']:.1f}%")
+
+                            # 空行を追加（父と母父の成績を見やすく分離）
+                            lines.append("")
+
+                            # 母父の成績
+                            if bloodline_result.get('broodmare_sire_performance'):
+                                bm_perf = bloodline_result['broodmare_sire_performance']
+                                if 'message' not in bm_perf:
+                                    lines.append(f"    └ {venue}{distance}m成績: {bm_perf['total_races']}戦{bm_perf['wins']}勝 複勝率{bm_perf['place_rate']:.1f}%")
+                                    # 馬場状態別を追加
+                                    if bm_perf.get('by_condition'):
+                                        for cond in bm_perf['by_condition']:
+                                            if cond['races'] > 0:
+                                                lines.append(f"      {cond['condition']}: {cond['races']}戦{cond['wins']}勝 複勝率{cond['place_rate']:.1f}%")
+
+                        except Exception as e:
+                            logger.debug(f"産駒成績取得エラー（{horse_name}）: {e}")
+                            # エラーは無視（基本の血統表示は維持）
+
                 else:
                     lines.append("  － 血統データなし")
 

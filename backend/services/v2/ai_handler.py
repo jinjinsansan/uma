@@ -2877,10 +2877,12 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                                 )
                                 if 'message' not in sire_perf:
                                     lines.append(f"    └ 父 {venue}{distance}m成績: {sire_perf['total_races']}戦{sire_perf['wins']}勝 複勝率{sire_perf['place_rate']:.1f}%")
-                                    # 馬場状態別を追加（全ての状態を表示）
+                                    # 馬場状態別を追加（0戦のデータは表示しない）
                                     if sire_perf.get('by_condition'):
                                         for cond in sire_perf['by_condition']:
-                                            lines.append(f"      {cond['condition']}: {cond['races']}戦{cond['wins']}勝 複勝率{cond['place_rate']:.1f}%")
+                                            # 0戦のデータは表示しない
+                                            if cond['races'] > 0:
+                                                lines.append(f"      {cond['condition']}: {cond['races']}戦{cond['wins']}勝 複勝率{cond['place_rate']:.1f}%")
 
                             # 空行を追加（父と母父の成績を見やすく分離）
                             lines.append("")
@@ -2892,10 +2894,12 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                                 )
                                 if 'message' not in bm_perf:
                                     lines.append(f"    └ 母父 {venue}{distance}m成績: {bm_perf['total_races']}戦{bm_perf['wins']}勝 複勝率{bm_perf['place_rate']:.1f}%")
-                                    # 馬場状態別を追加（全ての状態を表示）
+                                    # 馬場状態別を追加（0戦のデータは表示しない）
                                     if bm_perf.get('by_condition'):
                                         for cond in bm_perf['by_condition']:
-                                            lines.append(f"      {cond['condition']}: {cond['races']}戦{cond['wins']}勝 複勝率{cond['place_rate']:.1f}%")
+                                            # 0戦のデータは表示しない
+                                            if cond['races'] > 0:
+                                                lines.append(f"      {cond['condition']}: {cond['races']}戦{cond['wins']}勝 複勝率{cond['place_rate']:.1f}%")
 
                         except Exception as e:
                             logger.debug(f"産駒成績取得エラー（{horse_name}）: {e}")

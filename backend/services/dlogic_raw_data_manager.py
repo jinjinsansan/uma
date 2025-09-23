@@ -15,8 +15,13 @@ import mysql.connector
 
 class DLogicRawDataManager:
     """D-Logic生データ管理システム"""
-    
+
     def __init__(self):
+        # メモリキャッシュ（計算結果を保存）
+        self._calculation_cache = {}
+        self._cache_hits = 0
+        self._cache_misses = 0
+
         # Render Proプランの永続ディスクパスを使用
         # /opt/render/project/src は一時的、/var/data は永続的
         if os.environ.get('RENDER'):
@@ -170,7 +175,20 @@ class DLogicRawDataManager:
         return None
     
     def calculate_dlogic_realtime(self, horse_name: str) -> Dict[str, Any]:
-        """生データからリアルタイムD-Logic計算"""
+        """生データからリアルタイムD-Logic計算（キャッシュ機能付き）"""
+
+        # キャッシュチェック
+        if horse_name in self._calculation_cache:
+            self._cache_hits += 1
+            # 10回ごとにキャッシュ統計を出力
+            if (self._cache_hits + self._cache_misses) % 10 == 0:
+                hit_rate = (self._cache_hits / (self._cache_hits + self._cache_misses)) * 100
+                print(f"📊 キャッシュ統計: ヒット率 {hit_rate:.1f}% (hit:{self._cache_hits}/miss:{self._cache_misses})")
+            return self._calculation_cache[horse_name]
+
+        # キャッシュミス - 計算実行
+        self._cache_misses += 1
+
         raw_data = self.get_horse_raw_data(horse_name)
         if not raw_data:
             return {"error": f"{horse_name}のデータが見つかりません"}
@@ -194,13 +212,24 @@ class DLogicRawDataManager:
         # 総合スコア計算（ダンスインザダーク基準）
         total_score = self._calculate_total_score(scores)
         
-        return {
+        result = {
             "horse_name": horse_name,
             "d_logic_scores": scores,
             "total_score": total_score,
             "grade": self._grade_performance(total_score),
             "calculation_time": datetime.now().isoformat()
         }
+
+        # キャッシュに保存（最大500頭まで）
+        if len(self._calculation_cache) < 500:
+            self._calculation_cache[horse_name] = result
+        elif len(self._calculation_cache) == 500:
+            # 古いエントリを削除（FIFO）
+            first_key = next(iter(self._calculation_cache))
+            del self._calculation_cache[first_key]
+            self._calculation_cache[horse_name] = result
+
+        return result
     
     def _calc_distance_aptitude(self, raw_data: Dict) -> float:
         """距離適性計算"""

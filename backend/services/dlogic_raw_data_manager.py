@@ -137,11 +137,11 @@ class DLogicRawDataManager:
         """馬の生データ取得"""
         horses = self.knowledge_data.get("horses", {})
         
-        # デバッグ用: 最初の5頭の馬名を表示
-        if len(horses) > 0:
-            sample_names = list(horses.keys())[:5]
-            print(f"🔍 ナレッジ内の馬名サンプル: {sample_names}")
-            print(f"🔍 検索対象馬名: '{horse_name}'")
+        # デバッグ用: 最初の5頭の馬名を表示（コメントアウト）
+        # if len(horses) > 0:
+        #     sample_names = list(horses.keys())[:5]
+        #     print(f"🔍 ナレッジ内の馬名サンプル: {sample_names}")
+        #     print(f"🔍 検索対象馬名: '{horse_name}'")
         
         # 直接検索
         if horse_name in horses:
@@ -150,7 +150,7 @@ class DLogicRawDataManager:
         # 大文字小文字を無視した検索
         for key in horses.keys():
             if key.lower() == horse_name.lower():
-                print(f"⚠️ 大文字小文字の違いを検出: '{key}' != '{horse_name}'")
+                # print(f"⚠️ 大文字小文字の違いを検出: '{key}' != '{horse_name}'")
                 return horses[key]
         
         # 部分一致検索は完全一致に近い場合のみ
@@ -163,10 +163,10 @@ class DLogicRawDataManager:
                 # 馬名の差が2文字以内の場合のみ
                 if abs(len(key) - len(horse_name)) <= 2:
                     if horse_name in key or key in horse_name:
-                        print(f"⚠️ 近似一致を検出: '{key}' <-> '{horse_name}'")
+                        # print(f"⚠️ 近似一致を検出: '{key}' <-> '{horse_name}'")
                         return horses[key]
         
-        print(f"❌ 馬名 '{horse_name}' が見つかりません")
+        # print(f"❌ 馬名 '{horse_name}' が見つかりません")
         return None
     
     def calculate_dlogic_realtime(self, horse_name: str) -> Dict[str, Any]:

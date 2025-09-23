@@ -146,13 +146,13 @@ class IMLogicEngine:
                         'post': post,
                         'sire': None  # 種牡馬情報（将来的に実装）
                     }
-                    logger.debug(f"騎手分析開始: {jockey_name}, weight: {jockey_weight}%")
+                    print(f"[DEBUG] 騎手分析開始: {jockey_name}, weight: {jockey_weight}%")
                     jockey_analysis = self.jockey_manager.calculate_jockey_score(
                         jockey_name,
                         jockey_context
                     )
                     jockey_score = jockey_analysis.get('total_score', 0)
-                    logger.debug(f"騎手スコア取得: {jockey_name} = {jockey_score}")
+                    print(f"[DEBUG] 騎手スコア取得: {jockey_name} = {jockey_score}")
                     
                     # 総合評価（カスタム比率）
                     total_score = (
@@ -175,11 +175,12 @@ class IMLogicEngine:
                     })
                     
                 except Exception as e:
-                    logger.error(f"馬 {horses[i]} の分析中にエラー: {e}")
-                    logger.error(f"騎手: {jockey_name if 'jockey_name' in locals() else 'Unknown'}")
-                    logger.error(f"horse_weight: {horse_weight}, jockey_weight: {jockey_weight}")
+                    print(f"[ERROR] 馬 {horses[i]} の分析中にエラー: {e}")
+                    print(f"[ERROR] 騎手: {jockey_name if 'jockey_name' in locals() else 'Unknown'}")
+                    print(f"[ERROR] horse_weight: {horse_weight}, jockey_weight: {jockey_weight}")
                     import traceback
-                    logger.error(f"スタックトレース: {traceback.format_exc()}")
+                    print(f"[ERROR] スタックトレース: {traceback.format_exc()}")
+                    logger.error(f"馬 {horses[i]} の分析中にエラー: {e}")
                     # エラーが発生した馬はスキップ
                     continue
             

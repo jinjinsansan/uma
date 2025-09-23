@@ -439,7 +439,7 @@ async def send_message(
         
         # IMLogic設定を取得（リクエストから渡されるか、Supabaseから取得）
         imlogic_settings = request.imlogic_settings
-        if (not imlogic_settings or imlogic_settings == {}) and request.ai_type == "imlogic":
+        if (not imlogic_settings or imlogic_settings == {}):
             # ユーザーのIMLogic設定をSupabaseから取得
             try:
                 from services.v2_database import v2_database

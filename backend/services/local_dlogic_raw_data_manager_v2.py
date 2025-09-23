@@ -15,8 +15,20 @@ logger = logging.getLogger(__name__)
 class LocalDLogicRawDataManagerV2:
     """地方競馬版D-Logic生データ管理システム（独立版）"""
     
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
     def __init__(self):
         """初期化：地方競馬版専用"""
+        # 既に初期化済みの場合はスキップ
+        if LocalDLogicRawDataManagerV2._initialized:
+            return
+            
         # キャッシュファイルパス（Renderでは/tmpを使用）
         if os.environ.get('RENDER'):
             # Renderでは書き込み可能な/tmpディレクトリを使用
@@ -37,6 +49,7 @@ class LocalDLogicRawDataManagerV2:
         
         horse_count = len(self.knowledge_data.get('horses', {}))
         print(f"✅ 地方競馬版マネージャーV2初期化完了: {horse_count}頭")
+        LocalDLogicRawDataManagerV2._initialized = True
     
     def _load_knowledge(self) -> Dict[str, Any]:
         """ナレッジファイルの読み込み"""

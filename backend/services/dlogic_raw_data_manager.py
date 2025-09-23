@@ -15,8 +15,20 @@ import mysql.connector
 
 class DLogicRawDataManager:
     """D-Logic生データ管理システム"""
+    
+    _instance = None
+    _initialized = False
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     def __init__(self):
+        # 既に初期化済みの場合はスキップ
+        if DLogicRawDataManager._initialized:
+            return
+            
         # メモリキャッシュ（計算結果を保存）
         self._calculation_cache = {}
         self._cache_hits = 0
@@ -37,6 +49,7 @@ class DLogicRawDataManager:
         self.knowledge_data = self._load_knowledge()
         horse_count = len(self.knowledge_data.get('horses', {}))
         print(f"🚀 D-Logic生データマネージャー初期化完了 ({horse_count}頭)")
+        DLogicRawDataManager._initialized = True
         
     def _load_knowledge(self) -> Dict[str, Any]:
         """ナレッジファイル読み込み"""

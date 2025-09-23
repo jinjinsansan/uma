@@ -13,7 +13,19 @@ from .dlogic_raw_data_manager import dlogic_manager
 class FastDLogicEngine:
     """高速D-Logic計算エンジン"""
     
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
     def __init__(self):
+        # 既に初期化済みの場合はスキップ
+        if FastDLogicEngine._initialized:
+            return
+            
         # グローバルインスタンスを使用（ナレッジの重複読み込みを回避）
         self.raw_manager = dlogic_manager
         self.mysql_config = {
@@ -25,6 +37,7 @@ class FastDLogicEngine:
             'charset': 'utf8mb4'
         }
         print(f"⚡ 高速D-Logic計算エンジン初期化完了 (ナレッジ: {len(self.raw_manager.knowledge_data.get('horses', {}))}頭)")
+        FastDLogicEngine._initialized = True
     
     def analyze_single_horse(self, horse_name: str) -> Dict[str, Any]:
         """単体馬分析（目標: 0.1秒以内）"""

@@ -10,8 +10,20 @@ from .local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
 class LocalFastDLogicEngineV2:  # FastDLogicEngineを継承しない独立実装
     """地方競馬版高速D-Logic計算エンジン V2"""
     
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
     def __init__(self):
         """初期化：地方競馬版V2マネージャーを使用"""
+        # 既に初期化済みの場合はスキップ
+        if LocalFastDLogicEngineV2._initialized:
+            return
+            
         # 親クラスの初期化をスキップ
         # super().__init__() は呼ばない
         
@@ -24,6 +36,7 @@ class LocalFastDLogicEngineV2:  # FastDLogicEngineを継承しない独立実装
         # 初期化完了メッセージ
         horse_count = len(self.raw_manager.knowledge_data.get('horses', {}))
         print(f"🏇 地方競馬版D-Logic計算エンジンV2初期化完了 (ナレッジ: {horse_count}頭)")
+        LocalFastDLogicEngineV2._initialized = True
     
     def get_engine_info(self) -> Dict[str, Any]:
         """エンジン情報を返す"""

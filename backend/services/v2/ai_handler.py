@@ -445,9 +445,9 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             
             # 全頭を順位付きで表示（I-Logic形式）
             emojis = ['🥇', '🥈', '🥉']
-            # -1はデータ不足なので、有効なスコアから除外
-            valid_scores = [s for s in scores if s.get('total_score') is not None and s.get('total_score') >= 0]
-            no_data_scores = [s for s in scores if s.get('total_score') == -1]
+            # データ不足（None）の馬を除外、マイナススコアは有効
+            valid_scores = [s for s in scores if s.get('total_score') is not None and s.get('data_status') == 'ok']
+            no_data_scores = [s for s in scores if s.get('data_status') == 'no_data']
             
             for i, score_data in enumerate(valid_scores):
                 # 上位3位まで絵文字、4位以降は数字表示

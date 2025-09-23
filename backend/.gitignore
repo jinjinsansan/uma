@@ -14,6 +14,10 @@ test_viewlogic*.py
 # Large data files
 backend/data/unified_knowledge_*.json
 backend/data/dlogic_raw_knowledge.json
+backend/data/chunks/*.json
+backend/data/extended_jockey_knowledge*.json
+backend/data/immediate_batch*.json
+backend/data/jockey_knowledge*.json
 
 # Temporary large files
 *.json.bak

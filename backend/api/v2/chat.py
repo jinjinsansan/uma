@@ -449,8 +449,12 @@ async def send_message(
             print(f"[DEBUG] 空の設定を検知、Supabaseから取得開始")
             # ユーザーのIMLogic設定をSupabaseから取得
             try:
-                from services.v2_database import v2_database
-                supabase = v2_database.get_client()
+                from supabase import create_client, Client
+                import os
+                
+                supabase_url = os.getenv("SUPABASE_URL")
+                supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+                supabase: Client = create_client(supabase_url, supabase_key)
                 
                 # v2_usersテーブルからユーザーIDを取得
                 user_result = supabase.table("v2_users").select("id").eq("email", user_email).execute()

@@ -439,7 +439,12 @@ async def send_message(
         
         # IMLogic設定を取得（リクエストから渡されるか、Supabaseから取得）
         imlogic_settings = request.imlogic_settings
+        logger.info(f"[DEBUG] imlogic_settings from request: {imlogic_settings}")
+        logger.info(f"[DEBUG] ai_type: {request.ai_type}")
+        logger.info(f"[DEBUG] user_email: {user_email}")
+        
         if (not imlogic_settings or imlogic_settings == {}):
+            logger.info(f"[DEBUG] 空の設定を検知、Supabaseから取得開始")
             # ユーザーのIMLogic設定をSupabaseから取得
             try:
                 from services.v2_database import v2_database
@@ -447,6 +452,7 @@ async def send_message(
                 
                 # v2_usersテーブルからユーザーIDを取得
                 user_result = supabase.table("v2_users").select("id").eq("email", user_email).execute()
+                logger.info(f"[DEBUG] user_result.data: {user_result.data}")
                 if user_result.data:
                     v2_user_id = user_result.data[0]['id']
                     

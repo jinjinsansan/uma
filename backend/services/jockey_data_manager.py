@@ -59,19 +59,38 @@ class JockeyDataManager:
             raise
     
     def get_jockey_data(self, jockey_name: str) -> Optional[Dict[str, Any]]:
-        """指定された騎手のデータを取得"""
+        """指定された騎手のデータを取得（表記揺れ対応）"""
         # 騎手名の正規化（全角スペースを除去）
         normalized_name = jockey_name.strip()
-        
+
         # 直接マッチを試みる
         if normalized_name in self.jockey_knowledge:
             return self.jockey_knowledge[normalized_name]
-        
-        # 全角スペース付きでも検索
+
+        # 外国人騎手の表記揺れ対応（C.ルメール → ルメール）
+        # イニシャル+ピリオド+名前のパターンを処理
+        import re
+        pattern = r'^[A-ZＡ-Ｚ][\.．・]\s*(.+)$'
+        match = re.match(pattern, normalized_name)
+        if match:
+            base_name = match.group(1)
+            if base_name in self.jockey_knowledge:
+                return self.jockey_knowledge[base_name]
+
+        # 「永島まなみ」→「永島まな」のような登録ミス対応
+        # 部分一致で検索（名前の前方一致）
         for key in self.jockey_knowledge.keys():
+            # 完全一致（スペース除去後）
             if key.strip() == normalized_name:
                 return self.jockey_knowledge[key]
-        
+            # 前方一致（登録名が短い場合）
+            if normalized_name.startswith(key) and len(normalized_name) - len(key) <= 1:
+                # 例：「永島まなみ」と「永島まな」（差が1文字）
+                return self.jockey_knowledge[key]
+            # 逆方向の前方一致（入力名が短い場合）
+            if key.startswith(normalized_name) and len(key) - len(normalized_name) <= 1:
+                return self.jockey_knowledge[key]
+
         return None
     
     def calculate_venue_aptitude(self, jockey_name: str, venue: str) -> float:
@@ -150,7 +169,7 @@ class JockeyDataManager:
         # 騎手データの存在確認
         jockey_data = self.get_jockey_data(jockey_name)
         if not jockey_data:
-            logger.warning(f"騎手データが見つかりません: {jockey_name}")
+            logger.debug(f"騎手データが見つかりません: {jockey_name}")  # WARNINGからDEBUGに変更
         
         venue_score = self.calculate_venue_aptitude(jockey_name, context.get('venue', ''))
         post_score = self.calculate_post_position_aptitude(jockey_name, context.get('post', 1))

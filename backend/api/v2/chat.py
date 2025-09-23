@@ -530,26 +530,75 @@ async def get_race_scores(race_id: str):
     """
     try:
         # from services.v2.race_scores_service import V2RaceScoresService  # パフォーマンス最適化のため無効化
-        
+
         # パフォーマンス最適化: スコア計算を完全にスキップ
-        return {"dlogic": None, "ilogic": None}
-        
+        return {
+            "dlogic": None,
+            "ilogic": None,
+            "flogic": None,
+            "metalogic": None,
+            "viewlogic": None,
+            "imlogic": None
+        }
+
         # # 元のコード（無効化）
         # service = V2RaceScoresService()
         # scores = await service.get_race_scores(race_id)
-        # 
+        #
         # if scores:
         #     # JSONBフィールドをパース
         #     if scores.get("dlogic_scores") and isinstance(scores["dlogic_scores"], str):
         #         import json
         #         scores["dlogic_scores"] = json.loads(scores["dlogic_scores"])
-        #     
+        #
         #     if scores.get("ilogic_scores") and isinstance(scores["ilogic_scores"], str):
         #         import json
         #         scores["ilogic_scores"] = json.loads(scores["ilogic_scores"])
-        # 
+        #
         # return scores or {}
-        
+
     except Exception as e:
         logger.error(f"レーススコア取得エラー: {e}")
+        return {}
+
+@router.post("/race-scores/batch")
+async def get_race_scores_batch(race_ids: list[str]):
+    """
+    複数レースの全エンジンスコアを一括取得（パフォーマンス最適化）
+
+    Args:
+        race_ids: レースIDのリスト (例: ["20250921-中山-7", "20250921-中山-8"])
+
+    Returns:
+        {
+            "20250921-中山-7": {
+                "dlogic": null,
+                "ilogic": null,
+                "flogic": null,
+                "metalogic": null,
+                "viewlogic": null,
+                "imlogic": null
+            },
+            ...
+        }
+    """
+    try:
+        # パフォーマンス最適化: 現在は全て空のスコアを返す
+        # 将来的にはここでDBから一括取得する
+        result = {}
+        for race_id in race_ids:
+            result[race_id] = {
+                "dlogic": None,
+                "ilogic": None,
+                "flogic": None,
+                "metalogic": None,
+                "viewlogic": None,
+                "imlogic": None
+            }
+
+        logger.info(f"バッチ取得: {len(race_ids)}レース分のスコアを返却")
+        return result
+
+    except Exception as e:
+        logger.error(f"バッチスコア取得エラー: {e}")
         return {}

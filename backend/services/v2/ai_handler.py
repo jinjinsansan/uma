@@ -283,8 +283,20 @@ class V2AIHandler:
                 
                 # IMLogicEngineで分析
                 # フロントエンドからのデータ構造に対応
-                horse_weight = settings.get('horse_weight') or settings.get('horse_ratio', 70)
-                jockey_weight = settings.get('jockey_weight') or settings.get('jockey_ratio', 30)
+                # 0も有効な値として扱うため、Noneチェックを使用
+                if 'horse_weight' in settings:
+                    horse_weight = settings['horse_weight']
+                elif 'horse_ratio' in settings:
+                    horse_weight = settings['horse_ratio']
+                else:
+                    horse_weight = 70
+                    
+                if 'jockey_weight' in settings:
+                    jockey_weight = settings['jockey_weight']
+                elif 'jockey_ratio' in settings:
+                    jockey_weight = settings['jockey_ratio']
+                else:
+                    jockey_weight = 30
                 raw_weights = settings.get('item_weights') or settings.get('weights', {})
                 
                 # フロントエンドのキー形式が番号付きか番号なしかを判定

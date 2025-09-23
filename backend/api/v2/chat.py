@@ -437,11 +437,35 @@ async def send_message(
         
 
         
-        # IMLogic設定を取得（リクエストから渡されるか、セッションから取得）
+        # IMLogic設定を取得（リクエストから渡されるか、Supabaseから取得）
         imlogic_settings = request.imlogic_settings
-        if not imlogic_settings and request.ai_type == "imlogic" and session.get("imlogic_settings_id"):
-            # TODO: Supabaseから設定を取得
-            pass
+        if not imlogic_settings and request.ai_type == "imlogic":
+            # ユーザーのIMLogic設定をSupabaseから取得
+            try:
+                from services.v2_database import v2_database
+                supabase = v2_database.get_client()
+                
+                # v2_usersテーブルからユーザーIDを取得
+                user_result = supabase.table("v2_users").select("id").eq("email", user_email).execute()
+                if user_result.data:
+                    v2_user_id = user_result.data[0]['id']
+                    
+                    # v2_imlogic_settingsから最新の設定を取得
+                    settings_result = supabase.table("v2_imlogic_settings").select("*").eq(
+                        "user_id", v2_user_id
+                    ).eq("is_active", True).order("created_at", desc=True).limit(1).execute()
+                    
+                    if settings_result.data:
+                        settings_data = settings_result.data[0]
+                        imlogic_settings = {
+                            "horse_weight": settings_data.get("horse_weight", 70),
+                            "jockey_weight": settings_data.get("jockey_weight", 30),
+                            "item_weights": settings_data.get("item_weights", {})
+                        }
+                        logger.info(f"IMLogic設定取得成功: 馬={imlogic_settings['horse_weight']}%, 騎手={imlogic_settings['jockey_weight']}%")
+            except Exception as e:
+                logger.warning(f"IMLogic設定取得エラー: {e}")
+                pass
         
         # AIハンドラーで処理
         logger.info(f"process_message開始")

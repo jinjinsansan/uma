@@ -443,7 +443,9 @@ async def send_message(
         print(f"[DEBUG] ai_type: {request.ai_type}")
         print(f"[DEBUG] user_email: {user_email}")
         
-        if (not imlogic_settings or imlogic_settings == {}):
+        # horse_weightとjockey_weightが含まれていない場合もSupabaseから取得
+        if (not imlogic_settings or imlogic_settings == {} or 
+            'horse_weight' not in imlogic_settings or 'jockey_weight' not in imlogic_settings):
             print(f"[DEBUG] 空の設定を検知、Supabaseから取得開始")
             # ユーザーのIMLogic設定をSupabaseから取得
             try:

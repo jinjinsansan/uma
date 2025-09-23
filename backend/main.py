@@ -252,6 +252,30 @@ async def startup_event():
         import traceback
         traceback.print_exc()
     
+    # 9. キャッシュプリウォーミング（G1レース対策）
+    try:
+        from services.cache_service import prewarm_cache, schedule_cache_prewarm
+        import asyncio
+        
+        # 非同期でプリウォーミングを実行（起動を遅延させないため）
+        async def async_prewarm():
+            try:
+                print("🔥 キャッシュプリウォーミング: 開始...")
+                warmed = prewarm_cache()
+                print(f"✅ キャッシュプリウォーミング: {warmed}エントリを事前キャッシュ")
+            except Exception as e:
+                print(f"⚠️  キャッシュプリウォーミングエラー: {e}")
+        
+        # 非同期タスクとして実行
+        asyncio.create_task(async_prewarm())
+        
+        # 定期的なプリウォーミングもスケジュール
+        schedule_cache_prewarm()
+        print("✅ キャッシュプリウォーミング: スケジュール設定完了（毎朝4時実行）")
+        
+    except Exception as e:
+        print(f"⚠️  キャッシュプリウォーミング設定エラー: {e}")
+    
     # メモリ使用量を確認・最適化
     gc.collect()  # 強制的にガベージコレクション実行
     

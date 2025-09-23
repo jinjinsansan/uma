@@ -46,22 +46,58 @@ class CacheService:
         
         # TTL設定（用途別）
         self.ttl_settings = {
-            'chat_response': timedelta(hours=24),      # チャット応答: 24時間
-            'dlogic_analysis': timedelta(hours=48),    # D-Logic分析: 48時間
-            'weather_analysis': timedelta(hours=12),   # 天候適性: 12時間
-            'faq_response': timedelta(days=7),         # FAQ: 7日間
-            'race_analysis': timedelta(hours=6),       # レース分析: 6時間
+            'chat_response': timedelta(hours=48),      # チャット応答: 48時間（増加）
+            'dlogic_analysis': timedelta(hours=72),    # D-Logic分析: 72時間（増加）
+            'imlogic_analysis': timedelta(hours=72),   # IMLogic分析: 72時間
+            'weather_analysis': timedelta(hours=24),   # 天候適性: 24時間（増加）
+            'faq_response': timedelta(days=14),        # FAQ: 14日間（増加）
+            'race_analysis': timedelta(hours=12),      # レース分析: 12時間（増加）
+            'horse_data': timedelta(days=7),           # 馬データ: 7日間
+            'jockey_data': timedelta(days=7),          # 騎手データ: 7日間
         }
     
     def _generate_key(self, prefix: str, data: Any) -> str:
-        """キャッシュキーを生成"""
+        """キャッシュキーを生成（正規化付き）"""
+        # データの正規化
         if isinstance(data, dict):
-            # 辞書の場合はソートしてJSON化
-            data_str = json.dumps(data, sort_keys=True, ensure_ascii=False)
+            # 辞書の値を正規化
+            normalized_data = {}
+            for k, v in data.items():
+                # 馬名の正規化（全角英数を半角に、大文字に統一）
+                if k in ['horse_name', 'horse', 'bamei', 'name'] and isinstance(v, str):
+                    import unicodedata
+                    # 全角を半角に変換
+                    v = unicodedata.normalize('NFKC', v)
+                    # 大文字に統一
+                    v = v.upper()
+                    # 余分なスペースを除去
+                    v = ' '.join(v.split())
+                    normalized_data[k] = v
+                # 日付の正規化
+                elif k in ['race_date', 'date', 'kaisai_date'] and isinstance(v, str):
+                    # YYYY-MM-DD形式に統一
+                    v = v.replace('/', '-').replace('.', '-')
+                    normalized_data[k] = v
+                else:
+                    normalized_data[k] = v
+            data_str = json.dumps(normalized_data, sort_keys=True, ensure_ascii=False)
         elif isinstance(data, list):
-            # リストの場合はソートしてJSON化
-            data_str = json.dumps(sorted(data), ensure_ascii=False)
+            # リストの場合は各要素を正規化してソート
+            normalized_list = []
+            for item in data:
+                if isinstance(item, str):
+                    import unicodedata
+                    # 全角を半角に変換、大文字に統一
+                    item = unicodedata.normalize('NFKC', item).upper()
+                    item = ' '.join(item.split())
+                normalized_list.append(item)
+            data_str = json.dumps(sorted(normalized_list), ensure_ascii=False)
         else:
+            # 文字列の場合も正規化
+            if isinstance(data, str):
+                import unicodedata
+                data = unicodedata.normalize('NFKC', data).upper()
+                data = ' '.join(data.split())
             data_str = str(data)
         
         # MD5ハッシュでキーを生成
@@ -195,6 +231,95 @@ class CacheService:
                 total_size += 1000  # エラー時は1KBと仮定
         
         return total_size / (1024 * 1024)  # MB変換
+
+
+# グローバルインスタンス（全インスタンスで共有）
+def prewarm_cache():
+    """キャッシュをプリウォーミング（G1レース用）"""
+    logger.info("Starting cache prewarming for G1 races...")
+    
+    # G1レースでよく使われる馬名リスト（例）
+    popular_horses = [
+        "イクイノックス", "ドウデュース", "リバティアイランド",
+        "ソダシ", "ジオグリフ", "スターズオンアース"
+    ]
+    
+    # 主要競馬場
+    major_venues = ["東京", "中山", "京都", "阪神"]
+    
+    try:
+        from services.fast_dlogic_engine import FastDLogicEngine
+        engine = FastDLogicEngine()
+        
+        warmed = 0
+        for horse_name in popular_horses:
+            for venue in major_venues:
+                # キャッシュキー生成用のデータ
+                cache_data = {
+                    'horse_name': horse_name,
+                    'venue': venue,
+                    'analysis_type': 'dlogic'
+                }
+                
+                # キャッシュチェック
+                key = cache_service._generate_key('dlogic_analysis', cache_data)
+                
+                # Redisキャッシュに存在しない場合のみ計算
+                if cache_service.redis_cache and cache_service.redis_cache.is_connected():
+                    redis_key = f"dlogic:{key}"
+                    if not cache_service.redis_cache.exists(redis_key):
+                        # D-Logic分析を実行（実際の計算）
+                        try:
+                            result = engine.analyze_single_horse(horse_name)
+                            # 長めのTTLでキャッシュに保存
+                            cache_service.set(
+                                'dlogic_analysis',
+                                cache_data,
+                                result,
+                                ttl_override=timedelta(days=3)  # G1用に3日間保持
+                            )
+                            warmed += 1
+                            logger.debug(f"Prewarmed cache for {horse_name} at {venue}")
+                        except Exception as e:
+                            logger.warning(f"Failed to prewarm {horse_name}: {e}")
+        
+        logger.info(f"Cache prewarming completed. Warmed {warmed} entries.")
+        return warmed
+        
+    except Exception as e:
+        logger.error(f"Cache prewarming failed: {e}")
+        return 0
+
+
+def schedule_cache_prewarm():
+    """定期的なキャッシュプリウォーミングをスケジュール"""
+    import threading
+    import time
+    
+    def prewarm_worker():
+        while True:
+            try:
+                # 毎朝4時にプリウォーミング実行
+                now = datetime.now()
+                next_run = now.replace(hour=4, minute=0, second=0, microsecond=0)
+                if next_run < now:
+                    next_run += timedelta(days=1)
+                
+                wait_seconds = (next_run - now).total_seconds()
+                logger.info(f"Next cache prewarm scheduled in {wait_seconds/3600:.1f} hours")
+                time.sleep(wait_seconds)
+                
+                # プリウォーミング実行
+                prewarm_cache()
+                
+            except Exception as e:
+                logger.error(f"Prewarm scheduler error: {e}")
+                time.sleep(3600)  # エラー時は1時間後に再試行
+    
+    # バックグラウンドスレッドで実行
+    thread = threading.Thread(target=prewarm_worker, daemon=True)
+    thread.start()
+    logger.info("Cache prewarm scheduler started")
 
 
 # グローバルインスタンス（全インスタンスで共有）

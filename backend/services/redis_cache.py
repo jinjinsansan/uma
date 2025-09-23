@@ -120,11 +120,27 @@ class RedisCache:
             return False
     
     def generate_key(self, prefix: str, *args, **kwargs) -> str:
-        """キャッシュキーを生成"""
-        # 引数を文字列化してハッシュ化
-        key_parts = [str(arg) for arg in args]
-        key_parts.extend([f"{k}={v}" for k, v in sorted(kwargs.items())])
-        key_content = "_".join(key_parts)
+        """キャッシュキーを生成（正規化付き）"""
+        import unicodedata
+        
+        # 引数を正規化して文字列化
+        normalized_parts = []
+        
+        for arg in args:
+            if isinstance(arg, str):
+                # 全角を半角に、大文字に統一、余分なスペース除去
+                arg = unicodedata.normalize('NFKC', arg).upper().strip()
+                arg = ' '.join(arg.split())
+            normalized_parts.append(str(arg))
+        
+        # kwargsも同様に正規化
+        for k, v in sorted(kwargs.items()):
+            if isinstance(v, str):
+                v = unicodedata.normalize('NFKC', v).upper().strip()
+                v = ' '.join(v.split())
+            normalized_parts.append(f"{k}={v}")
+        
+        key_content = "_".join(normalized_parts)
         
         # 長いキーはハッシュ化
         if len(key_content) > 200:

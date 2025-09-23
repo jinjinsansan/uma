@@ -583,7 +583,7 @@ class ModernDLogicEngine:
             
             # 成績から適性を計算
             total_races = len(condition_races)
-            top3 = sum(1 for r in condition_races if r['result'] <= 3)
+            top3 = sum(1 for r in condition_races if int(r['result']) <= 3)
             
             place_rate = top3 / total_races
             
@@ -623,8 +623,8 @@ class ModernDLogicEngine:
             
             return {
                 'total': len(venue_races),
-                'wins': sum(1 for r in venue_races if r['result'] == 1),
-                'places': sum(1 for r in venue_races if r['result'] <= 3)
+                'wins': sum(1 for r in venue_races if int(r['result']) == 1),
+                'places': sum(1 for r in venue_races if int(r['result']) <= 3)
             }
             
         except Exception:
@@ -663,8 +663,8 @@ class ModernDLogicEngine:
             
             return {
                 'total': len(condition_races),
-                'wins': sum(1 for r in condition_races if r['result'] == 1),
-                'places': sum(1 for r in condition_races if r['result'] <= 3)
+                'wins': sum(1 for r in condition_races if int(r['result']) == 1),
+                'places': sum(1 for r in condition_races if int(r['result']) <= 3)
             }
             
         except Exception:

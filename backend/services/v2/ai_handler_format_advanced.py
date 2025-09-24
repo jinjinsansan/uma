@@ -150,43 +150,44 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
     logger = logging.getLogger(__name__)
     logger.info(f"ViewLogic展開予想 - zenhan_avg: {zenhan_avg}, kohan_avg: {kohan_avg}, pace: {pace}")
     
-    lines.append("### ペース予想")
-    lines.append("")
-    lines.append(f"**予想ペース: {pace}** （確信度: {confidence}%）")
-    lines.append("")
-    
-    # ペースに応じた詳細な解説
-    templates = get_pace_templates()
-    
-    # zenhan_avgが異常に小さい場合（データ不足）は別の表現を使用
-    if zenhan_avg < 20:  # 20秒未満は物理的に不可能
-        # データが不足している場合の汎用的な表現
-        if 'ハイペース' in pace:
-            lines.append(random.choice(templates['ハイペース_intro']))
-        elif 'スローペース' in pace:
-            lines.append(random.choice(templates['スローペース_intro']))
-        else:
-            lines.append(random.choice(templates['平均ペース_intro']))
-    elif 'ハイペース' in pace:
-        lines.append(f"前半は速いペースで推移し、{random.choice(templates['ハイペース_intro'])}")
-        lines.append(random.choice(templates['ハイペース_effect']))
-        lines.append("後半は前半のペース反動で失速が懸念される展開です。")
-    elif 'スローペース' in pace:
-        if zenhan_avg >= 20:  # 正常な値の場合のみ抽象表現を使用
-            lines.append(f"前半は遅めのペースで、{random.choice(templates['スローペース_intro'])}")
-            lines.append(random.choice(templates['スローペース_effect']))
-            lines.append("後半は瞬発力勝負になりそうですが、前残りの可能性が高い展開です。")
-        else:
-            lines.append(random.choice(templates['スローペース_intro']))
-            lines.append(random.choice(templates['スローペース_effect']))
-    else:
-        if zenhan_avg >= 20:  # 正常な値の場合のみ抽象表現を使用
-            lines.append(f"前半・後半ともに標準的なペースで、{random.choice(templates['平均ペース_intro'])}")
-            lines.append(random.choice(templates['平均ペース_effect']))
-        else:
-            lines.append(random.choice(templates['平均ペース_intro']))
-            lines.append(random.choice(templates['平均ペース_effect']))
-    lines.append("")
+    # ペース予想セクションを非表示化（スローペース予想が多いため）
+    # lines.append("### ペース予想")
+    # lines.append("")
+    # lines.append(f"**予想ペース: {pace}** （確信度: {confidence}%）")
+    # lines.append("")
+    # 
+    # # ペースに応じた詳細な解説
+    # templates = get_pace_templates()
+    # 
+    # # zenhan_avgが異常に小さい場合（データ不足）は別の表現を使用
+    # if zenhan_avg < 20:  # 20秒未満は物理的に不可能
+    #     # データが不足している場合の汎用的な表現
+    #     if 'ハイペース' in pace:
+    #         lines.append(random.choice(templates['ハイペース_intro']))
+    #     elif 'スローペース' in pace:
+    #         lines.append(random.choice(templates['スローペース_intro']))
+    #     else:
+    #         lines.append(random.choice(templates['平均ペース_intro']))
+    # elif 'ハイペース' in pace:
+    #     lines.append(f"前半は速いペースで推移し、{random.choice(templates['ハイペース_intro'])}")
+    #     lines.append(random.choice(templates['ハイペース_effect']))
+    #     lines.append("後半は前半のペース反動で失速が懸念される展開です。")
+    # elif 'スローペース' in pace:
+    #     if zenhan_avg >= 20:  # 正常な値の場合のみ抽象表現を使用
+    #         lines.append(f"前半は遅めのペースで、{random.choice(templates['スローペース_intro'])}")
+    #         lines.append(random.choice(templates['スローペース_effect']))
+    #         lines.append("後半は瞬発力勝負になりそうですが、前残りの可能性が高い展開です。")
+    #     else:
+    #         lines.append(random.choice(templates['スローペース_intro']))
+    #         lines.append(random.choice(templates['スローペース_effect']))
+    # else:
+    #     if zenhan_avg >= 20:  # 正常な値の場合のみ抽象表現を使用
+    #         lines.append(f"前半・後半ともに標準的なペースで、{random.choice(templates['平均ペース_intro'])}")
+    #         lines.append(random.choice(templates['平均ペース_effect']))
+    #     else:
+    #         lines.append(random.choice(templates['平均ペース_intro']))
+    #         lines.append(random.choice(templates['平均ペース_effect']))
+    # lines.append("")
     
     # 脚質別の馬名整理（馬番順）
     detailed_styles = result.get('detailed_styles', {})

@@ -165,6 +165,26 @@ def update_unified_knowledge():
             COALESCE(ra.babajotai_code_shiba, '0') as shiba_babajotai_code,
             COALESCE(ra.babajotai_code_dirt, '0') as dirt_babajotai_code,
             COALESCE(ra.tenko_code, '0') as tenko_code,
+            COALESCE(ra.kyosomei_hondai, '') as kyosomei_hondai,
+            COALESCE(ra.grade_code, '') as grade_code,
+            CASE
+                WHEN se.kohan_3f IS NULL OR se.kohan_3f = '' THEN ''
+                ELSE LPAD(se.kohan_3f::text, 3, '0')
+            END as kohan_3f,
+            CASE
+                WHEN ra.zenhan_3f IS NULL OR ra.zenhan_3f = '' THEN ''
+                ELSE LPAD(ra.zenhan_3f::text, 3, '0')
+            END as zenhan_3f,
+            CASE
+                WHEN ra.kohan_3f IS NULL OR ra.kohan_3f = '' THEN ''
+                ELSE LPAD(ra.kohan_3f::text, 3, '0')
+            END as race_kohan_3f,  -- ra.kohan_3fをrace_kohan_3fとして使用
+            COALESCE(se.dochaku_tosu, '0') as dochaku_tosu,
+            LPAD(se.umaban::text, 2, '0') as umaban,
+            CASE
+                WHEN se.wakuban IS NULL OR se.wakuban = '' THEN '0'
+                ELSE LPAD(se.wakuban::text, 1, '0')
+            END as wakuban,
             COALESCE(um.ketto_joho_01b, '') as sire,
             '' as dam,
             COALESCE(um.ketto_joho_02b, '') as broodmare_sire,
@@ -191,7 +211,7 @@ def update_unified_knowledge():
         print("🔍 週末のレースデータ取得中...")
         cur.execute(query, (year, saturday, sunday))
         
-        # カラム名定義
+        # カラム名定義（38項目+α）
         col_names = [
             "BAMEI", "RACE_CODE", "KAISAI_NEN", "KAISAI_GAPPI", "KAKUTEI_CHAKUJUN",
             "TANSHO_ODDS", "TANSHO_NINKIJUN", "FUTAN_JURYO", "BATAIJU", "ZOGEN_SA",
@@ -199,6 +219,8 @@ def update_unified_knowledge():
             "CORNER3_JUNI", "CORNER4_JUNI", "SOHA_TIME", "BAREI", "SEIBETSU_CODE",
             "KEIBAJO_CODE", "RACE_BANGO", "KETTO_TOROKU_BANGO", "TIME_SA", "KYORI",
             "TRACK_CODE", "SHIBA_BABAJOTAI_CODE", "DIRT_BABAJOTAI_CODE", "TENKO_CODE",
+            "KYOSOMEI_HONDAI", "GRADE_CODE", "KOHAN_3F", "ZENHAN_3F", "RACE_KOHAN_3F",
+            "DOCHAKU_TOSU", "UMABAN", "WAKUBAN",
             "sire", "dam", "broodmare_sire", "track_name"
         ]
         

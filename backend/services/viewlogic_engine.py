@@ -2808,10 +2808,17 @@ class ViewLogicEngine:
                 grade_code = race.get('GRADE_CODE', '')
                 class_name = self._get_grade_name(grade_code) if grade_code else ''
                 
-                # 血統情報の取得
-                sire = race.get('sire', '')
-                broodmare_sire = race.get('broodmare_sire', '')
-                
+                # 血統情報の取得（ViewLogic血統分析サブエンジンがあるため、ここでは表示しない）
+                # sire = race.get('sire', '')
+                # broodmare_sire = race.get('broodmare_sire', '')
+
+                # 上りタイムの処理
+                kohan_3f = race.get('KOHAN_3F', '')
+                if kohan_3f and str(kohan_3f).strip():
+                    agari_display = f"{kohan_3f}秒"
+                else:
+                    agari_display = ""  # データなしの場合は空文字
+
                 formatted_race = {
                     '開催日': f"{race.get('KAISAI_NEN', '')}/{race.get('KAISAI_GAPPI', '')}",
                     '競馬場': self._get_venue_name(race.get('KEIBAJO_CODE', '')),
@@ -2819,7 +2826,7 @@ class ViewLogicEngine:
                     'クラス': class_name,  # クラス名を追加
                     '着順': f"{race.get('KAKUTEI_CHAKUJUN', '')}着",
                     'タイム': race.get('SOHA_TIME', ''),
-                    '上り': f"{race.get('KOHAN_3F', '')}秒",
+                    '上り': agari_display,  # 改善された上り表示
                     '人気': f"{race.get('TANSHO_NINKIJUN', '')}番人気",
                     '騎手': race.get('KISHUMEI_RYAKUSHO', ''),
                     '距離': f"{race.get('KYORI', '')}m",
@@ -2827,8 +2834,8 @@ class ViewLogicEngine:
                     '頭数': f"{race.get('TOSU', '')}頭",
                     '馬体重': race.get('BATAIJU', ''),
                     'コーナー': f"{race.get('CORNER1_JUNI', '')}-{race.get('CORNER2_JUNI', '')}-{race.get('CORNER3_JUNI', '')}-{race.get('CORNER4_JUNI', '')}",
-                    '父': sire if sire else '不明',  # 血統情報を追加
-                    '母父': broodmare_sire if broodmare_sire else '不明'  # 血統情報を追加
+                    # '父': sire if sire else '不明',  # 血統情報を削除
+                    # '母父': broodmare_sire if broodmare_sire else '不明'  # 血統情報を削除
                 }
                 formatted_races.append(formatted_race)
             

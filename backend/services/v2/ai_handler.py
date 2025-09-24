@@ -2506,10 +2506,9 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 class_name = race.get("🏆 クラス", race.get("クラス", ""))
                 distance = race.get("📏 距離", race.get("距離", "不明"))
                 track = race.get("🌤️ 馬場", race.get("馬場", ""))
-                
-                # 血統情報の取得
-                sire = race.get("🐴 父", race.get("父", ""))
-                broodmare_sire = race.get("🐎 母父", race.get("母父", ""))
+                # 血統情報の取得（ViewLogic血統分析サブエンジンがあるため、ここでは使用しない）
+                # sire = race.get("🐴 父", race.get("父", ""))
+                # broodmare_sire = race.get("🐎 母父", race.get("母父", ""))
                 
                 # 日付フォーマットの改善（例: 2025/0608 → 2025/06/08）
                 if race_date != "不明" and len(race_date) == 9 and "/" in race_date:
@@ -2609,16 +2608,16 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                         agari_display = str(agari) if agari else "-"
                 
                 lines.append(f"　⏱ タイム: {time_display} / 上り: {agari_display}")
-                
-                # 血統情報を表示
-                if sire or broodmare_sire:
-                    bloodline_parts = []
-                    if sire and sire != "不明":
-                        bloodline_parts.append(f"父: {sire}")
-                    if broodmare_sire and broodmare_sire != "不明":
-                        bloodline_parts.append(f"母父: {broodmare_sire}")
-                    if bloodline_parts:
-                        lines.append(f"　🧬 血統: {' / '.join(bloodline_parts)}")
+
+                # 血統情報を表示（ViewLogic血統分析サブエンジンがあるため、ここでは表示しない）
+                # if sire or broodmare_sire:
+                #     bloodline_parts = []
+                #     if sire and sire != "不明":
+                #         bloodline_parts.append(f"父: {sire}")
+                #     if broodmare_sire and broodmare_sire != "不明":
+                #         bloodline_parts.append(f"母父: {broodmare_sire}")
+                #     if bloodline_parts:
+                #         lines.append(f"　🧬 血統: {' / '.join(bloodline_parts)}")
                 
                 # レース名があれば追加（注：これは別のレース名フィールド）
                 extra_race_name = race.get("レース名", "")

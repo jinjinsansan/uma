@@ -63,41 +63,14 @@ class CacheService:
             # 辞書の値を正規化
             normalized_data = {}
             for k, v in data.items():
-                # 馬名の正規化（全角英数を半角に、大文字に統一）
-                if k in ['horse_name', 'horse', 'bamei', 'name'] and isinstance(v, str):
-                    import unicodedata
-                    # 全角を半角に変換
-                    v = unicodedata.normalize('NFKC', v)
-                    # 大文字に統一
-                    v = v.upper()
-                    # 余分なスペースを除去
-                    v = ' '.join(v.split())
-                    normalized_data[k] = v
-                # 日付の正規化
-                elif k in ['race_date', 'date', 'kaisai_date'] and isinstance(v, str):
-                    # YYYY-MM-DD形式に統一
-                    v = v.replace('/', '-').replace('.', '-')
-                    normalized_data[k] = v
-                else:
-                    normalized_data[k] = v
+                # 正規化を削除し、そのまま使用
+                normalized_data[k] = v
             data_str = json.dumps(normalized_data, sort_keys=True, ensure_ascii=False)
         elif isinstance(data, list):
-            # リストの場合は各要素を正規化してソート
-            normalized_list = []
-            for item in data:
-                if isinstance(item, str):
-                    import unicodedata
-                    # 全角を半角に変換、大文字に統一
-                    item = unicodedata.normalize('NFKC', item).upper()
-                    item = ' '.join(item.split())
-                normalized_list.append(item)
-            data_str = json.dumps(sorted(normalized_list), ensure_ascii=False)
+            # リストの場合はそのままソート
+            data_str = json.dumps(sorted(data) if all(isinstance(x, str) for x in data) else data, ensure_ascii=False)
         else:
-            # 文字列の場合も正規化
-            if isinstance(data, str):
-                import unicodedata
-                data = unicodedata.normalize('NFKC', data).upper()
-                data = ' '.join(data.split())
+            # 文字列の場合はそのまま使用
             data_str = str(data)
         
         # MD5ハッシュでキーを生成

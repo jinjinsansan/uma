@@ -561,8 +561,8 @@ class ModernDLogicEngine:
             for race in past_races:
                 if isinstance(race, dict):
                     # 馬場状態コードから判定（1=良、2=稍重、3=重、4=不良）
-                    shiba_code = race.get('SHIBA_BABAJOTAI_CODE', 0)
-                    dirt_code = race.get('DIRT_BABAJOTAI_CODE', 0)
+                    shiba_code = int(race.get('SHIBA_BABAJOTAI_CODE', 0))
+                    dirt_code = int(race.get('DIRT_BABAJOTAI_CODE', 0))
                     # 芝またはダートの馬場状態を取得
                     baba_code = shiba_code if shiba_code > 0 else dirt_code
                     
@@ -643,8 +643,8 @@ class ModernDLogicEngine:
             for race in past_races:
                 if isinstance(race, dict):
                     # 馬場状態コードから判定
-                    shiba_code = race.get('SHIBA_BABAJOTAI_CODE', 0)
-                    dirt_code = race.get('DIRT_BABAJOTAI_CODE', 0)
+                    shiba_code = int(race.get('SHIBA_BABAJOTAI_CODE', 0))
+                    dirt_code = int(race.get('DIRT_BABAJOTAI_CODE', 0))
                     baba_code = shiba_code if shiba_code > 0 else dirt_code
                     
                     baba_map = {1: '良', 2: '稍重', 3: '重', 4: '不良'}

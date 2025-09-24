@@ -3030,10 +3030,8 @@ class ViewLogicEngine:
         normalized = normalize_jockey_name(normalized)
         
         # 外国人騎手の特殊対応（騎手ナレッジファイルの形式に合わせる）
+        # ルメールは jockey_name_mapper で正しく処理されるので特殊対応不要
         special_mapping = {
-            'Ｃ．ルメール': 'Ｃ．ルメール',
-            'C.ルメール': 'Ｃ．ルメール',
-            'ルメール': 'Ｃ．ルメール',
             'Ｍ．デムーロ': 'Ｍ．デムーロ',
             'M.デムーロ': 'Ｍ．デムーロ',
             'デムーロ': 'Ｍ．デムーロ'

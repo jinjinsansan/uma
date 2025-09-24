@@ -57,9 +57,11 @@ def download_existing_knowledge():
     try:
         response = requests.get(UNIFIED_KNOWLEDGE_URL, timeout=30)
         response.raise_for_status()
-        data = response.json()
-        print(f"✅ {len(data)}頭のデータをダウンロード完了")
-        return data
+        full_data = response.json()
+        # CDNファイルの構造: {"metadata": {...}, "horses": {...}}
+        horses_data = full_data.get("horses", full_data)  # horsesキーがあれば使う、なければ全体を使う
+        print(f"✅ {len(horses_data)}頭のデータをダウンロード完了")
+        return horses_data
     except Exception as e:
         print(f"❌ ダウンロードエラー: {e}")
         print("空のデータから開始します")
@@ -150,8 +152,8 @@ def update_unified_knowledge():
             LPAD(se.race_bango::text, 2, '0') as race_bango,
             se.ketto_toroku_bango,
             CASE 
-                WHEN se.time_sa LIKE '+%' THEN se.time_sa
-                WHEN se.time_sa LIKE '-%' THEN se.time_sa
+                WHEN se.time_sa LIKE '+%%' THEN se.time_sa
+                WHEN se.time_sa LIKE '-%%' THEN se.time_sa
                 WHEN se.time_sa IS NULL OR se.time_sa = '' THEN '+000'
                 ELSE '+' || LPAD(se.time_sa::text, 3, '0')
             END as time_sa,
@@ -221,31 +223,86 @@ def update_unified_knowledge():
             if race_data['broodmare_sire']:
                 race_data['broodmare_sire'] = race_data['broodmare_sire'].strip()
             
-            # 馬のデータを更新
+            # 馬のデータを更新（CDNの構造に合わせる）
             if horse_name not in horses_data:
-                horses_data[horse_name] = []
+                horses_data[horse_name] = {
+                    "horse_name": horse_name,
+                    "total_races": 0,
+                    "races": []
+                }
                 updated_horses += 1
             
             # 新レースを先頭に追加
-            horses_data[horse_name].insert(0, race_data)
+            horses_data[horse_name]["races"].insert(0, race_data)
             new_races += 1
             
             # 9走を超える場合は最古を削除
-            if len(horses_data[horse_name]) > 9:
-                horses_data[horse_name] = horses_data[horse_name][:9]
+            if len(horses_data[horse_name]["races"]) > 9:
+                horses_data[horse_name]["races"] = horses_data[horse_name]["races"][:9]
+            
+            # total_racesを更新
+            horses_data[horse_name]["total_races"] = len(horses_data[horse_name]["races"])
         
         print(f"\n📊 更新結果:")
         print(f"  新規レース: {new_races}件")
         print(f"  更新された馬: {updated_horses}頭")
         print(f"  総馬数: {len(horses_data)}頭")
         
-        # 6. 更新済みファイルを保存
+        # 6. 更新済みファイルを保存（metadataを含む）
         today = datetime.now().strftime("%Y%m%d")
         output_file = f"unified_knowledge_{today}.json"
         
+        # metadataを作成
+        metadata = {
+            "version": "3.0",
+            "created_at": datetime.now().isoformat(),
+            "total_horses": len(horses_data),
+            "data_period": f"None-{datetime.now().year}",
+            "sdk_version": "JRA_SDK_V2",
+            "engines": {
+                "D-Logic": {
+                    "description": "標準12項目分析",
+                    "required_fields": [
+                        "KAKUTEI_CHAKUJUN", "TANSHO_NINKIJUN", "KISHUMEI_RYAKUSHO",
+                        "CHOKYOSHIMEI_RYAKUSHO", "FUTAN_JURYO", "BATAIJU",
+                        "CORNER1_JUNI", "CORNER2_JUNI", "CORNER3_JUNI", "CORNER4_JUNI",
+                        "SOHA_TIME", "KYORI", "TRACK_CODE", "TENKO_CODE"
+                    ]
+                },
+                "I-Logic": {
+                    "description": "拡張分析（血統含む）",
+                    "required_fields": ["sire", "broodmare_sire", "KYOSOMEI_HONDAI", "GRADE_CODE"]
+                },
+                "IMLogic": {
+                    "description": "拡張分析（血統含む）",
+                    "required_fields": ["sire", "broodmare_sire", "KYOSOMEI_HONDAI", "GRADE_CODE"]
+                },
+                "ViewLogic": {
+                    "description": "展開予想分析",
+                    "required_fields": [
+                        "KAKUTEI_CHAKUJUN", "KEIBAJO_CODE", "KYORI",
+                        "KOHAN_3F", "DOCHAKU_TOSU", "ZENHAN_3F", "RACE_KOHAN_3F"
+                    ]
+                },
+                "ViewLogic過去データ": {
+                    "description": "必須8フィールド",
+                    "required_fields": [
+                        "KAKUTEI_CHAKUJUN", "KEIBAJO_CODE", "KYORI", "RACE_BANGO",
+                        "UMABAN", "WAKUBAN", "KISHUMEI_RYAKUSHO", "TANSHO_NINKIJUN"
+                    ]
+                }
+            }
+        }
+        
+        # metadataとhorsesを含む完全な構造を作成
+        full_data = {
+            "metadata": metadata,
+            "horses": horses_data
+        }
+        
         print(f"\n💾 ファイル保存中: {output_file}")
         with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(horses_data, f, ensure_ascii=False, indent=2)
+            json.dump(full_data, f, ensure_ascii=False, indent=2)
         
         # ファイルサイズ確認
         import os

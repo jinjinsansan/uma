@@ -911,15 +911,14 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     total_runs = jockey.get('total_runs', 0)
                     win_rate = jockey.get('win_rate', 0.0)
                     fukusho_rate = jockey.get('fukusho_rate', 0.0)
-                    # 騎手ナレッジファイルは直近5戦のデータのみ保持
-                    display_runs = f"直近{total_runs}戦" if total_runs <= 5 else f"{total_runs}戦"
-                    lines.append(f"{i}. **{jockey['jockey_name']}**: {display_runs} 勝率{win_rate:.1f}% 複勝率{fukusho_rate:.1f}%")
+                    # 実際のレース数を表示（7年分のデータ）
+                    lines.append(f"{i}. **{jockey['jockey_name']}**: {total_runs}戦 勝率{win_rate:.1f}% 複勝率{fukusho_rate:.1f}%")
                 
                 # 完結メッセージを追加
                 lines.append("")
-                lines.append(f"以上が当コースで騎乗経験のある{len(jockeys_with_data)}名です（直近データより）。")
+                lines.append(f"以上が当コースで騎乗経験のある{len(jockeys_with_data)}名です。")
                 if jockeys_no_data:
-                    lines.append(f"その他の騎手は当コースでの騎乗経験がありません（直近5戦内）。")
+                    lines.append(f"その他の騎手は当コースでの騎乗経験がありません。")
             else:
                 lines.append("出場騎手全員が当コースでの騎乗経験がありません。")
                 lines.append("騎手の適性よりも馬の能力を重視した方がよいでしょう。")
@@ -977,8 +976,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                                     display_rate = fukusho_rate * 100
                                 # 100%を上限とする
                                 display_rate = min(display_rate, 100.0)
-                                # レース数は表示せず、複勝率のみを表示
-                                lines.append(f"{jockey_count}. **{jockey_name}**（{assigned_post}枠）: 複勝率{display_rate:.1f}%")
+                                # レース数と複勝率を表示
+                                lines.append(f"{jockey_count}. **{jockey_name}**（{assigned_post}枠）: {race_count}戦 複勝率{display_rate:.1f}%")
                             else:
                                 jockey_count += 1
                                 lines.append(f"{jockey_count}. **{jockey_name}**（{assigned_post}枠）: データなし")

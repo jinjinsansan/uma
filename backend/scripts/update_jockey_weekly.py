@@ -70,7 +70,7 @@ def update_jockey_knowledge():
     try:
         # 1. 既存データをダウンロード（URLは要更新）
         # 注：実際のURLに置き換えてください
-        jockey_url = "https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/jockey_knowledge_[日付].json"
+        jockey_url = "https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/jockey_knowledge.json"
         jockey_data = download_existing_jockey_knowledge(jockey_url)
         
         # データ構造を初期化

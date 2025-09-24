@@ -273,20 +273,29 @@ def format_flow_prediction_advanced(result: Dict[str, Any]) -> str:
 
     # ペースと脚質の相性分析
     lines.append("#### 展開予想のポイント")
-    if 'ハイペース' in pace:
-        if nige_horses or senko_horses:
-            lines.append(f"ハイペースが予想される中、逃げ・先行勢の{'、'.join(nige_horses[:2] + senko_horses[:2])}は序盤から厳しい流れに巻き込まれそうです。")
-        if sashi_horses or oikomi_horses:
-            lines.append(f"この展開は差し・追込馬の{'、'.join(sashi_horses[:2] + oikomi_horses[:1])}にとって絶好の展開となり、直線での末脚勝負が期待されます。")
-    elif 'スローペース' in pace:
-        if nige_horses:
-            lines.append(f"スローペースが予想される中、逃げ馬の**{nige_horses[0]}**は楽に逃げられる可能性が高く、粘り込みが期待できます。")
-        if senko_horses:
-            lines.append(f"先行勢の{'、'.join(senko_horses[:3])}も前半で脚を使わずに済むため、直線でもしっかりとした脚を使えそうです。")
-    else:
-        lines.append("ミドルペースでの流れとなりそうで、各馬の地力が試される展開になりそうです。")
-        if senko_horses:
-            lines.append(f"このペースは先行馬の{'、'.join(senko_horses[:3])}にとって理想的で、持ち味を発揮しやすい流れとなりそうです。")
+    # ペース予想の文言を削除し、馬の展開分析のみを残す
+    # if 'ハイペース' in pace:
+    #     if nige_horses or senko_horses:
+    #         lines.append(f"ハイペースが予想される中、逃げ・先行勢の{'、'.join(nige_horses[:2] + senko_horses[:2])}は序盤から厳しい流れに巻き込まれそうです。")
+    #     if sashi_horses or oikomi_horses:
+    #         lines.append(f"この展開は差し・追込馬の{'、'.join(sashi_horses[:2] + oikomi_horses[:1])}にとって絶好の展開となり、直線での末脚勝負が期待されます。")
+    # elif 'スローペース' in pace:
+    #     if nige_horses:
+    #         lines.append(f"スローペースが予想される中、逃げ馬の**{nige_horses[0]}**は楽に逃げられる可能性が高く、粘り込みが期待できます。")
+    #     if senko_horses:
+    #         lines.append(f"先行勢の{'、'.join(senko_horses[:3])}も前半で脚を使わずに済むため、直線でもしっかりとした脚を使えそうです。")
+    # else:
+    #     lines.append("ミドルペースでの流れとなりそうで、各馬の地力が試される展開になりそうです。")
+    #     if senko_horses:
+    #         lines.append(f"このペースは先行馬の{'、'.join(senko_horses[:3])}にとって理想的で、持ち味を発揮しやすい流れとなりそうです。")
+    
+    # ペースに依存しない展開予想の分析
+    if nige_horses:
+        lines.append(f"逃げ馬の**{nige_horses[0]}**がどのようなペースを刻むかが展開の鍵となりそうです。")
+    if senko_horses:
+        lines.append(f"先行勢の{'、'.join(senko_horses[:3])}の位置取りが重要になってきます。")
+    if sashi_horses or oikomi_horses:
+        lines.append(f"差し・追込馬の{'、'.join(sashi_horses[:2] + oikomi_horses[:1])}は、直線での末脚勝負に持ち込みたいところです。")
 
     lines.append("")
 

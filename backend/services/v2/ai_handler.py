@@ -52,6 +52,7 @@ class V2AIHandler:
             'viewlogic_flow': ['展開', 'ペース', '逃げ', '先行', '差し', '追込', '脚質', 'ハイペース', 'スローペース', '流れ'],
             'viewlogic_history': ['過去データ', '直近', '前走', '戦績', '成績', '最近のレース', '過去のレース', '５走', '5走', '使い方'],  # 新規追加
             'viewlogic_sire': ['種牡馬分析', '種牡馬', '父', '母父', '血統分析', '父馬', '母馬', '母父馬', 'sire', 'dam', 'broodmare'],  # 種牡馬分析サブエンジン
+            'viewlogic_data': ['データ上位', 'データ分析', 'データ抽出', '複勝率上位', '上位3頭', '上位三頭', 'トップ3'],  # データ分析サブエンジン
             'dlogic': ['d-logic', 'ディーロジック', 'D-Logic', 'Dロジック', '指数', 'スコア', '12項目', '評価点'],
             'ilogic': ['i-logic', 'ilogic', 'アイロジック', 'I-Logic', 'Iロジック', '騎手', '総合', 'レースアナリシス', 'アナリシス'],
             'flogic': ['f-logic', 'flogic', 'エフロジック', 'F-Logic', 'Fロジック', 'フェア値']
@@ -185,6 +186,11 @@ class V2AIHandler:
         for keyword in self.AI_KEYWORDS['viewlogic_flow']:
             if keyword in message_lower:
                 return ('viewlogic', 'flow')
+        
+        # ViewLogicデータ分析（上位3頭抽出）
+        for keyword in self.AI_KEYWORDS['viewlogic_data']:
+            if keyword in message_lower:
+                return ('viewlogic', 'data')
         
         # ViewLogic傾向分析（I-Logicより優先）
         for keyword in self.AI_KEYWORDS['viewlogic_trend']:
@@ -727,6 +733,10 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             elif sub_type == 'sire':
                 # 種牡馬分析
                 return self._generate_sire_analysis(race_data)
+            
+            elif sub_type == 'data':
+                # データ分析（上位3頭抽出）
+                return self._generate_data_analysis(race_data)
 
             else:
                 return ("ViewLogic機能をご利用いただきありがとうございます。「展開」「傾向」「推奨」のいずれかをお試しください。", None)
@@ -2937,6 +2947,228 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         except Exception as e:
             logger.error(f"種牡馬分析エラー: {e}")
             return (f"種牡馬分析中にエラーが発生しました: {str(e)}", None)
+
+    def _generate_data_analysis(self, race_data: Dict[str, Any]) -> Tuple[str, Optional[Dict]]:
+        """
+        データ分析エンジン - 傾向分析と血統分析から上位3頭を抽出
+        
+        Returns:
+            (content, analysis_data) のタプル
+        """
+        try:
+            venue = race_data.get('venue', '')
+            race_number = race_data.get('race_number', '')
+            horses = race_data.get('horses', [])
+            
+            if not horses:
+                return (f"{venue}{race_number}Rの出走馬データがありません。", None)
+            
+            # 各馬の複勝率データを収集
+            horse_scores = {}  # {馬名: 最高複勝率}
+            
+            # 1. 傾向分析データを取得
+            try:
+                from services.viewlogic_engine import ViewLogicEngine
+                viewlogic_engine = ViewLogicEngine()
+                
+                # タイムアウト設定
+                import signal
+                def timeout_handler(signum, frame):
+                    raise TimeoutError("データ分析がタイムアウトしました")
+                
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(20)  # 20秒タイムアウト
+                
+                # 傾向分析実行
+                trend_result = viewlogic_engine.analyze_course_trend(race_data)
+                
+                signal.alarm(0)  # タイムアウトリセット
+                
+                if trend_result.get('status') == 'success':
+                    trends = trend_result.get('trends', {})
+                    
+                    # 馬のコース複勝率
+                    if trends.get('horse_course_performance'):
+                        for horse_data in trends['horse_course_performance']:
+                            if horse_data.get('status') == 'found' and horse_data.get('total_runs', 0) > 0:
+                                horse_name = horse_data.get('horse_name', '')
+                                fukusho_rate = horse_data.get('fukusho_rate', 0.0)
+                                if horse_name not in horse_scores:
+                                    horse_scores[horse_name] = []
+                                horse_scores[horse_name].append(fukusho_rate)
+                    
+                    # 騎手のコース複勝率（馬名とマッピング必要）
+                    if trends.get('jockey_course_performance'):
+                        # 馬と騎手のマッピングを作成
+                        horse_jockey_map = {}
+                        for i, horse in enumerate(horses):
+                            if isinstance(horse, dict):
+                                horse_name = horse.get('馬名', horse.get('name', ''))
+                                jockey_name = horse.get('騎手', horse.get('jockey', ''))
+                            else:
+                                continue
+                            if horse_name and jockey_name:
+                                horse_jockey_map[jockey_name] = horse_name
+                        
+                        for jockey_data in trends['jockey_course_performance']:
+                            if jockey_data.get('status') == 'found' and jockey_data.get('total_runs', 0) > 0:
+                                jockey_name = jockey_data.get('jockey_name', '')
+                                fukusho_rate = jockey_data.get('fukusho_rate', 0.0)
+                                # この騎手が騎乗する馬を特定
+                                if jockey_name in horse_jockey_map:
+                                    horse_name = horse_jockey_map[jockey_name]
+                                    if horse_name not in horse_scores:
+                                        horse_scores[horse_name] = []
+                                    horse_scores[horse_name].append(fukusho_rate)
+                    
+                    # 騎手の枠順別複勝率
+                    if trends.get('jockey_post_performance'):
+                        jockey_post_data = trends['jockey_post_performance']
+                        if isinstance(jockey_post_data, dict):
+                            for jockey_name, post_stats in jockey_post_data.items():
+                                if isinstance(post_stats, dict):
+                                    # 枠順別の複勝率を取得
+                                    assigned_stats = post_stats.get('assigned_post_stats', {})
+                                    if assigned_stats and isinstance(assigned_stats, dict):
+                                        fukusho_rate = assigned_stats.get('fukusho_rate', 0.0)
+                                        # 正規化処理
+                                        if fukusho_rate > 100:
+                                            fukusho_rate = fukusho_rate / 100
+                                        elif fukusho_rate <= 1.0:
+                                            fukusho_rate = fukusho_rate * 100
+                                        fukusho_rate = min(fukusho_rate, 100.0)
+                                        
+                                        # 騎手が騎乗する馬を特定
+                                        if jockey_name in horse_jockey_map:
+                                            horse_name = horse_jockey_map[jockey_name]
+                                            if horse_name not in horse_scores:
+                                                horse_scores[horse_name] = []
+                                            if fukusho_rate > 0:
+                                                horse_scores[horse_name].append(fukusho_rate)
+                
+            except TimeoutError:
+                logger.warning("傾向分析がタイムアウトしました")
+            except Exception as e:
+                logger.error(f"傾向分析エラー: {e}")
+            
+            # 2. 血統分析データを取得（産駒複勝率）
+            try:
+                # 地方競馬判定
+                is_local = self._is_local_racing(venue)
+                
+                if not is_local and self.sire_analyzer:
+                    # 会場コード取得
+                    venue_codes = {
+                        '札幌': '01', '函館': '02', '福島': '03', '新潟': '04',
+                        '東京': '05', '中山': '06', '中京': '07', '京都': '08',
+                        '阪神': '09', '小倉': '10'
+                    }
+                    venue_code = venue_codes.get(venue, '')
+                    
+                    # 距離取得
+                    distance = race_data.get('distance', '')
+                    if isinstance(distance, str) and distance.endswith('m'):
+                        distance = distance[:-1]
+                    distance = str(distance)
+                    
+                    if venue_code and distance:
+                        # 各馬の血統データから産駒複勝率を取得
+                        dlogic_manager = self.dlogic_manager
+                        
+                        for horse in horses:
+                            if isinstance(horse, dict):
+                                horse_name = horse.get('馬名', horse.get('name', ''))
+                            else:
+                                horse_name = str(horse) if horse else ''
+                            
+                            if not horse_name:
+                                continue
+                            
+                            # 血統データを取得
+                            pedigree_data = self._get_horse_pedigree(dlogic_manager, horse_name)
+                            
+                            if pedigree_data:
+                                sire = pedigree_data.get('sire', '')
+                                broodmare_sire = pedigree_data.get('broodmare_sire', '')
+                                
+                                # 父の産駒複勝率
+                                if sire and sire != 'データなし':
+                                    try:
+                                        sire_perf = self.sire_analyzer.analyze_sire_performance(
+                                            sire, venue_code, distance
+                                        )
+                                        if 'message' not in sire_perf:
+                                            place_rate = sire_perf.get('place_rate', 0.0)
+                                            if horse_name not in horse_scores:
+                                                horse_scores[horse_name] = []
+                                            if place_rate > 0:
+                                                horse_scores[horse_name].append(place_rate)
+                                    except Exception as e:
+                                        logger.debug(f"父馬産駒成績取得エラー（{sire}）: {e}")
+                                
+                                # 母父の産駒複勝率
+                                if broodmare_sire and broodmare_sire != 'データなし':
+                                    try:
+                                        bm_perf = self.sire_analyzer.analyze_broodmare_sire_performance(
+                                            broodmare_sire, venue_code, distance
+                                        )
+                                        if 'message' not in bm_perf:
+                                            place_rate = bm_perf.get('place_rate', 0.0)
+                                            if horse_name not in horse_scores:
+                                                horse_scores[horse_name] = []
+                                            if place_rate > 0:
+                                                horse_scores[horse_name].append(place_rate)
+                                    except Exception as e:
+                                        logger.debug(f"母父産駒成績取得エラー（{broodmare_sire}）: {e}")
+            
+            except Exception as e:
+                logger.error(f"血統分析エラー: {e}")
+            
+            # 3. 各馬の最高複勝率を計算
+            final_scores = []
+            for horse_name, rates in horse_scores.items():
+                if rates:
+                    max_rate = max(rates)
+                    final_scores.append((horse_name, max_rate))
+            
+            # データが不足している馬も0点として追加
+            existing_horses = set(horse_scores.keys())
+            for horse in horses:
+                if isinstance(horse, dict):
+                    horse_name = horse.get('馬名', horse.get('name', ''))
+                else:
+                    horse_name = str(horse) if horse else ''
+                
+                if horse_name and horse_name not in existing_horses:
+                    final_scores.append((horse_name, 0.0))
+            
+            # 4. ソートして上位3頭を選出
+            final_scores.sort(key=lambda x: x[1], reverse=True)
+            top_horses = final_scores[:3]
+            
+            # 5. 結果をフォーマット
+            lines = []
+            lines.append(f"{venue}{race_number}Rの傾向系分析から抽出したデータ上位3頭は以下の通りです。")
+            
+            for rank, (horse_name, rate) in enumerate(top_horses, 1):
+                lines.append(f"{rank}位 {horse_name}")
+            
+            content = "\n".join(lines)
+            
+            # 分析データも返す
+            analysis_data = {
+                'venue': venue,
+                'race_number': race_number,
+                'type': 'data_analysis',
+                'top_horses': [(name, rate) for name, rate in top_horses],
+                'total_analyzed': len(final_scores)
+            }
+            
+            return (content, analysis_data)
+            
+        except Exception as e:
+            logger.error(f"データ分析エラー: {e}")
+            return (f"データ分析中にエラーが発生しました: {str(e)}", None)
 
     def _get_horse_pedigree(self, dlogic_manager, horse_name: str) -> Optional[Dict[str, str]]:
         """

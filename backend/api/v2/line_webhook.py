@@ -129,18 +129,9 @@ async def handle_message_v2(event: Dict[str, Any]):
 
                     # ポイント付与設定を取得
                     # 環境変数から取得（デフォルト: 24）
-                    default_line_points = int(os.getenv("LINE_CONNECT_POINTS", "24"))
+                    line_points = int(os.getenv("LINE_CONNECT_POINTS", "24"))
 
-                    config_result = supabase.table("v2_points_config").select("config").eq(
-                        "is_active", True
-                    ).order("created_at", desc=True).limit(1).execute()
-
-                    line_points = default_line_points  # 環境変数から取得
-                    if config_result.data and len(config_result.data) > 0:
-                        config = config_result.data[0].get('config', {})
-                        line_points = config.get('line_connect', default_line_points)  # DBになければ環境変数の値を使用
-
-                    print(f"💰 ポイント設定: {line_points}ポイント (環境変数={default_line_points}, DB={config.get('line_connect', '未設定') if config_result.data else '未設定'})")
+                    print(f"💰 ポイント設定: {line_points}ポイント (環境変数から取得)")
 
                     # ポイント付与
                     points_result = supabase.table("v2_user_points").select("*").eq(

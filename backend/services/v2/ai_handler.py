@@ -3150,8 +3150,12 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             lines = []
             lines.append(f"{venue}{race_number}Rの傾向系分析から抽出したデータ上位3頭は以下の通りです。")
             
+            # メダル絵文字を定義
+            medals = {1: "🥇", 2: "🥈", 3: "🥉"}
+
             for rank, (horse_name, rate) in enumerate(top_horses, 1):
-                lines.append(f"{rank}位 {horse_name}")
+                medal = medals.get(rank, "")
+                lines.append(f"{medal}{rank}位 {horse_name}")
             
             content = "\n".join(lines)
             

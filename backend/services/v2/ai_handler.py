@@ -37,7 +37,9 @@ class V2AIHandler:
         self.sire_analyzer = get_sire_performance_analyzer()
         logger.info("✅ SirePerformanceAnalyzer初期化完了")
 
-        self.anthropic_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY")) if Anthropic else None
+        # Anthropic APIクライアント（V2では使用しないためコメントアウト）
+        # self.anthropic_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY")) if Anthropic else None
+        self.anthropic_client = None  # V2チャットでは使用しない
         
         # 地方競馬場リスト（南関東4場）
         self.LOCAL_VENUES = ['川崎', '大井', '船橋', '浦和']

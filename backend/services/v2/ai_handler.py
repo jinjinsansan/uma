@@ -51,7 +51,9 @@ class V2AIHandler:
             'viewlogic_recommendation': ['推奨', 'おすすめ', '買い目', '馬券', '予想'],
             'viewlogic_flow': ['展開', 'ペース', '逃げ', '先行', '差し', '追込', '脚質', 'ハイペース', 'スローペース', '流れ'],
             'viewlogic_history': ['過去データ', '直近', '前走', '戦績', '成績', '最近のレース', '過去のレース', '５走', '5走', '使い方'],  # 新規追加
-            'viewlogic_sire': ['種牡馬分析', '種牡馬', '父', '母父', '血統分析', '父馬', '母馬', '母父馬', 'sire', 'dam', 'broodmare'],  # 種牡馬分析サブエンジン
+            'viewlogic_sire': ['種牡馬分析', '種牡馬', '父', '母父', '血統分析', '父馬', '母馬', '母父馬', 'sire', 'dam', 'broodmare'],  # 種牡馬分析サブエンジン（両方）
+            'viewlogic_sire_father': ['血統父のみ', '血統父分析', '種牡馬のみ', '父馬のみ', '父だけ分析'],  # 父のみの血統分析
+            'viewlogic_sire_broodmare': ['血統母父のみ', '血統母父分析', '母父のみ', 'ブルードメアサイア', '母父だけ分析'],  # 母父のみの血統分析
             'viewlogic_data': ['データ上位', 'データ分析', 'データ抽出', '複勝率上位', '上位3頭', '上位三頭', 'トップ3'],  # データ分析サブエンジン
             'dlogic': ['d-logic', 'ディーロジック', 'D-Logic', 'Dロジック', '指数', 'スコア', '12項目', '評価点'],
             'ilogic': ['i-logic', 'ilogic', 'アイロジック', 'I-Logic', 'Iロジック', '騎手', '総合', 'レースアナリシス', 'アナリシス'],
@@ -176,6 +178,16 @@ class V2AIHandler:
                                 self.AI_KEYWORDS['viewlogic_recommendation']
                             ] for kw in kw_list):
                                 return ('viewlogic', 'history')
+
+        # ViewLogic父のみの血統分析（最優先）
+        for keyword in self.AI_KEYWORDS['viewlogic_sire_father']:
+            if keyword in message_lower or keyword in message:
+                return ('viewlogic', 'sire_father')
+
+        # ViewLogic母父のみの血統分析（優先）
+        for keyword in self.AI_KEYWORDS['viewlogic_sire_broodmare']:
+            if keyword in message_lower or keyword in message:
+                return ('viewlogic', 'sire_broodmare')
 
         # ViewLogic種牡馬分析（優先度高）
         for keyword in self.AI_KEYWORDS['viewlogic_sire']:
@@ -731,9 +743,17 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     return (f"出走馬または騎手の名前を指定してください。例：「{example_horse}の過去データ」", None)
 
             elif sub_type == 'sire':
-                # 種牡馬分析
-                return self._generate_sire_analysis(race_data)
-            
+                # 種牡馬分析（父と母父両方）
+                return self._generate_sire_analysis(race_data, mode='both')
+
+            elif sub_type == 'sire_father':
+                # 父のみの血統分析
+                return self._generate_sire_analysis(race_data, mode='father')
+
+            elif sub_type == 'sire_broodmare':
+                # 母父のみの血統分析
+                return self._generate_sire_analysis(race_data, mode='broodmare')
+
             elif sub_type == 'data':
                 # データ分析（上位3頭抽出）
                 return self._generate_data_analysis(race_data)
@@ -2814,10 +2834,14 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
 
         return "\n".join(lines)
 
-    def _generate_sire_analysis(self, race_data: Dict[str, Any]) -> Tuple[str, Optional[Dict]]:
+    def _generate_sire_analysis(self, race_data: Dict[str, Any], mode: str = 'both') -> Tuple[str, Optional[Dict]]:
         """
         種牡馬分析を生成
         出走馬の父、母、母父を表示 + 産駒成績を追加
+
+        Args:
+            race_data: レースデータ
+            mode: 'both'（父と母父）、'father'（父のみ）、'broodmare'（母父のみ）
 
         Returns:
             (content, analysis_data) のタプル
@@ -2836,7 +2860,13 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             dlogic_manager = self.dlogic_manager
 
             lines = []
-            lines.append("**血統分析**")
+            # modeに応じてタイトルを変更
+            if mode == 'father':
+                lines.append("**血統分析（父のみ）**")
+            elif mode == 'broodmare':
+                lines.append("**血統分析（母父のみ）**")
+            else:
+                lines.append("**血統分析**")
             lines.append(f"【{venue} {race_number}R】")
             lines.append("")
 
@@ -2881,10 +2911,19 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                     dam = pedigree_data.get('dam', None)
                     broodmare_sire = pedigree_data.get('broodmare_sire', 'データなし')
 
-                    lines.append(f"  ◆ 父　：{sire}")
-                    if dam and dam != '':
-                        lines.append(f"  ◆ 母　：{dam}")
-                    lines.append(f"  ◆ 母父：{broodmare_sire}")
+                    # modeに応じて表示内容を変更
+                    if mode == 'father':
+                        # 父のみ表示
+                        lines.append(f"  ◆ 父　：{sire}")
+                    elif mode == 'broodmare':
+                        # 母父のみ表示
+                        lines.append(f"  ◆ 母父：{broodmare_sire}")
+                    else:
+                        # 両方表示（デフォルト）
+                        lines.append(f"  ◆ 父　：{sire}")
+                        if dam and dam != '':
+                            lines.append(f"  ◆ 母　：{dam}")
+                        lines.append(f"  ◆ 母父：{broodmare_sire}")
 
                     # 血統情報と産駒成績を見やすく分離
                     lines.append("")
@@ -2892,36 +2931,40 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                     # 産駒成績を追加（SirePerformanceAnalyzerを使用）
                     if venue_code and distance and self.sire_analyzer:
                         try:
-                            # 父の産駒成績を取得
-                            if sire and sire != 'データなし':
-                                sire_perf = self.sire_analyzer.analyze_sire_performance(
-                                    sire, venue_code, distance
-                                )
-                                if 'message' not in sire_perf:
-                                    lines.append(f"    └ 父 {venue}{distance}m成績: {sire_perf['total_races']}戦{sire_perf['wins']}勝 複勝率{sire_perf['place_rate']:.1f}%")
-                                    # 馬場状態別を追加（0戦のデータは表示しない）
-                                    if sire_perf.get('by_condition'):
-                                        for cond in sire_perf['by_condition']:
-                                            # 0戦のデータは表示しない
-                                            if cond['races'] > 0:
-                                                lines.append(f"      {cond['condition']}: {cond['races']}戦{cond['wins']}勝 複勝率{cond['place_rate']:.1f}%")
+                            # modeに応じて産駒成績を取得・表示
+                            if mode != 'broodmare':
+                                # 父の産駒成績を取得（father または both の場合）
+                                if sire and sire != 'データなし':
+                                    sire_perf = self.sire_analyzer.analyze_sire_performance(
+                                        sire, venue_code, distance
+                                    )
+                                    if 'message' not in sire_perf:
+                                        lines.append(f"    └ 父 {venue}{distance}m成績: {sire_perf['total_races']}戦{sire_perf['wins']}勝 複勝率{sire_perf['place_rate']:.1f}%")
+                                        # 馬場状態別を追加（0戦のデータは表示しない）
+                                        if sire_perf.get('by_condition'):
+                                            for cond in sire_perf['by_condition']:
+                                                # 0戦のデータは表示しない
+                                                if cond['races'] > 0:
+                                                    lines.append(f"      {cond['condition']}: {cond['races']}戦{cond['wins']}勝 複勝率{cond['place_rate']:.1f}%")
 
-                            # 空行を追加（父と母父の成績を見やすく分離）
-                            lines.append("")
+                            # 空行を追加（父と母父の成績を見やすく分離、bothモードのみ）
+                            if mode == 'both' and sire and sire != 'データなし' and broodmare_sire and broodmare_sire != 'データなし':
+                                lines.append("")
 
-                            # 母父の産駒成績を取得
-                            if broodmare_sire and broodmare_sire != 'データなし':
-                                bm_perf = self.sire_analyzer.analyze_broodmare_sire_performance(
-                                    broodmare_sire, venue_code, distance
-                                )
-                                if 'message' not in bm_perf:
-                                    lines.append(f"    └ 母父 {venue}{distance}m成績: {bm_perf['total_races']}戦{bm_perf['wins']}勝 複勝率{bm_perf['place_rate']:.1f}%")
-                                    # 馬場状態別を追加（0戦のデータは表示しない）
-                                    if bm_perf.get('by_condition'):
-                                        for cond in bm_perf['by_condition']:
-                                            # 0戦のデータは表示しない
-                                            if cond['races'] > 0:
-                                                lines.append(f"      {cond['condition']}: {cond['races']}戦{cond['wins']}勝 複勝率{cond['place_rate']:.1f}%")
+                            if mode != 'father':
+                                # 母父の産駒成績を取得（broodmare または both の場合）
+                                if broodmare_sire and broodmare_sire != 'データなし':
+                                    bm_perf = self.sire_analyzer.analyze_broodmare_sire_performance(
+                                        broodmare_sire, venue_code, distance
+                                    )
+                                    if 'message' not in bm_perf:
+                                        lines.append(f"    └ 母父 {venue}{distance}m成績: {bm_perf['total_races']}戦{bm_perf['wins']}勝 複勝率{bm_perf['place_rate']:.1f}%")
+                                        # 馬場状態別を追加（0戦のデータは表示しない）
+                                        if bm_perf.get('by_condition'):
+                                            for cond in bm_perf['by_condition']:
+                                                # 0戦のデータは表示しない
+                                                if cond['races'] > 0:
+                                                    lines.append(f"      {cond['condition']}: {cond['races']}戦{cond['wins']}勝 複勝率{cond['place_rate']:.1f}%")
 
                         except Exception as e:
                             logger.debug(f"産駒成績取得エラー（{horse_name}）: {e}")

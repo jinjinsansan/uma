@@ -125,20 +125,23 @@ async def handle_message_v2(event: Dict[str, Any]):
                 
                 if update_result.data:
                     logger.info(f"V2 LINE connection successful for user {user_id}")
-                    
+                    print(f"✅ LINE連携成功: ユーザーID={user_id}, LINE_ID={line_user_id}")
+
                     # ポイント付与設定を取得
                     # 環境変数から取得（デフォルト: 24）
                     default_line_points = int(os.getenv("LINE_CONNECT_POINTS", "24"))
 
                     config_result = supabase.table("v2_points_config").select("config").eq(
                         "is_active", True
-                    ).order("created_at", ascending=False).limit(1).execute()
+                    ).order("created_at", desc=True).limit(1).execute()
 
                     line_points = default_line_points  # 環境変数から取得
                     if config_result.data and len(config_result.data) > 0:
                         config = config_result.data[0].get('config', {})
                         line_points = config.get('line_connect', default_line_points)  # DBになければ環境変数の値を使用
-                    
+
+                    print(f"💰 ポイント設定: {line_points}ポイント (環境変数={default_line_points}, DB={config.get('line_connect', '未設定') if config_result.data else '未設定'})")
+
                     # ポイント付与
                     points_result = supabase.table("v2_user_points").select("*").eq(
                         "user_id", user_id
@@ -166,7 +169,7 @@ async def handle_message_v2(event: Dict[str, Any]):
                         }).execute()
                     
                     # ポイント履歴記録
-                    supabase.table("v2_point_transactions").insert({
+                    transaction_result = supabase.table("v2_point_transactions").insert({
                         "user_id": user_id,
                         "amount": line_points,
                         "transaction_type": "line_connect",
@@ -174,15 +177,33 @@ async def handle_message_v2(event: Dict[str, Any]):
                         "balance_after": new_points if points_result.data else line_points,
                         "created_at": datetime.now().isoformat()
                     }).execute()
-                    
+
+                    if transaction_result.data:
+                        final_points = new_points if points_result.data else line_points
+                        print(f"🎉 LINE連携ポイント付与完了!")
+                        print(f"   ユーザー: {user.get('email', 'unknown')}")
+                        print(f"   付与ポイント: {line_points}ポイント")
+                        print(f"   現在の残高: {final_points}ポイント")
+                        print(f"   認証コード: {message_text}")
+                        print("="*50)
+                    else:
+                        print(f"❌ ポイント履歴記録失敗: user_id={user_id}")
+
                     # TODO: LINE返信メッセージ送信（LINE Messaging APIが必要）
                     # 今は返信なし
                     
                 else:
                     logger.error(f"Failed to update LINE connection for user {user_id}")
+                    print(f"❌ LINE連携更新失敗: user_id={user_id}")
             else:
                 logger.info(f"Invalid or used verification code: {message_text}")
+                print(f"⚠️ 無効な認証コード または 使用済み: {message_text}")
                 # TODO: エラーメッセージを送信
         
     except Exception as e:
         logger.error(f"V2 message handling error: {e}")
+        print(f"🚨 エラー発生: LINE webhook処理失敗")
+        print(f"   エラー内容: {e}")
+        print(f"   LINE_USER_ID: {line_user_id if 'line_user_id' in locals() else '不明'}")
+        print(f"   メッセージ: {message_text if 'message_text' in locals() else '不明'}")
+        print("="*50)

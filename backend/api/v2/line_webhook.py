@@ -127,14 +127,17 @@ async def handle_message_v2(event: Dict[str, Any]):
                     logger.info(f"V2 LINE connection successful for user {user_id}")
                     
                     # ポイント付与設定を取得
+                    # 環境変数から取得（デフォルト: 24）
+                    default_line_points = int(os.getenv("LINE_CONNECT_POINTS", "24"))
+
                     config_result = supabase.table("v2_points_config").select("config").eq(
                         "is_active", True
                     ).order("created_at", ascending=False).limit(1).execute()
-                    
-                    line_points = 12  # デフォルト値
+
+                    line_points = default_line_points  # 環境変数から取得
                     if config_result.data and len(config_result.data) > 0:
                         config = config_result.data[0].get('config', {})
-                        line_points = config.get('line_connect', 12)
+                        line_points = config.get('line_connect', default_line_points)  # DBになければ環境変数の値を使用
                     
                     # ポイント付与
                     points_result = supabase.table("v2_user_points").select("*").eq(

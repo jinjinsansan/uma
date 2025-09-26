@@ -143,6 +143,9 @@ def normalize_jockey_name(name: str) -> str:
 
     # 記号除去後の空白も除去
     name = name.strip().strip('　')
+
+    # 半角・全角スペースを完全除去（ナレッジファイルにスペースなし）
+    name = name.replace(' ', '').replace('　', '')
     
     # まずマッピングテーブルで変換を試みる
     if name in JOCKEY_NAME_MAP:

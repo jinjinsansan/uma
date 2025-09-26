@@ -128,14 +128,20 @@ JOCKEY_NAME_MAP = {
 def normalize_jockey_name(name: str) -> str:
     """
     騎手名を正規化（netkeiba短縮形からナレッジファイルの形式に変換）
-    
+
     Args:
         name: 騎手名（netkeiba短縮形またはフルネーム）
-        
+
     Returns:
         正規化された騎手名（ナレッジファイルでの形式）
     """
     # 前後の空白を除去（半角・全角両方）
+    name = name.strip().strip('　')
+
+    # 騎手記号を除去（▲減量騎手、◇女性騎手、★外国人騎手など）
+    name = name.replace('▲', '').replace('◇', '').replace('★', '').replace('☆', '')
+
+    # 記号除去後の空白も除去
     name = name.strip().strip('　')
     
     # まずマッピングテーブルで変換を試みる

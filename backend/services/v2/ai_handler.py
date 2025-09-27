@@ -144,7 +144,38 @@ class V2AIHandler:
         if not race_date or not venue or not race_number:
             return None
 
-        year = str(race_date)[:4]
+        date_str = str(race_date)
+        date_digits = ''.join(filter(str.isdigit, date_str))
+        if len(date_digits) < 8:
+            return None
+
+        normalized_date = date_digits[:8]
+
+        venue_map = {
+            '東京': 'tokyo', '中山': 'nakayama', '阪神': 'hanshin', '京都': 'kyoto',
+            '中京': 'chukyo', '新潟': 'niigata', '福島': 'fukushima', '札幌': 'sapporo',
+            '函館': 'hakodate', '小倉': 'kokura', '大井': 'ooi', '川崎': 'kawasaki',
+            '浦和': 'urawa', '船橋': 'funabashi', '門別': 'monbetsu', '盛岡': 'morioka',
+            '水沢': 'mizusawa', '金沢': 'kanazawa', '笠松': 'kasamatsu', '名古屋': 'nagoya',
+            '園田': 'sonoda', '姫路': 'himeji', '高知': 'kochi', '佐賀': 'saga', '帯広': 'obihiro'
+        }
+
+        venue_code = venue_map.get(venue, str(venue).lower())
+        return f"{normalized_date}_{venue_code}_r{race_number}"
+
+    def _derive_year_only_race_id(self, race_data: Dict[str, Any]) -> Optional[str]:
+        race_date = race_data.get('race_date')
+        venue = race_data.get('venue')
+        race_number = race_data.get('race_number')
+
+        if not race_date or not venue or not race_number:
+            return None
+
+        date_str = str(race_date)
+        year = ''.join(filter(str.isdigit, date_str))[:4]
+        if not year:
+            return None
+
         venue_map = {
             '東京': 'tokyo', '中山': 'nakayama', '阪神': 'hanshin', '京都': 'kyoto',
             '中京': 'chukyo', '新潟': 'niigata', '福島': 'fukushima', '札幌': 'sapporo',
@@ -174,6 +205,7 @@ class V2AIHandler:
         for candidate in [
             race_data.get('race_id'),
             self._derive_race_id(race_data),
+            self._derive_year_only_race_id(race_data),
             self._derive_legacy_race_id(race_data)
         ]:
             if candidate and candidate not in candidates:

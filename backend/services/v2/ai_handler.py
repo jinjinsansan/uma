@@ -136,6 +136,51 @@ class V2AIHandler:
             logger.error(f"コラム取得エラー: {e}")
             return []
 
+    def _derive_race_id(self, race_data: Dict[str, Any]) -> Optional[str]:
+        race_date = race_data.get('race_date')
+        venue = race_data.get('venue')
+        race_number = race_data.get('race_number')
+
+        if not race_date or not venue or not race_number:
+            return None
+
+        year = str(race_date)[:4]
+        venue_map = {
+            '東京': 'tokyo', '中山': 'nakayama', '阪神': 'hanshin', '京都': 'kyoto',
+            '中京': 'chukyo', '新潟': 'niigata', '福島': 'fukushima', '札幌': 'sapporo',
+            '函館': 'hakodate', '小倉': 'kokura', '大井': 'ooi', '川崎': 'kawasaki',
+            '浦和': 'urawa', '船橋': 'funabashi', '門別': 'monbetsu', '盛岡': 'morioka',
+            '水沢': 'mizusawa', '金沢': 'kanazawa', '笠松': 'kasamatsu', '名古屋': 'nagoya',
+            '園田': 'sonoda', '姫路': 'himeji', '高知': 'kochi', '佐賀': 'saga', '帯広': 'obihiro'
+        }
+
+        venue_code = venue_map.get(venue, str(venue).lower())
+        return f"{year}_{venue_code}_r{race_number}"
+
+    def _derive_legacy_race_id(self, race_data: Dict[str, Any]) -> Optional[str]:
+        race_date = race_data.get('race_date')
+        venue = race_data.get('venue')
+        race_number = race_data.get('race_number')
+
+        if not race_date or not venue or not race_number:
+            return None
+
+        date_digits = str(race_date).replace('-', '')
+        return f"{date_digits}-{venue}-{race_number}"
+
+    def _get_candidate_race_ids(self, race_data: Dict[str, Any]) -> List[str]:
+        candidates: List[str] = []
+
+        for candidate in [
+            race_data.get('race_id'),
+            self._derive_race_id(race_data),
+            self._derive_legacy_race_id(race_data)
+        ]:
+            if candidate and candidate not in candidates:
+                candidates.append(candidate)
+
+        return candidates
+
     def _build_column_selector_response(self, columns: List[Dict[str, Any]]) -> Tuple[str, Dict[str, Any]]:
         """複数コラム時の選択肢レスポンスを構築"""
         selector_columns = []
@@ -271,10 +316,22 @@ class V2AIHandler:
         user_email: Optional[str]
     ) -> Tuple[str, Optional[Dict[str, Any]]]:
         supabase = self._create_supabase_client()
-        columns = self._fetch_race_columns(supabase, race_data.get('race_id'))
+        candidate_ids = self._get_candidate_race_ids(race_data)
+
+        columns: List[Dict[str, Any]] = []
+        matched_race_id: Optional[str] = None
+
+        for candidate in candidate_ids:
+            columns = self._fetch_race_columns(supabase, candidate)
+            if columns:
+                matched_race_id = candidate
+                break
 
         if not columns:
+            logger.info(f"コラム未検出: race_candidates={candidate_ids}")
             return "このレースには表示できるコラムがありません。", None
+
+        logger.info(f"コラム検出: race_id={matched_race_id}, count={len(columns)}")
 
         user_context = self._get_user_context(supabase, user_email)
 
@@ -305,7 +362,9 @@ class V2AIHandler:
 
         column = column_response.data
 
-        if race_data.get('race_id') and column.get('race_id') != race_data.get('race_id'):
+        candidate_ids = self._get_candidate_race_ids(race_data)
+
+        if column.get('race_id') and candidate_ids and column.get('race_id') not in candidate_ids:
             return "このチャットでは選択できないコラムです。", None
 
         user_context = self._get_user_context(supabase, user_email)

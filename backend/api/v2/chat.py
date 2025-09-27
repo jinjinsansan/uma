@@ -420,6 +420,7 @@ async def send_message(
             "race_id": session.get("race_id"),
             "race_date": session.get("race_date"),
             "venue": session.get("venue"),
+            "race_id": session.get("race_id"),
             "race_number": session.get("race_number"),
             "race_name": session.get("race_name"),
             "horses": race_snapshot.get("horses") or session.get("horses", []),

@@ -84,6 +84,36 @@ async def process_referral_bonus_on_line_connect(user_id: str):
                 return None
             
             referrer = referrer_result.data[0]
+
+            # 紹介履歴が存在しない場合は整備
+            history_record = None
+            try:
+                history_record = supabase.table("v2_referral_history") \
+                    .select("id, status") \
+                    .eq("referrer_id", referrer["id"]) \
+                    .eq("referred_id", user_id) \
+                    .single() \
+                    .execute()
+            except Exception as history_error:
+                history_record = None
+                if getattr(history_error, "code", None) != "PGRST116":
+                    logger.warning(f"紹介履歴取得エラー: {history_error}")
+
+            if history_record and history_record.data:
+                existing = history_record.data
+                if existing.get("status") != "line_connected":
+                    supabase.table("v2_referral_history").update({
+                        "referral_code": existing.get("referral_code"),
+                        "status": "pending",
+                        "line_connected_at": None
+                    }).eq("id", existing["id"]).execute()
+            else:
+                supabase.table("v2_referral_history").insert({
+                    "referrer_id": referrer["id"],
+                    "referred_id": user_id,
+                    "referral_code": referrer.get("referral_code"),
+                    "status": "pending"
+                }).execute()
             
             # 紹介者のLINE連携済み紹介人数をカウント
             # v2_referral_historyテーブルから、紹介者が紹介した人でLINE連携済みの人数を取得
@@ -267,13 +297,33 @@ async def apply_referral_code(
             related_entity_id=referrer["id"]
         )
         
-        # 紹介履歴を記録（ステータスは"pending"）
-        supabase.table("v2_referral_history").insert({
-            "referrer_id": referrer["id"],
-            "referred_id": user_id,
-            "referral_code": request.referral_code.upper(),
-            "status": "pending"  # LINE連携待ち
-        }).execute()
+        # 紹介履歴を記録（既存のレコードがあれば更新）
+        history_record = None
+        try:
+            history_record = supabase.table("v2_referral_history") \
+                .select("id, status") \
+                .eq("referrer_id", referrer["id"]) \
+                .eq("referred_id", user_id) \
+                .single() \
+                .execute()
+        except Exception as history_error:
+            if getattr(history_error, "code", None) != "PGRST116":
+                logger.warning(f"紹介履歴取得エラー: {history_error}")
+
+        if history_record and history_record.data:
+            existing = history_record.data
+            supabase.table("v2_referral_history").update({
+                "referral_code": request.referral_code.upper(),
+                "status": "pending",
+                "line_connected_at": None
+            }).eq("id", existing["id"]).execute()
+        else:
+            supabase.table("v2_referral_history").insert({
+                "referrer_id": referrer["id"],
+                "referred_id": user_id,
+                "referral_code": request.referral_code.upper(),
+                "status": "pending"
+            }).execute()
         
         return {
             "success": True,

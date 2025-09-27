@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 class V2AIHandler:
     """V2システム用のAIハンドラー"""
+
+    COLUMN_SELECTION_PREFIX = "__COLUMN_SELECT__:"
     
     def __init__(self):
         # IMLogicEngineは毎回新規作成するため、ここでは初期化しない
@@ -59,6 +61,255 @@ class V2AIHandler:
             'ilogic': ['i-logic', 'ilogic', 'アイロジック', 'I-Logic', 'Iロジック', '騎手', '総合', 'レースアナリシス', 'アナリシス'],
             'flogic': ['f-logic', 'flogic', 'エフロジック', 'F-Logic', 'Fロジック', 'フェア値']
         }
+
+    def _create_supabase_client(self):
+        """Supabaseクライアントを生成"""
+        from supabase import create_client
+
+        supabase_url = os.environ.get("SUPABASE_URL")
+        supabase_key = (
+            os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+            or os.environ.get("SUPABASE_SERVICE_KEY")
+            or os.environ.get("SUPABASE_ANON_KEY")
+        )
+
+        if not supabase_url or not supabase_key:
+            raise ValueError("Supabase環境変数が設定されていません")
+
+        return create_client(supabase_url, supabase_key)
+
+    def _strip_html_tags(self, text: str) -> str:
+        """HTMLタグを除去"""
+        if not text:
+            return ""
+
+        clean = re.compile('<.*?>')
+        text = re.sub(clean, '', text)
+        text = text.replace('&nbsp;', ' ')
+        text = text.replace('&lt;', '<')
+        text = text.replace('&gt;', '>')
+        text = text.replace('&amp;', '&')
+        text = text.replace('&quot;', '"')
+        text = text.replace('&#39;', "'")
+        return text.strip()
+
+    def _get_user_context(self, supabase, user_email: Optional[str]) -> Dict[str, Any]:
+        """ユーザー情報を取得"""
+        context = {
+            'user_id': None,
+            'is_admin': user_email in ['goldbenchan@gmail.com', 'kusanokiyoshi1@gmail.com'],
+            'user_has_line': False,
+            'user_points': 0
+        }
+
+        if not user_email:
+            return context
+
+        try:
+            user_response = supabase.table('v2_users').select('id, line_user_id').eq('email', user_email).execute()
+            if user_response.data:
+                user_data = user_response.data[0]
+                context['user_id'] = user_data.get('id')
+                line_user_id = user_data.get('line_user_id')
+                context['user_has_line'] = bool(line_user_id)
+
+                points_response = supabase.table('v2_user_points').select('current_points').eq('user_id', context['user_id']).execute()
+                if points_response.data:
+                    context['user_points'] = points_response.data[0].get('current_points', 0)
+        except Exception as e:
+            logger.error(f"ユーザーコンテキスト取得エラー: {e}")
+
+        return context
+
+    def _fetch_race_columns(self, supabase, race_id: Optional[str]):
+        """レースに紐づく公開コラムを取得"""
+        if not race_id:
+            return []
+
+        try:
+            response = supabase.table('v2_columns').select(
+                '*, category:v2_column_categories(id, name, slug)'
+            ).eq('race_id', race_id).eq('display_in_llm', True).eq('is_published', True).order('created_at', desc=True).execute()
+
+            return response.data or []
+        except Exception as e:
+            logger.error(f"コラム取得エラー: {e}")
+            return []
+
+    def _build_column_selector_response(self, columns: List[Dict[str, Any]]) -> Tuple[str, Dict[str, Any]]:
+        """複数コラム時の選択肢レスポンスを構築"""
+        selector_columns = []
+
+        for col in columns:
+            actual_access_type = str(col.get('access_type') or 'free').strip() or 'free'
+            selector_columns.append({
+                'id': col.get('id'),
+                'title': col.get('title'),
+                'summary': self._strip_html_tags(col.get('summary', '')),
+                'category': (col.get('category') or {}).get('name') if col.get('category') else None,
+                'access_type': actual_access_type,
+                'required_points': col.get('required_points'),
+                'created_at': col.get('created_at')
+            })
+
+        content = (
+            f"## このレースのコラム\n\n"
+            f"{len(selector_columns)}件のコラムが見つかりました。閲覧したいコラムを選択してください。"
+        )
+
+        analysis_data = {
+            'type': 'column_selector',
+            'columns': selector_columns
+        }
+
+        return content, analysis_data
+
+    def _render_column_content(
+        self,
+        column: Dict[str, Any],
+        supabase,
+        user_context: Dict[str, Any],
+        user_email: Optional[str]
+    ) -> Tuple[str, Dict[str, Any]]:
+        """単一コラムの本文を生成"""
+
+        actual_access_type = str(column.get('access_type') or 'free').strip() or 'free'
+
+        if actual_access_type == 'free':
+            access_text = '無料'
+        elif actual_access_type in ['line_only', 'line_linked']:
+            access_text = 'LINE連携限定'
+        elif actual_access_type in ['paid', 'point_required']:
+            access_text = f"{column.get('required_points', 1)}ポイント"
+        else:
+            access_text = f"不明({actual_access_type})"
+
+        content_parts = [
+            "## このレースのコラム",
+            f"### 📝 {column.get('title')} ({access_text})"
+        ]
+
+        summary = self._strip_html_tags(column.get('summary', ''))
+        if summary:
+            content_parts.append(summary)
+
+        can_access = False
+        access_reason = ""
+        points_consumed = False
+        required_points = column.get('required_points', 1)
+
+        if actual_access_type == 'free':
+            can_access = True
+        elif actual_access_type in ['line_only', 'line_linked']:
+            if user_context['is_admin'] or user_context['user_has_line']:
+                can_access = True
+            else:
+                access_reason = "📱 **このコラムの本文を読むにはLINE連携が必要です**\n\n[マイページからLINE連携を行ってください]"
+        elif actual_access_type in ['paid', 'point_required']:
+            if user_context['is_admin']:
+                can_access = True
+            elif not user_context['user_id']:
+                access_reason = "⚠️ **ユーザー情報を確認できませんでした**\n\n再度ログインしてお試しください。"
+            else:
+                try:
+                    read_check = supabase.table('v2_column_reads').select('id').eq('column_id', column['id']).eq('user_id', user_context['user_id']).execute()
+                    if read_check.data:
+                        can_access = True
+                    elif user_context['user_points'] >= required_points:
+                        new_points = user_context['user_points'] - required_points
+                        supabase.table('v2_user_points').update({
+                            'current_points': new_points,
+                            'updated_at': datetime.now().isoformat()
+                        }).eq('user_id', user_context['user_id']).execute()
+
+                        supabase.table('v2_column_reads').insert({
+                            'column_id': column['id'],
+                            'user_id': user_context['user_id'],
+                            'read_at': datetime.now().isoformat()
+                        }).execute()
+
+                        user_context['user_points'] = new_points
+                        points_consumed = True
+                        can_access = True
+                    else:
+                        shortage = required_points - user_context['user_points']
+                        access_reason = (
+                            f"💰 **このコラムの本文を読むには{required_points}ポイントが必要です**\n\n"
+                            f"現在の残高: {user_context['user_points']}ポイント\n不足ポイント: {shortage}ポイント\n\n[ポイントを購入する]"
+                        )
+                except Exception as e:
+                    logger.error(f"ポイント消費処理エラー: {e}")
+                    access_reason = "⚠️ **ポイント消費処理でエラーが発生しました**\n\nしばらくしてから再度お試しください。"
+        else:
+            access_reason = f"⚠️ **このコラムのタイプ({actual_access_type})は認識できません**\n\n管理者にお問い合わせください。"
+
+        if can_access:
+            if actual_access_type in ['paid', 'point_required'] and not user_context['is_admin'] and points_consumed:
+                content_parts.append(f"✅ **{required_points}ポイント消費しました**")
+                content_parts.append("---")
+
+            content_text = self._strip_html_tags(column.get('content', ''))
+            if content_text:
+                content_parts.append(content_text)
+            else:
+                content_parts.append("本文が未設定です。")
+        else:
+            content_parts.append(access_reason or "閲覧条件を満たしていないため表示できません。")
+
+        analysis_data = {
+            'type': 'column_content',
+            'column_id': column.get('id'),
+            'access_type': actual_access_type,
+            'points_consumed': points_consumed
+        }
+
+        return "\n\n".join(content_parts), analysis_data
+
+    def _handle_column_request(
+        self,
+        race_data: Dict[str, Any],
+        user_email: Optional[str]
+    ) -> Tuple[str, Optional[Dict[str, Any]]]:
+        supabase = self._create_supabase_client()
+        columns = self._fetch_race_columns(supabase, race_data.get('race_id'))
+
+        if not columns:
+            return "このレースには表示できるコラムがありません。", None
+
+        user_context = self._get_user_context(supabase, user_email)
+
+        if len(columns) == 1:
+            column_content, analysis_data = self._render_column_content(columns[0], supabase, user_context, user_email)
+            return column_content, analysis_data
+
+        content, analysis_data = self._build_column_selector_response(columns)
+        return content, analysis_data
+
+    def _handle_column_selection(
+        self,
+        race_data: Dict[str, Any],
+        user_email: Optional[str],
+        selection_id: str
+    ) -> Tuple[str, Optional[Dict[str, Any]]]:
+        supabase = self._create_supabase_client()
+        try:
+            column_response = supabase.table('v2_columns').select(
+                '*, category:v2_column_categories(id, name, slug)'
+            ).eq('id', selection_id).eq('display_in_llm', True).eq('is_published', True).single().execute()
+        except Exception as e:
+            logger.error(f"コラム選択エラー: {e}")
+            return "選択したコラムを取得できませんでした。", None
+
+        if not column_response.data:
+            return "選択したコラムが見つかりませんでした。", None
+
+        column = column_response.data
+
+        if race_data.get('race_id') and column.get('race_id') != race_data.get('race_id'):
+            return "このチャットでは選択できないコラムです。", None
+
+        user_context = self._get_user_context(supabase, user_email)
+        return self._render_column_content(column, supabase, user_context, user_email)
     
         
     def determine_ai_type(self, message: str) -> Tuple[str, str]:
@@ -1224,6 +1475,18 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 'sub_type': 'out_of_scope',
                 'analysis_data': None
             }
+
+        # コラム選択コマンドを先に処理
+        if message.startswith(self.COLUMN_SELECTION_PREFIX):
+            selection_id = message[len(self.COLUMN_SELECTION_PREFIX):].strip()
+            content, selection_analysis = self._handle_column_selection(race_data, user_email, selection_id)
+            return {
+                'content': content,
+                'ai_type': 'column',
+                'ai_display_name': 'コラムシステム',
+                'sub_type': 'selection',
+                'analysis_data': selection_analysis
+            }
         
         # AI タイプの決定（レース外チェックの後に移動）
         if ai_type:
@@ -1283,194 +1546,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 content = result
         elif determined_ai == 'column':
             logger.info(f"コラム処理開始: determined_ai={determined_ai}, user_email={user_email}")
-            # コラム表示の処理 - Supabaseからコラムを取得して返す
-            from supabase import create_client
-            from datetime import datetime
-            import os
-
-            def strip_html_tags(text):
-                """HTMLタグを除去してプレーンテキストに変換"""
-                # HTMLタグを除去
-                clean = re.compile('<.*?>')
-                text = re.sub(clean, '', text)
-                # HTMLエンティティを変換
-                text = text.replace('&nbsp;', ' ')
-                text = text.replace('&lt;', '<')
-                text = text.replace('&gt;', '>')
-                text = text.replace('&amp;', '&')
-                text = text.replace('&quot;', '"')
-                text = text.replace('&#39;', "'")
-                return text.strip()
-
-            supabase_url = os.environ.get("SUPABASE_URL")
-            supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-            supabase = create_client(supabase_url, supabase_key)
-
-            # 管理者チェック
-            is_admin = user_email in ['goldbenchan@gmail.com', 'kusanokiyoshi1@gmail.com']
-
-            # ユーザー情報を取得（LINE連携状態とポイント残高）
-            user_has_line = False
-            user_points = 0
-            user_id = None
-            if user_email:
-                try:
-                    # v2_usersテーブルからユーザー情報を一括取得（id, line_user_id）
-                    users_response = supabase.table('v2_users').select('id, line_user_id').eq('email', user_email).execute()
-
-                    if users_response.data and len(users_response.data) > 0:
-                        user_data = users_response.data[0]
-                        user_id = user_data.get('id')
-                        line_user_id = user_data.get('line_user_id')
-                        user_has_line = line_user_id is not None and line_user_id != ''
-                        logger.info(f"LINE連携判定: line_user_id={line_user_id}, user_has_line={user_has_line}")
-
-                        # user_idでポイント残高を確認
-                        if user_id:
-                            points_response = supabase.table('v2_user_points').select('current_points').eq('user_id', user_id).execute()
-                            if points_response.data and len(points_response.data) > 0:
-                                user_points = points_response.data[0].get('current_points', 0)
-
-                    logger.info(f"ユーザー情報取得: email={user_email}, is_admin={is_admin}, has_line={user_has_line}, points={user_points}")
-                except Exception as e:
-                    logger.error(f"ユーザー情報取得エラー: {str(e)}")
-
-            # race_idを構成（管理者パネル形式に合わせる）
-            race_date = race_data.get('race_date', '')
-            year = race_date.split('-')[0] if race_date else '2025'
-            venue_map = {
-                '中山': 'nakayama', '東京': 'tokyo', '阪神': 'hanshin', '京都': 'kyoto',
-                '中京': 'chukyo', '新潟': 'niigata', '福島': 'fukushima', '札幌': 'sapporo',
-                '函館': 'hakodate', '小倉': 'kokura', '大井': 'ooi', '川崎': 'kawasaki',
-                '浦和': 'urawa', '船橋': 'funabashi'
-            }
-            venue_code = venue_map.get(race_data.get('venue', ''), race_data.get('venue', '').lower())
-            race_id = f"{year}_{venue_code}_r{race_data.get('race_number', '')}"
-
-            # コラムを取得
-            logger.info(f"コラム検索: race_id={race_id}")
-            response = supabase.table('v2_columns').select('*').eq('race_id', race_id).eq('display_in_llm', True).eq('is_published', True).execute()
-
-            if response.data and len(response.data) > 0:
-                columns_html = "## このレースのコラム\n\n"
-                logger.info(f"取得したコラム数: {len(response.data)}")
-                for col in response.data:
-                    logger.info(f"コラム: title={col.get('title')}, access_type={col.get('access_type')}, required_points={col.get('required_points')}")
-
-                    # access_typeを取得（Null/空文字対応）
-                    actual_access_type = col.get('access_type')
-                    if actual_access_type is None or actual_access_type == '':
-                        actual_access_type = 'free'
-                        logger.warning(f"access_typeがNullまたは空のため、freeとして扱います")
-                    # 文字列の前後の空白を削除
-                    actual_access_type = str(actual_access_type).strip() if actual_access_type else 'free'
-
-                    # アクセスタイプに応じた表示テキスト
-                    if actual_access_type == 'free':
-                        access_text = "無料"
-                    elif actual_access_type == 'line_only' or actual_access_type == 'line_linked':  # line_linkedもサポート
-                        access_text = "LINE連携限定"
-                    elif actual_access_type == 'paid' or actual_access_type == 'point_required':
-                        access_text = f"{col.get('required_points', 1)}ポイント"
-                    else:
-                        # デフォルトケース - 値を明示
-                        access_text = f"不明({actual_access_type})"
-                        logger.warning(f"予期しないaccess_type: '{actual_access_type}'")
-
-                    columns_html += f"### 📝 {col['title']} ({access_text})\n"
-
-                    # summaryもHTMLタグ除去
-                    summary = strip_html_tags(col.get('summary', ''))
-                    if summary:
-                        columns_html += f"{summary}\n\n"
-
-                    # アクセス権限チェック
-                    can_access = False
-                    access_reason = ""
-
-                    logger.info(f"アクセスチェック開始: access_type={actual_access_type}, user_has_line={user_has_line}, user_points={user_points}")
-
-                    if actual_access_type == 'free':
-                        # 無料コラムは誰でもアクセス可能
-                        can_access = True
-                        logger.info("→ 無料コラムのためアクセス許可")
-                    elif actual_access_type == 'line_only' or actual_access_type == 'line_linked':  # line_linkedもサポート
-                        # LINE連携者限定コラム
-                        # 管理者は無料で閲覧可能
-                        if is_admin:
-                            can_access = True
-                            logger.info("→ 管理者のためLINE連携チェックをスキップ")
-                        elif user_has_line:
-                            can_access = True
-                            logger.info("→ LINE連携済みのためアクセス許可")
-                        else:
-                            access_reason = "📱 **このコラムの本文を読むにはLINE連携が必要です**\n\n[マイページからLINE連携を行ってください]"
-                            logger.info(f"→ LINE未連携のためアクセス拒否 (user_has_line={user_has_line}, line_user_id存在={user_has_line})")
-                    elif actual_access_type == 'paid' or actual_access_type == 'point_required':
-                        # ポイント消費コラム
-                        required_points = col.get('required_points', 1)
-
-                        # 管理者は無料で閲覧可能
-                        if is_admin:
-                            can_access = True
-                            logger.info("→ 管理者のためポイント消費をスキップ")
-                        else:
-                            # 既読チェック
-                            if user_id:
-                                read_check = supabase.table('v2_column_reads').select('id').eq('column_id', col['id']).eq('user_id', user_id).execute()
-                                if read_check.data:
-                                    # 既読の場合は無料で表示
-                                    can_access = True
-                                    logger.info(f"→ 既読のためポイント消費なし")
-                                elif user_points >= required_points:
-                                    # 初回閲覧でポイント十分
-                                    can_access = True
-                                    points_consumed = False
-                                    # ポイント消費処理
-                                    try:
-                                        # ポイント減算
-                                        new_points = user_points - required_points
-                                        update_response = supabase.table('v2_user_points').update({
-                                            'current_points': new_points,
-                                            'updated_at': datetime.now().isoformat()
-                                        }).eq('user_id', user_id).execute()
-
-                                        # 既読記録を作成
-                                        read_record = supabase.table('v2_column_reads').insert({
-                                            'column_id': col['id'],
-                                            'user_id': user_id,
-                                            'read_at': datetime.now().isoformat()
-                                        }).execute()
-
-                                        points_consumed = True
-                                        logger.info(f"→ {required_points}ポイント消費して表示")
-                                    except Exception as e:
-                                        logger.error(f"ポイント消費処理エラー: {str(e)}")
-                                        can_access = False
-                                        access_reason = "⚠️ **ポイント消費処理でエラーが発生しました**\n\nしばらくしてから再度お試しください。"
-                                else:
-                                    access_reason = f"💰 **このコラムの本文を読むには{required_points}ポイントが必要です**\n\n現在の残高: {user_points}ポイント\n不足ポイント: {required_points - user_points}ポイント\n\n[ポイントを購入する]"
-                    else:
-                        # 予期しないaccess_typeの場合
-                        logger.error(f"未処理のaccess_type: '{actual_access_type}'")
-                        access_reason = f"⚠️ **このコラムのタイプ({actual_access_type})は認識できません**\n\n管理者にお問い合わせください。"
-
-                    if can_access:
-                        # ポイント消費メッセージを追加
-                        if actual_access_type in ['paid', 'point_required'] and not is_admin:
-                            if 'points_consumed' in locals() and points_consumed:
-                                columns_html += f"✅ **{required_points}ポイント消費しました**\n\n---\n\n"
-
-                        # contentのHTMLタグを除去
-                        content_text = strip_html_tags(col.get('content', ''))
-                        columns_html += f"{content_text}\n\n"
-                    else:
-                        columns_html += f"{access_reason}\n\n"
-                content = columns_html
-            else:
-                content = "このレースには表示するコラムがありません。"
-
-            analysis_data = None
+            content, analysis_data = self._handle_column_request(race_data, user_email)
         else:  # viewlogic
             result = await self.process_viewlogic_message(message, race_data, sub_type)
             if isinstance(result, tuple):

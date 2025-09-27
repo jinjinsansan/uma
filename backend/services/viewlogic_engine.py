@@ -51,21 +51,20 @@ class RunningStyleAnalyzer:
     """脚質判定と3段階分類を行うクラス"""
     
     def _convert_position(self, value) -> Optional[int]:
-        """コーナー通過順位を整数に変換（無効値はNone）"""
+        """コーナー通過順位を安全に整数へ変換"""
         if value is None:
             return None
         try:
             pos = int(value)
         except (ValueError, TypeError):
             return None
-        # 0 や 99 以上はデータ欠損として扱う
         if pos <= 0 or pos >= 99:
             return None
         return pos
 
     def _collect_positions(self, horse_races: List[Dict], key: str) -> List[int]:
         """指定キーのコーナー通過順位を収集"""
-        positions = []
+        positions: List[int] = []
         for race in horse_races:
             pos = self._convert_position(race.get(key))
             if pos is not None:
@@ -73,7 +72,7 @@ class RunningStyleAnalyzer:
         return positions
 
     def _collect_positions_with_fallback(self, horse_races: List[Dict], keys: List[str]) -> List[int]:
-        """複数キーを順番に試して通過順位を取得"""
+        """複数キーを順番に試して通過順位リストを取得"""
         for key in keys:
             positions = self._collect_positions(horse_races, key)
             if positions:
@@ -81,6 +80,7 @@ class RunningStyleAnalyzer:
         return []
 
     def _extract_first_valid_position(self, race: Dict, keys: List[str]) -> Optional[int]:
+        """レースデータから最初に有効な通過順位を取得"""
         for key in keys:
             pos = self._convert_position(race.get(key))
             if pos is not None:
@@ -92,7 +92,7 @@ class RunningStyleAnalyzer:
         if not horse_races:
             return "不明"
         
-        # 1コーナー通過順位が欠損している場合は2→3→4コーナーを順に参照
+        # 1コーナー通過順位が欠損している場合は後続のコーナー値で補完
         corner_positions = self._collect_positions_with_fallback(
             horse_races,
             ['CORNER1_JUNI', 'CORNER2_JUNI', 'CORNER3_JUNI', 'CORNER4_JUNI']
@@ -135,7 +135,7 @@ class RunningStyleAnalyzer:
             corner1 = self._extract_first_valid_position(race, ['CORNER1_JUNI', 'CORNER2_JUNI'])
             corner2 = self._extract_first_valid_position(race, ['CORNER2_JUNI', 'CORNER3_JUNI'])
             finish = self._convert_position(race.get('KAKUTEI_CHAKUJUN'))
-            
+
             if corner1 is None:
                 continue
             
@@ -143,7 +143,7 @@ class RunningStyleAnalyzer:
             if corner1 <= 2:
                 escape_races += 1
                 
-                # 単独逃げかチェック（次のコーナーでも先頭）
+                # 単独逃げかチェック（2コーナーでも先頭）
                 if corner2 == 1:
                     solo_escape_count += 1
                 
@@ -171,7 +171,7 @@ class RunningStyleAnalyzer:
             ['CORNER1_JUNI', 'CORNER2_JUNI', 'CORNER3_JUNI']
         )
         position_stability = 0
-        
+
         if not corner_positions:
             return "先行", "標準先行"
         
@@ -195,10 +195,10 @@ class RunningStyleAnalyzer:
         finishing_power_scores = []
         
         for race in horse_races:
-            corner4 = safe_int(race.get('CORNER4_JUNI'), 99)
-            finish = safe_int(race.get('KAKUTEI_CHAKUJUN'), 99)
+            corner4 = self._extract_first_valid_position(race, ['CORNER4_JUNI', 'CORNER3_JUNI'])
+            finish = self._convert_position(race.get('KAKUTEI_CHAKUJUN'))
             
-            if corner4 < 99 and finish < 99:
+            if corner4 is not None and finish is not None:
                 # 4コーナーから着順への改善度
                 improvement = corner4 - finish
                 finishing_power_scores.append(improvement)
@@ -221,10 +221,10 @@ class RunningStyleAnalyzer:
         total_races = len(horse_races)
         
         for race in horse_races:
-            corner4 = safe_int(race.get('CORNER4_JUNI'), 99)
-            finish = safe_int(race.get('KAKUTEI_CHAKUJUN'), 99)
+            corner4 = self._extract_first_valid_position(race, ['CORNER4_JUNI', 'CORNER3_JUNI'])
+            finish = self._convert_position(race.get('KAKUTEI_CHAKUJUN'))
             
-            if corner4 > 10 and finish <= 3:
+            if corner4 is not None and finish is not None and corner4 > 10 and finish <= 3:
                 extreme_finishes += 1
         
         if total_races == 0:
@@ -300,6 +300,12 @@ class BayesianCorrector:
                     prior_mean: float = 0.20, prior_weight: float = 5) -> Dict[str, float]:
         """
         ベイズ補正で少ないサンプル数の影響を緩和
+        
+        Parameters:
+        - success_count: 成功回数（複勝回数）
+        - total_count: 総試行回数（出走回数）
+        - prior_mean: 事前平均（全体の複勝率）
+        - prior_weight: 事前分布の重み（信頼度）
         """
         if total_count == 0:
             return {
@@ -332,7 +338,7 @@ class RaceFlowPredictor:
         self.bayesian = BayesianCorrector()
     
     def predict_pace(self, all_horses_data: List[Dict]) -> Dict[str, Any]:
-        """ペース予測(ハイ/平均/スロー)"""
+        """ペース予測（ハイ/平均/スロー）"""
         # 各馬の脚質を判定（馬番付き）
         style_distribution = {
             '逃げ': {'count': 0, 'horses': [], 'horse_numbers': []},
@@ -489,6 +495,20 @@ class ViewLogicEngine:
         self.cache_ttl = 1800  # 30分間キャッシュ
         self.max_cache_size = 100  # 最大100レース分
     
+    # --- 共通ヘルパー（位置情報の正規化） ---
+
+    def _convert_position(self, value) -> Optional[int]:
+        return self.style_analyzer._convert_position(value)
+
+    def _collect_positions(self, races: List[Dict], key: str) -> List[int]:
+        return self.style_analyzer._collect_positions(races, key)
+
+    def _collect_positions_with_fallback(self, races: List[Dict], keys: List[str]) -> List[int]:
+        return self.style_analyzer._collect_positions_with_fallback(races, keys)
+
+    def _extract_first_valid_position(self, race: Dict, keys: List[str]) -> Optional[int]:
+        return self.style_analyzer._extract_first_valid_position(race, keys)
+
     def _generate_cache_key(self, race_data: Dict[str, Any]) -> str:
         """レースデータからキャッシュキーを生成"""
         # 重要な要素のみでキーを作成（順序無視）
@@ -542,7 +562,7 @@ class ViewLogicEngine:
     def predict_race_flow_advanced(self, race_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         計画書通りの高度な展開予想
-        前半3F/後半3Fを使用したペース予測と詳細な脚質分析
+        前半3F・後半3Fを使用したペース予測と詳細な脚質分析
         """
         horses = race_data.get('horses', [])
         if not horses:
@@ -607,13 +627,13 @@ class ViewLogicEngine:
     
     def _normalize_3f_time(self, value) -> Optional[float]:
         """
-            corner4 = self._extract_first_valid_position(race, ['CORNER4_JUNI', 'CORNER3_JUNI'])
-            finish = self._convert_position(race.get('KAKUTEI_CHAKUJUN'))
-            
-            if corner4 is not None and finish is not None:
-                # 4コーナーから着順への改善度
-                improvement = corner4 - finish
-                finishing_improvements.append(improvement)
+        3Fタイムを秒単位に正規化
+        Phase 1: データ正規化の実装（修正版）
+        実データ分析に基づく正規化ロジック
+        """
+        # 欠損値チェック
+        if value == 0 or value == 999 or value == 999.0:
+            return None
         
         # 100を境界にシンプルに判定
         # 前半3F: 34.3-38.7の範囲（全て100未満、既に秒単位）
@@ -798,7 +818,7 @@ class ViewLogicEngine:
             races,
             ['CORNER1_JUNI', 'CORNER2_JUNI', 'CORNER3_JUNI']
         )
-        
+
         if not corner_positions:
             return '標準先行'
         
@@ -817,10 +837,10 @@ class ViewLogicEngine:
         finishing_improvements = []
         
         for race in races:
-            corner4 = safe_int(race.get('CORNER4_JUNI'), 99)
-            finish = safe_int(race.get('KAKUTEI_CHAKUJUN'), 99)
+            corner4 = self._extract_first_valid_position(race, ['CORNER4_JUNI', 'CORNER3_JUNI'])
+            finish = self._convert_position(race.get('KAKUTEI_CHAKUJUN'))
             
-            if corner4 < 99 and finish < 99:
+            if corner4 is not None and finish is not None:
                 improvement = corner4 - finish
                 finishing_improvements.append(improvement)
         

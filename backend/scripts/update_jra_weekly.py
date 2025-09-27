@@ -32,6 +32,57 @@ KEIBAJO_MAP = {
     '09': '阪神', '10': '小倉'
 }
 
+
+def normalize_corner_value(value):
+    """コーナー通過順位を正規化（欠損はNone）"""
+
+    if value is None:
+        return None
+
+    s = str(value).strip()
+    if not s:
+        return None
+
+    try:
+        numeric = int(s)
+    except ValueError:
+        return None
+
+    if numeric <= 0:
+        return None
+
+    return f"{numeric:02d}"
+
+
+def fill_corner_values(corner_values):
+    """欠損時に後続コーナーから補完した通過順位を返す"""
+
+    normalized = [normalize_corner_value(v) for v in corner_values]
+    filled = []
+    fallback_used = False
+
+    for idx in range(4):
+        value = normalized[idx]
+        replaced_with_later = False
+
+        if value is None:
+            for lookahead in range(idx + 1, 4):
+                next_value = normalized[lookahead]
+                if next_value is not None:
+                    value = next_value
+                    replaced_with_later = True
+                    break
+
+        if value is None:
+            value = '00'
+
+        if replaced_with_later:
+            fallback_used = True
+
+        filled.append(value)
+
+    return filled, fallback_used
+
 # Cloudflare CDN URL
 UNIFIED_KNOWLEDGE_URL = "https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/unified_knowledge_20250903.json"
 
@@ -228,6 +279,8 @@ def update_unified_knowledge():
         new_races = 0
         updated_horses = 0
         
+        corner_fallback_count = 0
+
         for row in cur:
             horse_name = row[0].strip()
             
@@ -244,6 +297,22 @@ def update_unified_knowledge():
                 race_data['sire'] = race_data['sire'].strip()
             if race_data['broodmare_sire']:
                 race_data['broodmare_sire'] = race_data['broodmare_sire'].strip()
+
+            original_corners = [
+                race_data.get('CORNER1_JUNI'),
+                race_data.get('CORNER2_JUNI'),
+                race_data.get('CORNER3_JUNI'),
+                race_data.get('CORNER4_JUNI')
+            ]
+            filled_corners, fallback_used = fill_corner_values(original_corners)
+
+            race_data['CORNER1_JUNI'] = filled_corners[0]
+            race_data['CORNER2_JUNI'] = filled_corners[1]
+            race_data['CORNER3_JUNI'] = filled_corners[2]
+            race_data['CORNER4_JUNI'] = filled_corners[3]
+
+            if fallback_used:
+                corner_fallback_count += 1
             
             # 馬のデータを更新（CDNの構造に合わせる）
             if horse_name not in horses_data:
@@ -269,6 +338,7 @@ def update_unified_knowledge():
         print(f"  新規レース: {new_races}件")
         print(f"  更新された馬: {updated_horses}頭")
         print(f"  総馬数: {len(horses_data)}頭")
+        print(f"  コーナー補完適用レース: {corner_fallback_count}")
         
         # 6. 更新済みファイルを保存（metadataを含む）
         today = datetime.now().strftime("%Y%m%d")

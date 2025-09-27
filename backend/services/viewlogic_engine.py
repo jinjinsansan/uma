@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ViewLogic展開予想エンジン
 脚質判定、ペース予測、展開シミュレーションを行う
@@ -48,26 +50,58 @@ def safe_int(value, default=0):
 class RunningStyleAnalyzer:
     """脚質判定と3段階分類を行うクラス"""
     
+    def _convert_position(self, value) -> Optional[int]:
+        """コーナー通過順位を整数に変換（無効値はNone）"""
+        if value is None:
+            return None
+        try:
+            pos = int(value)
+        except (ValueError, TypeError):
+            return None
+        # 0 や 99 以上はデータ欠損として扱う
+        if pos <= 0 or pos >= 99:
+            return None
+        return pos
+
+    def _collect_positions(self, horse_races: List[Dict], key: str) -> List[int]:
+        """指定キーのコーナー通過順位を収集"""
+        positions = []
+        for race in horse_races:
+            pos = self._convert_position(race.get(key))
+            if pos is not None:
+                positions.append(pos)
+        return positions
+
+    def _collect_positions_with_fallback(self, horse_races: List[Dict], keys: List[str]) -> List[int]:
+        """複数キーを順番に試して通過順位を取得"""
+        for key in keys:
+            positions = self._collect_positions(horse_races, key)
+            if positions:
+                return positions
+        return []
+
+    def _extract_first_valid_position(self, race: Dict, keys: List[str]) -> Optional[int]:
+        for key in keys:
+            pos = self._convert_position(race.get(key))
+            if pos is not None:
+                return pos
+        return None
+
     def classify_basic_style(self, horse_races: List[Dict]) -> str:
         """基本4分類（逃げ/先行/差し/追込）を判定"""
         if not horse_races:
             return "不明"
         
-        # 1コーナー通過順位の平均を計算
-        corner1_positions = []
-        for race in horse_races:
-            if 'CORNER1_JUNI' in race:
-                try:
-                    corner1_pos = int(race['CORNER1_JUNI'])
-                    if corner1_pos > 0:
-                        corner1_positions.append(corner1_pos)
-                except (ValueError, TypeError):
-                    continue
-        
-        if not corner1_positions:
+        # 1コーナー通過順位が欠損している場合は2→3→4コーナーを順に参照
+        corner_positions = self._collect_positions_with_fallback(
+            horse_races,
+            ['CORNER1_JUNI', 'CORNER2_JUNI', 'CORNER3_JUNI', 'CORNER4_JUNI']
+        )
+
+        if not corner_positions:
             return "不明"
         
-        avg_corner1 = mean(corner1_positions)
+        avg_corner1 = mean(corner_positions)
         
         if avg_corner1 <= 2.0:
             return "逃げ"
@@ -98,20 +132,23 @@ class RunningStyleAnalyzer:
         escape_races = 0
         
         for race in horse_races:
-            corner1 = safe_int(race.get('CORNER1_JUNI'), 99)
-            corner2 = safe_int(race.get('CORNER2_JUNI'), 99)
-            finish = safe_int(race.get('KAKUTEI_CHAKUJUN'), 99)
+            corner1 = self._extract_first_valid_position(race, ['CORNER1_JUNI', 'CORNER2_JUNI'])
+            corner2 = self._extract_first_valid_position(race, ['CORNER2_JUNI', 'CORNER3_JUNI'])
+            finish = self._convert_position(race.get('KAKUTEI_CHAKUJUN'))
+            
+            if corner1 is None:
+                continue
             
             # 逃げた場合
             if corner1 <= 2:
                 escape_races += 1
                 
-                # 単独逃げかチェック（2コーナーでも先頭）
+                # 単独逃げかチェック（次のコーナーでも先頭）
                 if corner2 == 1:
                     solo_escape_count += 1
                 
                 # 逃げて3着以内
-                if finish <= 3:
+                if finish is not None and finish <= 3:
                     escape_success_count += 1
         
         if escape_races == 0:
@@ -129,22 +166,20 @@ class RunningStyleAnalyzer:
     
     def _classify_stalker_details(self, horse_races: List[Dict]) -> Tuple[str, str]:
         """先行馬の詳細分類"""
-        corner1_positions = []
+        corner_positions = self._collect_positions_with_fallback(
+            horse_races,
+            ['CORNER1_JUNI', 'CORNER2_JUNI', 'CORNER3_JUNI']
+        )
         position_stability = 0
         
-        for race in horse_races:
-            corner1 = safe_int(race.get('CORNER1_JUNI'), 99)
-            if corner1 < 99:
-                corner1_positions.append(corner1)
-        
-        if not corner1_positions:
+        if not corner_positions:
             return "先行", "標準先行"
         
-        avg_corner1 = mean(corner1_positions)
+        avg_corner1 = mean(corner_positions)
         
         # 位置取りの安定性を計算（標準偏差が小さいほど安定）
-        if len(corner1_positions) > 1:
-            position_stability = 1 / (1 + stdev(corner1_positions))
+        if len(corner_positions) > 1:
+            position_stability = 1 / (1 + stdev(corner_positions))
         else:
             position_stability = 0.5
         
@@ -265,12 +300,6 @@ class BayesianCorrector:
                     prior_mean: float = 0.20, prior_weight: float = 5) -> Dict[str, float]:
         """
         ベイズ補正で少ないサンプル数の影響を緩和
-        
-        Parameters:
-        - success_count: 成功回数（複勝回数）
-        - total_count: 総試行回数（出走回数）
-        - prior_mean: 事前平均（全体の複勝率）
-        - prior_weight: 事前分布の重み（信頼度）
         """
         if total_count == 0:
             return {
@@ -303,7 +332,7 @@ class RaceFlowPredictor:
         self.bayesian = BayesianCorrector()
     
     def predict_pace(self, all_horses_data: List[Dict]) -> Dict[str, Any]:
-        """ペース予測（ハイ/平均/スロー）"""
+        """ペース予測(ハイ/平均/スロー)"""
         # 各馬の脚質を判定（馬番付き）
         style_distribution = {
             '逃げ': {'count': 0, 'horses': [], 'horse_numbers': []},
@@ -513,7 +542,7 @@ class ViewLogicEngine:
     def predict_race_flow_advanced(self, race_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         計画書通りの高度な展開予想
-        前半3F・後半3Fを使用したペース予測と詳細な脚質分析
+        前半3F/後半3Fを使用したペース予測と詳細な脚質分析
         """
         horses = race_data.get('horses', [])
         if not horses:
@@ -578,13 +607,13 @@ class ViewLogicEngine:
     
     def _normalize_3f_time(self, value) -> Optional[float]:
         """
-        3Fタイムを秒単位に正規化
-        Phase 1: データ正規化の実装（修正版）
-        実データ分析に基づく正規化ロジック
-        """
-        # 欠損値チェック
-        if value == 0 or value == 999 or value == 999.0:
-            return None
+            corner4 = self._extract_first_valid_position(race, ['CORNER4_JUNI', 'CORNER3_JUNI'])
+            finish = self._convert_position(race.get('KAKUTEI_CHAKUJUN'))
+            
+            if corner4 is not None and finish is not None:
+                # 4コーナーから着順への改善度
+                improvement = corner4 - finish
+                finishing_improvements.append(improvement)
         
         # 100を境界にシンプルに判定
         # 前半3F: 34.3-38.7の範囲（全て100未満、既に秒単位）
@@ -733,8 +762,10 @@ class ViewLogicEngine:
         total_escapes = 0
         
         for race in races:
-            corner1 = safe_int(race.get('CORNER1_JUNI'), 99)
-            corner2 = safe_int(race.get('CORNER2_JUNI'), 99)
+            corner1 = self._extract_first_valid_position(race, ['CORNER1_JUNI', 'CORNER2_JUNI'])
+            if corner1 is None:
+                continue
+            corner2 = self._extract_first_valid_position(race, ['CORNER2_JUNI', 'CORNER3_JUNI'])
             
             if corner1 <= 2:  # 逃げた場合
                 total_escapes += 1
@@ -744,7 +775,8 @@ class ViewLogicEngine:
                     solo_escape_count += 1
                 
                 # 逃げて3着以内
-                if safe_int(race.get('KAKUTEI_CHAKUJUN'), 99) <= 3:
+                finish = self._convert_position(race.get('KAKUTEI_CHAKUJUN'))
+                if finish is not None and finish <= 3:
                     escape_success_count += 1
         
         if total_escapes == 0:
@@ -762,18 +794,16 @@ class ViewLogicEngine:
     
     def _classify_stalker_details_advanced(self, races: List[Dict]) -> str:
         """先行馬の詳細分類"""
-        corner1_positions = []
+        corner_positions = self._collect_positions_with_fallback(
+            races,
+            ['CORNER1_JUNI', 'CORNER2_JUNI', 'CORNER3_JUNI']
+        )
         
-        for race in races:
-            corner1 = safe_int(race.get('CORNER1_JUNI'), 99)
-            if corner1 < 99:
-                corner1_positions.append(corner1)
-        
-        if not corner1_positions:
+        if not corner_positions:
             return '標準先行'
         
-        avg_corner1 = mean(corner1_positions)
-        position_stability = 1 / (1 + stdev(corner1_positions)) if len(corner1_positions) > 1 else 0.5
+        avg_corner1 = mean(corner_positions)
+        position_stability = 1 / (1 + stdev(corner_positions)) if len(corner_positions) > 1 else 0.5
         
         if avg_corner1 <= 3.5 and position_stability > 0.8:
             return '前寄り先行'
@@ -811,10 +841,10 @@ class ViewLogicEngine:
         extreme_finishes = 0
         
         for race in races:
-            corner4 = safe_int(race.get('CORNER4_JUNI'), 99)
-            finish = safe_int(race.get('KAKUTEI_CHAKUJUN'), 99)
+            corner4 = self._extract_first_valid_position(race, ['CORNER4_JUNI', 'CORNER3_JUNI'])
+            finish = self._convert_position(race.get('KAKUTEI_CHAKUJUN'))
             
-            if corner4 > 10 and finish <= 3:
+            if corner4 is not None and finish is not None and corner4 > 10 and finish <= 3:
                 extreme_finishes += 1
         
         extreme_rate = extreme_finishes / len(races) if races else 0

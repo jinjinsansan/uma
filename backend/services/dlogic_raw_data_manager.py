@@ -9,6 +9,7 @@ except ImportError:
     import json
 import os
 import requests
+import time
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 import mysql.connector
@@ -36,6 +37,11 @@ class DLogicRawDataManager:
         
         self.knowledge_data = self._load_knowledge()
         horse_count = len(self.knowledge_data.get('horses', {}))
+
+        if horse_count == 0:
+            print("⚠️ ロード結果が0頭のため再ダウンロードを試行します...")
+            self.knowledge_data = self._download_from_github()
+            horse_count = len(self.knowledge_data.get('horses', {}))
         print(f"🚀 D-Logic生データマネージャー初期化完了 ({horse_count}頭)")
         
     def _load_knowledge(self) -> Dict[str, Any]:
@@ -77,35 +83,42 @@ class DLogicRawDataManager:
         # 統合ナレッジファイル（本番用）: unified_knowledge_20250903.json
         cdn_url = "https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/unified_knowledge_20250903.json"
         
-        try:
-            print("🚀 Cloudflare R2（CDN）からナレッジファイルをダウンロード中...")
-            response = requests.get(cdn_url, timeout=120)
-            
-            if response.status_code == 200:
+        for attempt in range(1, 4):
+            try:
+                print(f"🚀 Cloudflare R2（CDN）からナレッジファイルをダウンロード中... (試行 {attempt}/3)")
+                response = requests.get(cdn_url, timeout=(10, 300))
+                response.raise_for_status()
+
                 data = response.json()
                 horse_count = len(data.get('horses', {}))
+
+                if horse_count == 0:
+                    print("⚠️ ダウンロード結果が0頭でした。再試行します...")
+                    time.sleep(2)
+                    continue
+
                 print(f"✅ ダウンロード完了: {horse_count}頭のデータを取得")
-                
+
                 # ローカルに保存（キャッシュとして）
                 try:
-                    # Render環境では/var/dataディレクトリを作成
                     if os.environ.get('RENDER'):
                         os.makedirs('/var/data', exist_ok=True)
                     else:
                         os.makedirs(os.path.dirname(self.knowledge_file), exist_ok=True)
-                    
+
                     with open(self.knowledge_file, 'w', encoding='utf-8') as f:
                         json.dump(data, f, ensure_ascii=False, indent=2)
                     print(f"💾 永続ディスクに保存完了: {self.knowledge_file}")
                 except Exception as e:
                     print(f"⚠️ ローカル保存失敗（メモリ上で動作継続）: {e}")
-                
+
                 return data
-            else:
-                print(f"❌ ダウンロード失敗: HTTPステータス {response.status_code}")
-                
-        except Exception as e:
-            print(f"❌ ダウンロードエラー: {e}")
+
+            except requests.exceptions.RequestException as e:
+                print(f"❌ ダウンロードエラー: {e}")
+                if attempt < 3:
+                    time.sleep(3)
+                continue
         
         # フォールバック：空のナレッジ構造を返す
         print("⚠️ ナレッジファイルが取得できません。MySQLから動的に取得します。")

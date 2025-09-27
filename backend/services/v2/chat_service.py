@@ -41,7 +41,8 @@ class V2ChatService:
         self,
         user_id: str,
         race_data: Dict,
-        imlogic_settings_id: Optional[str] = None
+        imlogic_settings_id: Optional[str] = None,
+        user_email: Optional[str] = None
     ) -> Dict:
         """新しいチャットセッションを作成"""
         try:
@@ -77,6 +78,9 @@ class V2ChatService:
                     "raceResults": race_data.get("raceResults")  # レース結果追加
                 })
             }
+
+            if user_email:
+                session_data["user_email"] = user_email
             
             response = self.supabase.table("v2_chat_sessions").insert(session_data).execute()
             return response.data[0]

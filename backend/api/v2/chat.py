@@ -256,7 +256,8 @@ async def create_chat(
                 "track_condition": request.track_condition,
                 "raceResults": request.raceResults     # レース結果追加
             },
-            imlogic_settings_id=request.imlogic_settings_id
+            imlogic_settings_id=request.imlogic_settings_id,
+            user_email=user_email
         )
         
         # ポイント消費（管理者テストモード以外）

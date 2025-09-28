@@ -143,12 +143,25 @@ class V2AIHandler:
             return context
 
         try:
-            user_response = supabase.table('v2_users').select('id, line_user_id').eq('email', user_email).execute()
+            user_response = supabase.table('v2_users').select('id, line_user_id, is_line_connected').eq('email', user_email).execute()
             if user_response.data:
                 user_data = user_response.data[0]
                 context['user_id'] = user_data.get('id')
                 line_user_id = user_data.get('line_user_id')
-                context['user_has_line'] = bool(line_user_id)
+                is_line_connected = user_data.get('is_line_connected')
+                context['user_has_line'] = bool(line_user_id) or bool(is_line_connected)
+
+                # 追加のフォールバック: 旧LINE連携ユーザーで line_user_id が未設定の場合
+                if not context['user_has_line']:
+                    try:
+                        v1_user_response = supabase.table('users').select('id').eq('email', user_email).single().execute()
+                        if v1_user_response.data:
+                            v1_user_id = v1_user_response.data.get('id')
+                            ticket_response = supabase.table('line_tickets').select('is_used').eq('user_id', v1_user_id).eq('is_used', True).single().execute()
+                            if ticket_response.data and ticket_response.data.get('is_used'):
+                                context['user_has_line'] = True
+                    except Exception as fallback_error:
+                        logger.warning(f"LINE連携状態フォールバック確認中のエラー: {fallback_error}")
 
                 points_response = supabase.table('v2_user_points').select('current_points').eq('user_id', context['user_id']).execute()
                 if points_response.data:

@@ -8,6 +8,7 @@ import logging
 import traceback
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
+from html import unescape
 from services.imlogic_engine import IMLogicEngine
 from services.dlogic_raw_data_manager import DLogicRawDataManager
 try:
@@ -91,6 +92,42 @@ class V2AIHandler:
         text = text.replace('&amp;', '&')
         text = text.replace('&quot;', '"')
         text = text.replace('&#39;', "'")
+        return text.strip()
+
+    def _html_to_display_text(self, html_content: str) -> str:
+        """HTML本文をチャット向けに整形してテキスト化"""
+        if not html_content:
+            return ""
+
+        text = html_content
+
+        # 標準化: 改行タグやブロック要素を先に置換
+        text = re.sub(r'<\s*br\s*/?>', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'<\s*/?\s*(ul|ol)\s*[^>]*>', '\n', text, flags=re.IGNORECASE)
+
+        # 見出しや段落などは段落改行扱い
+        text = re.sub(r'<\s*h[1-6][^>]*>', '\n\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'</\s*h[1-6]\s*>', '\n\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'<\s*(p|div|section|article|header|footer|blockquote)[^>]*>', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'</\s*(p|div|section|article|header|footer|blockquote)\s*>', '\n\n', text, flags=re.IGNORECASE)
+
+        # リストは箇条書きへ変換
+        text = re.sub(r'<\s*li[^>]*>', '\n• ', text, flags=re.IGNORECASE)
+        text = re.sub(r'</\s*li\s*>', '\n', text, flags=re.IGNORECASE)
+
+        # 残りのタグは除去
+        text = re.sub(r'<[^>]+>', '', text)
+
+        # HTMLエンティティをデコード
+        text = unescape(text)
+
+        # 余分な空白を整理
+        text = text.replace('\r', '')
+        text = re.sub(r'[\t\f\v]+', ' ', text)
+        text = re.sub(r' *\n *', '\n', text)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        text = re.sub(r' +', ' ', text)
+
         return text.strip()
 
     def _get_user_context(self, supabase, user_email: Optional[str]) -> Dict[str, Any]:
@@ -325,7 +362,7 @@ class V2AIHandler:
                 content_parts.append(f"✅ **{required_points}ポイント消費しました**")
                 content_parts.append("---")
 
-            content_text = self._strip_html_tags(column.get('content', ''))
+            content_text = self._html_to_display_text(column.get('content', ''))
             if content_text:
                 content_parts.append(content_text)
             else:

@@ -3163,6 +3163,19 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                     distance = distance[:-1]
                 distance = str(distance)
 
+            def serialize_performance(perf: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+                if not perf or perf.get('message'):
+                    return None
+                return {
+                    'total_races': perf.get('total_races'),
+                    'wins': perf.get('wins'),
+                    'win_rate': perf.get('win_rate'),
+                    'place_rate': perf.get('place_rate'),
+                    'by_condition': perf.get('by_condition', [])
+                }
+
+            entries: List[Dict[str, Any]] = []
+
             # 各馬の血統データを取得
             for i, horse in enumerate(horses):
                 horse_number = i + 1
@@ -3179,6 +3192,11 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 # 血統データを取得
                 pedigree_data = self._get_horse_pedigree(dlogic_manager, horse_name)
 
+                entry: Dict[str, Any] = {
+                    'horse_number': horse_number,
+                    'horse_name': horse_name,
+                }
+
                 # 馬番をシンプルな数字表記に
 
                 # フォーマット出力
@@ -3188,6 +3206,11 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                     sire = pedigree_data.get('sire', 'データなし')
                     dam = pedigree_data.get('dam', None)
                     broodmare_sire = pedigree_data.get('broodmare_sire', 'データなし')
+
+                    entry['sire'] = sire
+                    if dam:
+                        entry['dam'] = dam
+                    entry['broodmare_sire'] = broodmare_sire
 
                     # modeに応じて表示内容を変更
                     if mode == 'father':
@@ -3224,6 +3247,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                                                 # 0戦のデータは表示しない
                                                 if cond['races'] > 0:
                                                     lines.append(f"      {cond['condition']}: {cond['races']}戦{cond['wins']}勝 複勝率{cond['place_rate']:.1f}%")
+                                        entry['sire_performance'] = serialize_performance(sire_perf)
 
                             # 空行を追加（父と母父の成績を見やすく分離、bothモードのみ）
                             if mode == 'both' and sire and sire != 'データなし' and broodmare_sire and broodmare_sire != 'データなし':
@@ -3243,24 +3267,32 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                                                 # 0戦のデータは表示しない
                                                 if cond['races'] > 0:
                                                     lines.append(f"      {cond['condition']}: {cond['races']}戦{cond['wins']}勝 複勝率{cond['place_rate']:.1f}%")
+                                        entry['broodmare_performance'] = serialize_performance(bm_perf)
 
                         except Exception as e:
                             logger.debug(f"産駒成績取得エラー（{horse_name}）: {e}")
                             # エラーは無視（基本の血統表示は維持）
 
                 else:
+                    entry['status'] = 'no_data'
                     lines.append("  － 血統データなし")
 
                 lines.append("")  # 1行空ける
+                entries.append(entry)
 
             content = "\n".join(lines)
 
             # 分析データも返す（将来的な拡張用）
             analysis_data = {
+                'status': 'success',
+                'type': 'viewlogic_sire_analysis',
+                'mode': mode,
                 'venue': venue,
                 'race_number': race_number,
-                'type': 'sire_analysis',
-                'horses_count': len(horses)
+                'distance': distance,
+                'is_local': is_local,
+                'horses_count': len(horses),
+                'entries': entries
             }
 
             return (content, analysis_data)

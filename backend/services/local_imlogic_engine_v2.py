@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 地方競馬版IMLogic統合エンジン V2
-JRA版と完全に同じロジックで実装
+JRA版と同じ構造の分析結果を生成
 """
 import logging
+from datetime import datetime
 from typing import Dict, Any, List, Optional
 from .local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
 from .local_jockey_data_manager import local_jockey_manager
@@ -59,75 +60,271 @@ class LocalIMLogicEngineV2:
         return False
     
     def analyze_race(
-        self, 
-        race_data: Dict[str, Any], 
-        horse_weight: int = None, 
-        jockey_weight: int = None, 
-        item_weights: Dict[str, float] = None
+        self,
+        race_data: Dict[str, Any],
+        horse_weight: int = None,
+        jockey_weight: int = None,
+        item_weights: Optional[Dict[str, float]] = None
     ) -> Dict[str, Any]:
-        """
-        レース分析（JRA版と同じ実装）
-        
-        Args:
-            race_data: レース情報
-            horse_weight: 馬の重み（デフォルト70%）
-            jockey_weight: 騎手の重み（デフォルト30%）
-            item_weights: 各項目の重み（12項目）
-        
-        Returns:
-            分析結果（I-Logicエンジンの結果をそのまま返す）
-        """
-        # 重みのデフォルト値設定
-        if horse_weight is None:
-            horse_weight = self.DEFAULT_HORSE_WEIGHT
-        if jockey_weight is None:
-            jockey_weight = self.DEFAULT_JOCKEY_WEIGHT
-            
-        # 合計が100になるように調整
+        """地方競馬版のIMLogic分析を実行し、JRA版と同じ構造の結果を返す"""
+
+        # デフォルト重み
+        horse_weight = float(self.DEFAULT_HORSE_WEIGHT if horse_weight is None else horse_weight)
+        jockey_weight = float(self.DEFAULT_JOCKEY_WEIGHT if jockey_weight is None else jockey_weight)
+
         total_weight = horse_weight + jockey_weight
-        if total_weight != 100:
-            # 比率を保ちながら100に正規化
-            horse_weight = (horse_weight / total_weight) * 100
-            jockey_weight = (jockey_weight / total_weight) * 100
-        
-        # デフォルトの12項目重み（JRA版と同じ）
-        if item_weights is None:
-            item_weights = {
-                '1_distance_aptitude': 8.33,
-                '2_bloodline_evaluation': 8.33,
-                '3_jockey_compatibility': 8.33,
-                '4_trainer_evaluation': 8.33,
-                '5_track_aptitude': 8.33,
-                '6_weather_aptitude': 8.33,
-                '7_popularity_factor': 8.33,
-                '8_weight_impact': 8.33,
-                '9_horse_weight_impact': 8.33,
-                '10_corner_specialist': 8.33,
-                '11_margin_analysis': 8.33,
-                '12_time_index': 8.37  # 合計100になるよう調整
+        if total_weight <= 0:
+            horse_weight = float(self.DEFAULT_HORSE_WEIGHT)
+            jockey_weight = float(self.DEFAULT_JOCKEY_WEIGHT)
+            total_weight = horse_weight + jockey_weight
+
+        if abs(total_weight - 100.0) > 1e-6:
+            horse_ratio = horse_weight / total_weight
+            jockey_ratio = jockey_weight / total_weight
+            horse_weight = round(horse_ratio * 100.0, 2)
+            jockey_weight = round(jockey_ratio * 100.0, 2)
+
+        normalized_item_weights = self._normalize_item_weights(item_weights)
+
+        if not self.ilogic_engine._validate_race_data(race_data):
+            return {
+                'status': 'error',
+                'message': 'レースデータが不正です',
+                'analysis_type': 'imlogic'
             }
-        
-        # I-Logicエンジンで分析（JRA版と同じロジック）
-        analysis_result = self.ilogic_engine.analyze_race(race_data)
-        
-        # IMLogic特有の情報を追加
-        if analysis_result.get('status') == 'success':
-            analysis_result['mode'] = 'IMLogic'
-            analysis_result['horse_weight'] = horse_weight
-            analysis_result['jockey_weight'] = jockey_weight
-            analysis_result['item_weights'] = item_weights
-            analysis_result['settings'] = {
+
+        context = {
+            'venue': race_data.get('venue', ''),
+            'grade': race_data.get('grade', ''),
+            'distance': race_data.get('distance', ''),
+            'track_condition': race_data.get('track_condition', '良')
+        }
+
+        horses = race_data.get('horses', []) or []
+        jockeys = race_data.get('jockeys', []) or []
+        posts = race_data.get('posts', []) or []
+        horse_numbers = race_data.get('horse_numbers') or []
+
+        results: List[Dict[str, Any]] = []
+
+        for idx, horse_name in enumerate(horses):
+            try:
+                jockey_name = jockeys[idx] if idx < len(jockeys) else ''
+                post = posts[idx] if idx < len(posts) else idx + 1
+                horse_number = horse_numbers[idx] if idx < len(horse_numbers) else idx + 1
+
+                horse_score, has_data, horse_details = self.ilogic_engine._calculate_horse_score_with_weights(
+                    horse_name=horse_name,
+                    context=context,
+                    item_weights=normalized_item_weights
+                )
+
+                jockey_score, jockey_breakdown = self.ilogic_engine._calculate_jockey_score(
+                    jockey_name,
+                    {
+                        'venue': context['venue'],
+                        'post': post,
+                        'sire': horse_details.get('sire')
+                    }
+                )
+
+                if not has_data:
+                    total_score = None
+                    horse_score_disp = None
+                    jockey_score_disp = None
+                else:
+                    total_score = round(
+                        horse_score * (horse_weight / 100.0) +
+                        jockey_score * (jockey_weight / 100.0),
+                        1
+                    )
+                    horse_score_disp = round(horse_score, 1)
+                    jockey_score_disp = round(jockey_score, 1)
+
+                data_status = horse_details.get('data_status', 'no_data')
+                estimation_method = horse_details.get('estimation_method', 'local_default')
+
+                results.append({
+                    'rank': 0,
+                    'horse_number': horse_number,
+                    'post': post,
+                    'horse': horse_name,
+                    'jockey': jockey_name,
+                    'total_score': total_score,
+                    'horse_score': horse_score_disp,
+                    'jockey_score': jockey_score_disp,
+                    'horse_weight_pct': horse_weight,
+                    'jockey_weight_pct': jockey_weight,
+                    'has_data': has_data,
+                    'estimation_method': estimation_method,
+                    'horse_details': horse_details,
+                    'jockey_details': {
+                        'venue': round(jockey_breakdown.get('venue_score', 0.0), 1),
+                        'post': round(jockey_breakdown.get('post_score', 0.0), 1),
+                        'sire': round(jockey_breakdown.get('sire_score', 0.0), 1)
+                    },
+                    'data_status': data_status
+                })
+
+            except Exception as exc:
+                logger.error(f"IMLogic地方版分析エラー ({horse_name}): {exc}")
+                results.append({
+                    'rank': 999,
+                    'horse_number': horse_numbers[idx] if idx < len(horse_numbers) else idx + 1,
+                    'post': posts[idx] if idx < len(posts) else idx + 1,
+                    'horse': horse_name,
+                    'jockey': jockeys[idx] if idx < len(jockeys) else '',
+                    'total_score': None,
+                    'horse_score': None,
+                    'jockey_score': None,
+                    'horse_weight_pct': horse_weight,
+                    'jockey_weight_pct': jockey_weight,
+                    'has_data': False,
+                    'estimation_method': 'local_error',
+                    'horse_details': {
+                        'has_knowledge_data': False,
+                        'data_status': 'error',
+                        'estimation_method': 'local_error',
+                        'venue_distance_bonus': 0.0,
+                        'track_bonus': 0.0,
+                        'class_factor': 1.0,
+                        'venue_history': {'wins': 0, 'total': 0, 'place_rate': 0.0, 'average_finish': None},
+                        'distance_history': {'total': 0, 'average_finish': None},
+                        'recent_form': {'finishes': [], 'average_finish': None},
+                        'd_logic_scores': {},
+                        'd_logic_total': 0.0,
+                        'sire': None
+                    },
+                    'jockey_details': {
+                        'venue': 0.0,
+                        'post': 0.0,
+                        'sire': 0.0
+                    },
+                    'data_status': 'error'
+                })
+
+        valid_results = [r for r in results if r['total_score'] is not None]
+        invalid_results = [r for r in results if r['total_score'] is None]
+
+        valid_results.sort(key=lambda x: x['total_score'], reverse=True)
+
+        for pos, result in enumerate(valid_results, start=1):
+            result['rank'] = pos
+
+        for offset, result in enumerate(invalid_results, start=1):
+            result['rank'] = len(valid_results) + offset
+
+        all_results = valid_results + invalid_results
+
+        summary = self.ilogic_engine._create_analysis_summary(all_results, context)
+        total_runners = len(all_results) if all_results else 1
+        confidence = round((len(valid_results) / total_runners) * 100.0, 1)
+        summary['confidence'] = confidence
+        summary['top_3'] = [
+            f"{item['horse']} ({item['total_score']:.1f}点)"
+            for item in valid_results[:3]
+        ] if valid_results else []
+
+        response = {
+            'status': 'success',
+            'type': 'imlogic',
+            'analysis_type': 'imlogic',
+            'mode': 'IMLogic',
+            'race_info': {
+                'venue': race_data.get('venue', ''),
+                'race_number': race_data.get('race_number', ''),
+                'race_name': race_data.get('race_name', ''),
+                'grade': race_data.get('grade', ''),
+                'distance': race_data.get('distance', ''),
+                'track_condition': race_data.get('track_condition', '良'),
+                'horses_count': len(horses)
+            },
+            'settings': {
                 'horse_weight': horse_weight,
                 'jockey_weight': jockey_weight,
-                'item_weights': item_weights
-            }
-            
-            # スコアリストをランキング形式に変換
-            if 'results' in analysis_result:
-                analysis_result['rankings'] = analysis_result['results']
-        
-        return analysis_result
+                'item_weights': normalized_item_weights
+            },
+            'horse_weight': horse_weight,
+            'jockey_weight': jockey_weight,
+            'item_weights': normalized_item_weights,
+            'weights': {
+                'horse': horse_weight,
+                'jockey': jockey_weight
+            },
+            'results': all_results,
+            'scores': all_results,
+            'rankings': all_results,
+            'summary': summary,
+            'top_horses': [r['horse'] for r in valid_results[:5]],
+            'analyzed_at': datetime.now().isoformat()
+        }
+
+        return response
     
+    def _normalize_item_weights(self, raw_weights: Optional[Dict[str, float]]) -> Dict[str, float]:
+        """番号付き12項目の重みを正規化して返す"""
+        default_weights = {
+            '1_distance_aptitude': 8.33,
+            '2_bloodline_evaluation': 8.33,
+            '3_jockey_compatibility': 8.33,
+            '4_trainer_evaluation': 8.33,
+            '5_track_aptitude': 8.33,
+            '6_weather_aptitude': 8.33,
+            '7_popularity_factor': 8.33,
+            '8_weight_impact': 8.33,
+            '9_horse_weight_impact': 8.33,
+            '10_corner_specialist': 8.33,
+            '11_margin_analysis': 8.33,
+            '12_time_index': 8.37
+        }
+
+        if not raw_weights:
+            return default_weights.copy()
+
+        numbered_keys = set(default_weights.keys())
+        contains_numbered = any(key in numbered_keys for key in raw_weights.keys())
+
+        weights: Dict[str, float] = {}
+
+        if contains_numbered:
+            for key, default_value in default_weights.items():
+                try:
+                    weights[key] = float(raw_weights.get(key, default_value))
+                except (TypeError, ValueError):
+                    weights[key] = default_value
+        else:
+            plain_mapping = {
+                '1_distance_aptitude': 'distance_aptitude',
+                '2_bloodline_evaluation': 'bloodline_evaluation',
+                '3_jockey_compatibility': 'jockey_compatibility',
+                '4_trainer_evaluation': 'trainer_evaluation',
+                '5_track_aptitude': 'track_aptitude',
+                '6_weather_aptitude': 'weather_aptitude',
+                '7_popularity_factor': 'popularity_factor',
+                '8_weight_impact': 'weight_impact',
+                '9_horse_weight_impact': 'horse_weight_impact',
+                '10_corner_specialist': 'corner_specialist',
+                '11_margin_analysis': 'margin_analysis',
+                '12_time_index': 'time_index'
+            }
+
+            for numbered_key, plain_key in plain_mapping.items():
+                try:
+                    weights[numbered_key] = float(raw_weights.get(plain_key, default_weights[numbered_key]))
+                except (TypeError, ValueError):
+                    weights[numbered_key] = default_weights[numbered_key]
+
+        total = sum(weights.values())
+        if total <= 0:
+            return default_weights.copy()
+
+        if abs(total - 100.0) > 1e-6:
+            scale = 100.0 / total
+            for key in weights:
+                weights[key] = round(weights[key] * scale, 2)
+
+        return weights
+
     def analyze_for_chat(
         self, 
         horses: List[str], 

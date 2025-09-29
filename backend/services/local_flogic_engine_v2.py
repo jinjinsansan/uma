@@ -4,7 +4,7 @@
 import logging
 import math
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 from .local_race_analysis_engine_v2 import local_race_analysis_engine_v2
 
@@ -117,21 +117,10 @@ class LocalFLogicEngineV2:
                     kelly_fraction = min((numerator / b) * 0.25, 0.10)
 
             odds_divergence = (market / fair) if fair > 0 else 0.0
-            if odds_divergence >= 2.0:
-                value_rating = 'excellent'
-                investment_signal = '強い買い'
-            elif odds_divergence >= 1.5:
-                value_rating = 'good'
-                investment_signal = '買い'
-            elif odds_divergence >= 1.2:
-                value_rating = 'fair'
-                investment_signal = 'やや買い'
-            elif odds_divergence >= 1.0:
-                value_rating = 'neutral'
-                investment_signal = '中立'
-            else:
-                value_rating = 'poor'
-                investment_signal = '見送り'
+            value_rating, investment_signal, decision_reason = LocalFLogicEngineV2._classify_investment(
+                odds_divergence,
+                expected_value
+            )
 
             results[horse] = {
                 'fair_odds': round(fair, 1),
@@ -142,10 +131,68 @@ class LocalFLogicEngineV2:
                 'investment_signal': investment_signal,
                 'kelly_criterion': round(kelly_fraction, 4),
                 'roi_estimate': round(expected_value * 100, 1),
-                'odds_divergence': round(odds_divergence, 2)
+                'odds_divergence': round(odds_divergence, 2),
+                'decision_reason': decision_reason
             }
 
+        if results:
+            signals = [info.get('investment_signal') for info in results.values() if info.get('investment_signal')]
+            if signals and all(signal == '見送り' for signal in signals):
+                top_entry = max(
+                    results.items(),
+                    key=lambda item: item[1].get('odds_divergence', 0)
+                )
+                horse, payload = top_entry
+                payload['value_rating'] = 'neutral'
+                payload['investment_signal'] = '中立'
+                reason = payload.get('decision_reason', '')
+                suffix = '相対比較により最も割安な馬を中立評価へ補正'
+                payload['decision_reason'] = f"{reason} / {suffix}" if reason else suffix
+                results[horse] = payload
+
         return results
+
+    @staticmethod
+    def _classify_investment(odds_divergence: float, expected_value: float) -> Tuple[str, str, str]:
+        """地方競馬向けの投資判定を算出"""
+
+        if odds_divergence >= 1.8:
+            return (
+                'excellent',
+                '強い買い',
+                '市場オッズが理論値の1.8倍以上で大きな割安傾向'
+            )
+
+        if odds_divergence >= 1.35:
+            return (
+                'good',
+                '買い',
+                '市場オッズが理論値より十分高く、期待値が大きい'
+            )
+
+        if odds_divergence >= 1.08:
+            return (
+                'fair',
+                'やや買い',
+                '市場オッズが理論値よりやや高く、妙味が期待できる'
+            )
+
+        if odds_divergence >= 0.92:
+            if expected_value >= 0:
+                reason = '市場と理論値が拮抗しており期待値はプラス圏'
+            else:
+                reason = '市場オッズは理論値と同水準で様子見'
+            return (
+                'neutral',
+                '中立',
+                reason
+            )
+
+        return (
+            'poor',
+            '見送り',
+            '市場オッズが理論値を下回りリスクが高い'
+        )
 
     def analyze_race(
         self,

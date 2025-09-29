@@ -553,6 +553,13 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             'visualization_data': self._prepare_visualization_data(race_simulation)
         }
         
+        try:
+            from services.v2.ai_handler_format_advanced import format_flow_prediction_advanced
+            result['formatted_output'] = format_flow_prediction_advanced(result)
+        except Exception as e:
+            logger.error(f"地方競馬版展開予想フォーマットエラー: {e}")
+            result['formatted_output'] = ''
+
         return result
     
     def analyze_course_trend(self, race_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -718,27 +725,23 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
     
     def recommend_betting_tickets(self, race_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        馬券推奨（地方競馬版）
-        JRA版と完全に同じロジックで実装
+        馬券推奨機能 - ViewLogic展開予想の上位5頭を基に推奨馬券を生成
         """
         try:
             venue = race_data.get('venue', '不明')
             horses = race_data.get('horses', [])
             jockeys = race_data.get('jockeys', [])
             posts = race_data.get('posts', [])
-            
-            # データ検証
+
             if not horses or len(horses) < 3:
                 return {
                     'status': 'error',
                     'message': '推奨馬券の生成には最低3頭の出走馬が必要です。'
                 }
-            
-            # ViewLogic展開予想を実行して上位馬を取得
+
             flow_result = self.predict_race_flow_advanced(race_data)
-            
-            # 展開予想の上位馬を取得
-            top_5_horses = []
+
+            top_5_horses: List[str] = []
             if flow_result and flow_result.get('status') == 'success':
                 if 'race_simulation' in flow_result and 'finish' in flow_result['race_simulation']:
                     finish_order = flow_result['race_simulation']['finish']
@@ -746,27 +749,167 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                         horse_name = horse_info.get('horse_name')
                         if horse_name and horse_name in horses:
                             top_5_horses.append(horse_name)
-            
-            # 展開予想から取得できない場合はスコア計算
+                elif 'prediction' in flow_result and 'predicted_result' in flow_result['prediction']:
+                    for rank_info in flow_result['prediction']['predicted_result']:
+                        if '位' in rank_info:
+                            parts = rank_info.split(':')
+                            if len(parts) >= 2:
+                                horse_part = parts[1].strip()
+                                horse_name = horse_part.split('(')[0].strip()
+                                if horse_name in horses:
+                                    top_5_horses.append(horse_name)
+                                    if len(top_5_horses) >= 5:
+                                        break
+
             if len(top_5_horses) < 3:
                 horse_scores = self._calculate_horse_scores(race_data)
                 sorted_horses = sorted(horse_scores.items(), key=lambda x: x[1]['total_score'], reverse=True)
                 top_5_horses = [h[0] for h in sorted_horses[:5] if h[1]['total_score'] >= 0]
-            
-            # データが不足している場合
+
             if len(top_5_horses) < 3:
                 return {
                     'status': 'error',
                     'message': 'データ不足により推奨馬券を生成できません。データベースにデータがありません。'
                 }
-            
-            # 推奨馬券を生成（JRA版と同じロジック）
-            recommendations = []
+
+            recommendations = self._generate_betting_recommendations_from_top5(top_5_horses, race_data, flow_result)
+            if not recommendations:
+                recommendations = self._generate_betting_recommendations(race_data)
+
+            return {
+                'status': 'success',
+                'type': 'betting_recommendation',
+                'venue': venue,
+                'total_horses': len(horses),
+                'top_5_horses': top_5_horses[:5],
+                'recommendations': recommendations,
+                'last_updated': datetime.now().isoformat()
+            }
+
+        except Exception as e:
+            logger.error(f"地方競馬版馬券推奨生成エラー: {e}")
+            return {
+                'status': 'error',
+                'message': f'馬券推奨の生成に失敗しました: {str(e)}'
+            }
+
+    def _generate_betting_recommendations_from_top5(
+        self,
+        top_5_horses: List[str],
+        race_data: Dict[str, Any],
+        flow_result: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """展開予想の上位5頭から実践的な馬券買い目を生成"""
+        try:
+            recommendations: List[Dict[str, Any]] = []
             budget = 10000
-            
-            if len(top_5_horses) >= 2:
-                # 本命馬券（上位2頭の馬連）
-                top_horses = top_5_horses[:2]
+
+            if len(top_5_horses) < 3:
+                return []
+
+            if len(top_5_horses) >= 1:
+                recommendations.append({
+                    'type': '単勝',
+                    'ticket_type': '単勝',
+                    'horses': [top_5_horses[0]],
+                    'confidence': 75,
+                    'investment': int(budget * 0.2),
+                    'reason': f'ViewLogic展開予想1位の{top_5_horses[0]}',
+                    'buy_type': 'ストレート'
+                })
+
+            if len(top_5_horses) >= 3:
+                box_horses = top_5_horses[:3]
+                recommendations.append({
+                    'type': '馬連BOX',
+                    'ticket_type': '馬連',
+                    'horses': box_horses,
+                    'confidence': 65,
+                    'investment': int(budget * 0.25),
+                    'reason': f'上位3頭（{", ".join(box_horses)}）のBOX買い',
+                    'buy_type': 'BOX',
+                    'combinations': 3
+                })
+
+            if len(top_5_horses) >= 4:
+                first = top_5_horses[0]
+                second_candidates = top_5_horses[1:3]
+                third_candidates = top_5_horses[2:min(5, len(top_5_horses))]
+
+                recommendations.append({
+                    'type': '3連単流し',
+                    'ticket_type': '3連単',
+                    'horses': {
+                        '1着': [first],
+                        '2着': second_candidates,
+                        '3着': third_candidates
+                    },
+                    'confidence': 45,
+                    'investment': int(budget * 0.25),
+                    'reason': f'{first}の1着固定、2-3着流し',
+                    'buy_type': '流し',
+                    'combinations': len(second_candidates) * len(third_candidates)
+                })
+
+            if len(top_5_horses) >= 3:
+                axis = top_5_horses[0]
+                partners = top_5_horses[1:3]
+                recommendations.append({
+                    'type': 'ワイド',
+                    'ticket_type': 'ワイド',
+                    'horses': {
+                        '軸': axis,
+                        '相手': partners
+                    },
+                    'confidence': 80,
+                    'investment': int(budget * 0.15),
+                    'reason': f'{axis}軸のワイド、確実性重視',
+                    'buy_type': '軸流し',
+                    'combinations': len(partners)
+                })
+
+            if len(top_5_horses) >= 4:
+                box_horses = top_5_horses[:4]
+                recommendations.append({
+                    'type': '3連複BOX',
+                    'ticket_type': '3連複',
+                    'horses': box_horses,
+                    'confidence': 55,
+                    'investment': int(budget * 0.15),
+                    'reason': f'上位4頭のBOX、配当狙い',
+                    'buy_type': 'BOX',
+                    'combinations': 4
+                })
+
+            pace_info = ""
+            if flow_result and isinstance(flow_result, dict) and 'pace' in flow_result:
+                pace_data = flow_result['pace']
+                if isinstance(pace_data, dict) and 'predicted_pace' in pace_data:
+                    pace_info = f"（予想ペース: {pace_data['predicted_pace']}）"
+
+            for rec in recommendations:
+                if pace_info and '理由' in rec:
+                    rec['reason'] += pace_info
+
+            return recommendations
+
+        except Exception as e:
+            logger.error(f"展開予想ベースの馬券生成エラー: {e}")
+            import traceback
+            traceback.print_exc()
+            return self._generate_betting_recommendations(race_data)
+
+    def _generate_betting_recommendations(self, race_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """展開予想が使えない時のフォールバック馬券生成"""
+        try:
+            horse_scores = self._calculate_horse_scores(race_data)
+            sorted_horses = sorted(horse_scores.items(), key=lambda x: x[1]['total_score'], reverse=True)
+
+            recommendations: List[Dict[str, Any]] = []
+            budget = 10000
+
+            if len(sorted_horses) >= 2:
+                top_horses = [sorted_horses[0][0], sorted_horses[1][0]]
                 recommendations.append({
                     'type': '本命',
                     'ticket_type': '馬連',
@@ -775,11 +918,10 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'investment': int(budget * 0.4),
                     'reason': f'{top_horses[0]} × {top_horses[1]}の鉄板構成'
                 })
-            
-            if len(top_5_horses) >= 4:
-                # 対抗馬券（1位軸の3連複）
-                axis_horse = top_5_horses[0]
-                target_horses = top_5_horses[1:4]
+
+            if len(sorted_horses) >= 4:
+                axis_horse = sorted_horses[0][0]
+                target_horses = [sorted_horses[i][0] for i in range(1, 4)]
                 recommendations.append({
                     'type': '対抗',
                     'ticket_type': '3連複',
@@ -788,23 +930,90 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'investment': int(budget * 0.35),
                     'reason': f'{axis_horse}軸の手堅い組み合わせ'
                 })
-            
-            return {
-                'status': 'success',
-                'type': 'betting_recommendation',
-                'venue': venue,
-                'total_horses': len(horses),
-                'top_5_horses': top_5_horses,
-                'recommendations': recommendations,
-                'last_updated': datetime.now().isoformat()
-            }
-            
+
+            surprise_candidate = self._find_surprise_candidate(sorted_horses, race_data)
+            if surprise_candidate and len(sorted_horses) >= 3:
+                surprise_horse = surprise_candidate['horse']
+                surprise_reason = surprise_candidate['reason']
+                recommendations.append({
+                    'type': '穴狙い',
+                    'ticket_type': '馬連',
+                    'horses': [sorted_horses[0][0], surprise_horse],
+                    'confidence': 25,
+                    'investment': int(budget * 0.25),
+                    'reason': f'{surprise_horse}は{surprise_reason}'
+                })
+
+            total_invested = sum(rec['investment'] for rec in recommendations)
+            if total_invested < budget and recommendations:
+                recommendations[-1]['investment'] += budget - total_invested
+
+            return recommendations
+
         except Exception as e:
-            logger.error(f"地方競馬版馬券推奨生成エラー: {e}")
+            logger.error(f"地方競馬版馬券推奨フォールバック生成エラー: {e}")
+            return []
+
+    def _find_surprise_candidate(self, sorted_horses: List, race_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """穴馬候補を探す（上位から少し外れた馬の中で特徴的な馬を抽出）"""
+        if len(sorted_horses) < 6:
+            return None
+
+        candidates = sorted_horses[3:8] if len(sorted_horses) >= 8 else sorted_horses[3:]
+
+        for horse_name, horse_data in candidates:
+            jockey = horse_data.get('jockey', '')
+            if self._is_hot_jockey(jockey):
+                return {
+                    'horse': horse_name,
+                    'reason': f'{jockey}騎手の好調'
+                }
+
+            if horse_data.get('post', 0) <= 6:
+                horse_viewlogic_data = self.data_manager.get_horse_data(horse_name)
+                if horse_viewlogic_data and 'running_style' in horse_viewlogic_data:
+                    style_data = horse_viewlogic_data['running_style']
+                    if isinstance(style_data, dict) and style_data.get('style') in ['逃げ', '先行']:
+                        return {
+                            'horse': horse_name,
+                            'reason': f'内枠{horse_data["post"]}番からの{style_data["style"]}'
+                        }
+
+        if len(sorted_horses) >= 6:
             return {
-                'status': 'error',
-                'message': f'馬券推奨の生成に失敗しました: {str(e)}'
+                'horse': sorted_horses[5][0],
+                'reason': '中穴候補'
             }
+
+        return None
+
+    def _get_surprise_reason(self, horse_name: str, race_data: Dict[str, Any]) -> str:
+        horse_viewlogic_data = self.data_manager.get_horse_data(horse_name)
+        if horse_viewlogic_data and 'running_style' in horse_viewlogic_data:
+            style_data = horse_viewlogic_data['running_style']
+            if isinstance(style_data, dict):
+                return f"{style_data.get('style', '不明')}タイプの穴馬"
+        return "データ不足による穴馬"
+
+    def _is_hot_jockey(self, jockey_name: str) -> bool:
+        if not jockey_name or not self.jockey_manager.is_loaded():
+            return False
+
+        normalized_name = self._normalize_jockey_name(jockey_name)
+        jockey_data = self.jockey_manager.get_jockey_data(normalized_name)
+
+        if jockey_data and isinstance(jockey_data, dict):
+            overall_stats = jockey_data.get('overall_stats', {})
+            fukusho_rate = overall_stats.get('overall_fukusho_rate', 0)
+            return fukusho_rate > 40
+
+        return False
+
+    def _normalize_jockey_name(self, jockey_name: str) -> str:
+        if not jockey_name:
+            return ''
+        # 地方騎手データはそのまま使用する
+        return jockey_name.strip()
 
     
     # ===== ヘルパーメソッド（JRA版と同一ロジック） =====
@@ -873,7 +1082,9 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'total_score': min(total_score, 100),  # 100点上限
                     'base_score': base_score,
                     'jockey_bonus': jockey_bonus,
-                    'post_bonus': post_bonus
+                    'post_bonus': post_bonus,
+                    'jockey': jockeys[i] if i < len(jockeys) else '不明',
+                    'post': posts[i] if i < len(posts) else 0
                 }
                 
             except Exception as e:
@@ -883,6 +1094,8 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'base_score': -1,
                     'jockey_bonus': 0,
                     'post_bonus': 0,
+                    'jockey': jockeys[i] if i < len(jockeys) else '不明',
+                    'post': posts[i] if i < len(posts) else 0,
                     'error': str(e)
                 }
         

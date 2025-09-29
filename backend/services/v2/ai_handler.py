@@ -775,6 +775,21 @@ class V2AIHandler:
                 )
                 if isinstance(analysis_result, dict):
                     analysis_result.setdefault('race_snapshot', race_data)
+                    race_info = analysis_result.get('race_info') or {
+                        'venue': race_data.get('venue', ''),
+                        'race_number': race_data.get('race_number', ''),
+                        'race_name': race_data.get('race_name', '')
+                    }
+                    analysis_result['race_info'] = race_info
+
+                    results_payload = analysis_result.get('results')
+                    if not results_payload and 'rankings' in analysis_result and isinstance(analysis_result['rankings'], list):
+                        results_payload = analysis_result['rankings']
+                    if results_payload is not None:
+                        analysis_result['results'] = results_payload
+
+                    if 'scores' not in analysis_result and isinstance(results_payload, list):
+                        analysis_result['scores'] = results_payload
                 
                 logger.info(f"IMLogic分析結果: status={analysis_result.get('status')}, results数={len(analysis_result.get('results', []))}")
                 
@@ -1824,43 +1839,63 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 if self._is_local_racing(venue):
                     from services.local_fast_dlogic_engine_v2 import local_fast_dlogic_engine_v2
                     logger.info(f"🏇 地方競馬版D-Logicエンジンを使用: {venue}")
-                    
-                    # レース情報から馬名を抽出
+
                     horses = race_data.get('horses', [])
                     if not horses:
                         return ("分析対象の馬が指定されていません。", None)
-                    
-                    # 地方競馬版D-Logic計算
-                    dlogic_result = {}
-                    for horse_name in horses:
+
+                    posts = race_data.get('posts') or []
+                    horse_numbers = race_data.get('horse_numbers') or []
+
+                    dlogic_result: Dict[str, Dict[str, Any]] = {}
+                    for idx, horse_name in enumerate(horses):
                         score_data = local_fast_dlogic_engine_v2.raw_manager.calculate_dlogic_realtime(horse_name)
+                        post = posts[idx] if idx < len(posts) else None
+                        horse_number = horse_numbers[idx] if idx < len(horse_numbers) else idx + 1
+
                         if score_data and not score_data.get('error'):
-                            # total_scoreをscoreとして使用
-                            dlogic_result[horse_name] = {
-                                'score': score_data.get('total_score', 0),
+                            total_score = score_data.get('total_score', 0.0)
+                            details = score_data.get('d_logic_scores') or {}
+                            entry = {
+                                'score': round(total_score, 1),
                                 'data_available': True,
-                                'details': score_data
+                                'details': details,
+                                'horse_number': horse_number,
+                                'post': post,
+                                'grade': score_data.get('grade')
                             }
                         else:
-                            dlogic_result[horse_name] = {
-                                'score': 0,
-                                'data_available': False
+                            entry = {
+                                'score': None,
+                                'data_available': False,
+                                'horse_number': horse_number,
+                                'post': post
                             }
-                    
-                    # 結果をフォーマット
+
+                        dlogic_result[horse_name] = entry
+
+                    ranked_horses = [
+                        h for h in dlogic_result.keys()
+                        if dlogic_result[h].get('data_available') and dlogic_result[h].get('score') is not None
+                    ]
+                    ranked_horses.sort(key=lambda h: dlogic_result[h]['score'], reverse=True)
+
+                    for position, horse_name in enumerate(ranked_horses, start=1):
+                        dlogic_result[horse_name]['rank'] = position
+
                     content = self._format_dlogic_batch_result(dlogic_result, race_data)
-                    
-                    # 分析データを抽出
+
                     analysis_data = {
                         'type': 'dlogic',
                         'scores': dlogic_result,
-                        'top_horses': sorted(
-                            [h for h in dlogic_result.keys() if dlogic_result[h].get('data_available', False)],
-                            key=lambda h: dlogic_result[h].get('score', 0),
-                            reverse=True
-                        )[:5]
+                        'race_info': {
+                            'venue': race_data.get('venue', ''),
+                            'race_number': race_data.get('race_number', ''),
+                            'race_name': race_data.get('race_name', '')
+                        },
+                        'top_horses': ranked_horses[:5]
                     }
-                    
+
                     return (content, analysis_data)
                     
                 else:
@@ -2158,13 +2193,45 @@ F-Logic（Fair Value Logic）は、理論的な公正オッズと市場オッズ
                     if result.get('status') == 'success':
                         scores = result.get('scores', [])
                         content = self._format_ilogic_scores_local(scores, race_data)
-                        
+
+                        race_info = result.get('race_info') or {
+                            'venue': race_data.get('venue', ''),
+                            'race_number': race_data.get('race_number', ''),
+                            'race_name': race_data.get('race_name', '')
+                        }
+                        summary = result.get('summary', {})
+                        item_weights = result.get('item_weights') or {
+                            '1_distance_aptitude': 8.33,
+                            '2_bloodline_evaluation': 8.33,
+                            '3_jockey_compatibility': 8.33,
+                            '4_trainer_evaluation': 8.33,
+                            '5_track_aptitude': 8.33,
+                            '6_weather_aptitude': 8.33,
+                            '7_popularity_factor': 8.33,
+                            '8_weight_impact': 8.33,
+                            '9_horse_weight_impact': 8.33,
+                            '10_corner_specialist': 8.33,
+                            '11_margin_analysis': 8.33,
+                            '12_time_index': 8.37
+                        }
+                        weights = result.get('weights') or {
+                            'horse': 70,
+                            'jockey': 30
+                        }
+                        top_horses = result.get('top_horses') or [s.get('horse') for s in scores[:5] if s.get('horse')]
+
                         analysis_data = {
                             'type': 'ilogic',
+                            'analysis_type': result.get('analysis_type', 'race_analysis_v2'),
+                            'race_info': race_info,
+                            'results': scores,
                             'scores': scores,
-                            'top_horses': [s['horse'] for s in scores[:5]]
+                            'summary': summary,
+                            'item_weights': item_weights,
+                            'weights': weights,
+                            'top_horses': top_horses
                         }
-                        
+
                         return (content, analysis_data)
                     else:
                         return (f"I-Logic分析に失敗しました: {result.get('message', '不明なエラー')}", None)

@@ -3,6 +3,7 @@
 地方競馬版高速D-Logic計算エンジン V2
 V2マネージャーを使用（JRAデータ混入なし）
 """
+import logging
 from typing import Dict, Any
 # from .fast_dlogic_engine import FastDLogicEngine  # MySQL依存のため、独立実装
 from .local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
@@ -35,7 +36,8 @@ class LocalFastDLogicEngineV2:  # FastDLogicEngineを継承しない独立実装
         
         # 初期化完了メッセージ
         horse_count = len(self.raw_manager.knowledge_data.get('horses', {}))
-        print(f"🏇 地方競馬版D-Logic計算エンジンV2初期化完了 (ナレッジ: {horse_count}頭)")
+        logger = logging.getLogger(__name__)
+        logger.info("🏇 地方競馬版D-Logic計算エンジンV2初期化完了 (ナレッジ: %s頭)", horse_count)
         LocalFastDLogicEngineV2._initialized = True
     
     def get_engine_info(self) -> Dict[str, Any]:

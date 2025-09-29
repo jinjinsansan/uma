@@ -4,7 +4,7 @@
 JRA版と完全に同じロジックで実装
 """
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from .local_fast_dlogic_engine_v2 import LocalFastDLogicEngineV2
 from .local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
 from .local_jockey_data_manager import local_jockey_manager
@@ -102,7 +102,7 @@ class LocalRaceAnalysisEngineV2:
                     horse_number = horse_numbers[i] if horse_numbers and i < len(horse_numbers) else i + 1
                     
                     # 馬のスコアを計算（12項目重み付け）
-                    horse_score, has_data = self._calculate_horse_score_with_weights(
+                    horse_score, has_data, horse_details = self._calculate_horse_score_with_weights(
                         horse_name=horse_name,
                         context=context,
                         item_weights=default_item_weights
@@ -111,24 +111,28 @@ class LocalRaceAnalysisEngineV2:
                     # 騎手の評価
                     jockey_context = {
                         'venue': context['venue'],
-                        'post': post
+                        'post': post,
+                        'sire': horse_details.get('sire')
                     }
-                    jockey_score = self._calculate_jockey_score(
+                    jockey_score, jockey_breakdown = self._calculate_jockey_score(
                         jockey_name,
                         jockey_context
                     )
                     
                     # 総合評価（馬70%、騎手30%）
                     if not has_data:
-                        # データなしの馬は-1点
-                        total_score = -1
-                        logger.info(f"{horse_name}: データなしのため-1点")
+                        # データなしの馬は0点（JRA版と同様）
+                        total_score = 0
+                        logger.info(f"{horse_name}: データなしのため0点")
                     else:
                         total_score = (
                             horse_score * self.HORSE_WEIGHT +
                             jockey_score * self.JOCKEY_WEIGHT
                         )
                     
+                    estimation_method = horse_details.get('estimation_method', 'local_unknown')
+                    data_status = horse_details.get('data_status', 'full_data' if has_data else 'no_data')
+
                     results.append({
                         'rank': 0,  # 後でソート
                         'horse_number': horse_number,
@@ -139,15 +143,14 @@ class LocalRaceAnalysisEngineV2:
                         'horse_score': round(horse_score, 1),
                         'jockey_score': round(jockey_score, 1),
                         'has_data': has_data,
-                        'horse_details': {
-                            'has_knowledge_data': has_data,
-                            'data_status': 'no_data' if not has_data else 'full_data'
-                        },
+                        'estimation_method': estimation_method,
+                        'horse_details': horse_details,
                         'jockey_details': {
-                            'venue': jockey_score,
-                            'post': 0,
-                            'overall': jockey_score
-                        }
+                            'venue': round(jockey_breakdown.get('venue_score', 0.0), 1),
+                            'post': round(jockey_breakdown.get('post_score', 0.0), 1),
+                            'sire': round(jockey_breakdown.get('sire_score', 0.0), 1)
+                        },
+                        'data_status': data_status
                     })
                     
                 except Exception as e:
@@ -161,12 +164,33 @@ class LocalRaceAnalysisEngineV2:
                         'total_score': -1,
                         'horse_score': -1,
                         'jockey_score': 0,
+                        'has_data': False,
+                        'estimation_method': 'local_error',
+                        'horse_details': {
+                            'has_knowledge_data': False,
+                            'data_status': 'error',
+                            'venue_distance_bonus': 0.0,
+                            'track_bonus': 0.0,
+                            'class_factor': 1.0,
+                            'venue_history': {'wins': 0, 'total': 0, 'place_rate': 0.0, 'average_finish': None},
+                            'distance_history': {'total': 0, 'average_finish': None},
+                            'recent_form': {'finishes': [], 'average_finish': None},
+                            'd_logic_scores': {},
+                            'd_logic_total': 0.0,
+                            'sire': None
+                        },
+                        'jockey_details': {
+                            'venue': 0.0,
+                            'post': 0.0,
+                            'sire': 0.0
+                        },
+                        'data_status': 'error',
                         'error': str(e)
                     })
             
             # データがある馬のみでソート（-1を除外）
-            valid_results = [r for r in results if r['total_score'] >= 0]
-            invalid_results = [r for r in results if r['total_score'] < 0]
+            valid_results = [r for r in results if r['has_data']]
+            invalid_results = [r for r in results if not r['has_data']]
             
             # スコア順にソート
             valid_results.sort(key=lambda x: x['total_score'], reverse=True)
@@ -204,8 +228,8 @@ class LocalRaceAnalysisEngineV2:
                 },
                 'item_weights': default_item_weights,
                 'status': 'success',
-                'scores': all_results,  # IMLogicEngineV2との互換性
-                'top_horses': [r['horse'] for r in valid_results[:5]]  # 上位5頭
+                'scores': all_results,
+                'top_horses': [r['horse'] for r in valid_results[:5]]
             }
             
         except Exception as e:
@@ -233,80 +257,252 @@ class LocalRaceAnalysisEngineV2:
         
         return True
     
+    def _parse_distance_value(self, distance: Any) -> Optional[int]:
+        """距離表現を整数(m)に変換"""
+        if distance is None:
+            return None
+        if isinstance(distance, (int, float)):
+            return int(distance)
+        if isinstance(distance, str):
+            digits = ''.join(ch for ch in distance if ch.isdigit())
+            if digits:
+                try:
+                    return int(digits)
+                except ValueError:
+                    return None
+        return None
+
+    def _compute_context_stats(
+        self,
+        horse_name: str,
+        raw_data: Dict[str, Any],
+        score_data: Dict[str, Any],
+        context: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """開催場・距離に基づく追加統計を算出"""
+        races: List[Dict[str, Any]] = raw_data.get('races') or raw_data.get('race_history') or []
+        venue = context.get('venue', '')
+        distance_value = self._parse_distance_value(context.get('distance'))
+
+        venue_finishes: List[int] = []
+        venue_distance_finishes: List[int] = []
+        distance_finishes: List[int] = []
+        recent_finishes: List[int] = []
+        all_finishes: List[int] = []
+
+        wins_at_venue = 0
+        place_at_venue = 0
+
+        sire = raw_data.get('sire')
+        if not sire and races:
+            sire = races[0].get('sire')
+
+        for idx, race in enumerate(races):
+            finish_raw = race.get('KAKUTEI_CHAKUJUN') or race.get('finish')
+            try:
+                finish = int(finish_raw)
+            except (TypeError, ValueError):
+                continue
+
+            track_name = race.get('track_name') or race.get('venue') or ''
+            race_distance = race.get('KYORI') or race.get('distance')
+            try:
+                race_distance_val = int(race_distance)
+            except (TypeError, ValueError):
+                race_distance_val = None
+
+            same_venue = bool(venue) and track_name == venue
+            same_distance = distance_value is None or (
+                race_distance_val is not None and abs(race_distance_val - distance_value) <= 100
+            )
+
+            if same_venue:
+                venue_finishes.append(finish)
+                if finish == 1:
+                    wins_at_venue += 1
+                if finish <= 3:
+                    place_at_venue += 1
+
+            if same_distance:
+                distance_finishes.append(finish)
+
+            if same_venue and same_distance:
+                venue_distance_finishes.append(finish)
+
+            if idx < 5:
+                recent_finishes.append(finish)
+
+            all_finishes.append(finish)
+
+        def _calc_bonus(finishes: List[int]) -> float:
+            if not finishes:
+                return 0.0
+            avg_finish = sum(finishes) / len(finishes)
+            bonus = max(0.0, (3.5 - avg_finish) * 5.0)
+            return round(min(15.0, bonus), 1)
+
+        venue_distance_bonus = _calc_bonus(venue_distance_finishes)
+
+        track_score = score_data.get('d_logic_scores', {}).get('5_track_aptitude')
+        if track_score is None:
+            track_score = score_data.get('total_score', 50.0)
+        track_bonus = round((track_score - 50.0) * 0.2, 1)
+
+        overall_finishes = venue_finishes or distance_finishes
+        if not overall_finishes:
+            overall_finishes = all_finishes
+        if overall_finishes:
+            avg_finish = sum(overall_finishes) / len(overall_finishes)
+            class_factor = 1.0 + max(-0.3, min(0.3, (3.0 - avg_finish) * 0.05))
+        else:
+            class_factor = 1.0
+        class_factor = max(0.85, min(1.15, class_factor))
+
+        race_count = raw_data.get('race_count') or len(races)
+        if race_count >= 8:
+            estimation_method = 'local_full'
+            data_status = 'full_data'
+        elif race_count >= 3:
+            estimation_method = 'local_bayesian'
+            data_status = 'bayesian'
+        elif race_count > 0:
+            estimation_method = 'local_sparse'
+            data_status = 'partial_data'
+        else:
+            estimation_method = 'local_default'
+            data_status = 'no_data'
+
+        venue_history = {
+            'wins': wins_at_venue,
+            'total': len(venue_finishes),
+            'place_rate': round((place_at_venue / len(venue_finishes)) * 100, 1) if venue_finishes else 0.0,
+            'average_finish': round(sum(venue_finishes) / len(venue_finishes), 2) if venue_finishes else None
+        }
+
+        distance_history = {
+            'total': len(distance_finishes),
+            'average_finish': round(sum(distance_finishes) / len(distance_finishes), 2) if distance_finishes else None
+        }
+
+        recent_form = {
+            'finishes': recent_finishes,
+            'average_finish': round(sum(recent_finishes) / len(recent_finishes), 2) if recent_finishes else None
+        }
+
+        return {
+            'has_knowledge_data': bool(score_data.get('data_available', True)),
+            'data_status': data_status,
+            'estimation_method': estimation_method,
+            'venue_distance_bonus': venue_distance_bonus,
+            'track_bonus': track_bonus,
+            'class_factor': round(class_factor, 3),
+            'venue_history': venue_history,
+            'distance_history': distance_history,
+            'recent_form': recent_form,
+            'race_count': race_count,
+            'sire': sire
+        }
+
     def _calculate_horse_score_with_weights(
-        self, 
-        horse_name: str, 
+        self,
+        horse_name: str,
         context: Dict[str, Any],
         item_weights: Dict[str, float]
-    ) -> tuple:
-        """
-        馬のスコアを12項目の重み付きで計算（JRA版と同じ）
-        
-        Returns:
-            (score, has_data) のタプル
-        """
+    ) -> Tuple[float, bool, Dict[str, Any]]:
+        """馬のスコアを12項目重み付けで計算し、補助情報を添えて返す"""
         try:
-            # D-Logicで詳細スコアを取得
             score_data = self.raw_manager.calculate_dlogic_realtime(horse_name)
-            
+
             if score_data.get('error') or not score_data.get('data_available'):
-                # データがない場合
-                return (0, False)
-            
-            # 12項目のスコアを取得
+                details = {
+                    'has_knowledge_data': False,
+                    'data_status': 'no_data',
+                    'estimation_method': 'local_default',
+                    'venue_distance_bonus': 0.0,
+                    'track_bonus': 0.0,
+                    'class_factor': 1.0,
+                    'venue_history': {'wins': 0, 'total': 0, 'place_rate': 0.0, 'average_finish': None},
+                    'distance_history': {'total': 0, 'average_finish': None},
+                    'recent_form': {'finishes': [], 'average_finish': None},
+                    'd_logic_scores': {},
+                    'd_logic_total': 0.0,
+                    'sire': None
+                }
+                return 0.0, False, details
+
+            raw_data = self.raw_manager.get_horse_raw_data(horse_name) or {}
+            context_stats = self._compute_context_stats(horse_name, raw_data, score_data, context)
+
             item_scores = score_data.get('d_logic_scores', {})
-            
-            # 重み付き平均を計算
-            weighted_sum = 0
-            weight_sum = 0
-            
+            weighted_sum = 0.0
+            weight_sum = 0.0
+
             for item_key, weight in item_weights.items():
-                # D-Logicのキー形式と一致させる（数字付きのまま使用）
-                # item_scoresのキーを確認（"1_distance_aptitude"形式）
-                score = item_scores.get(item_key, 50.0)
-                
+                score = item_scores.get(item_key)
+                if score is None:
+                    score = score_data.get('total_score', 50.0)
                 weighted_sum += score * weight
                 weight_sum += weight
-            
-            # 重み付き平均（0-100の範囲）
+
             if weight_sum > 0:
-                final_score = weighted_sum / weight_sum
+                base_score = weighted_sum / weight_sum
             else:
-                final_score = score_data.get('total_score', 50.0)
-            
-            return (final_score, True)
-            
+                base_score = score_data.get('total_score', 50.0)
+
+            final_score = base_score + context_stats['venue_distance_bonus'] + context_stats['track_bonus']
+            final_score *= context_stats['class_factor']
+
+            # 騎手指標も保存（互換用）
+            context_stats['d_logic_total'] = score_data.get('total_score', base_score)
+            context_stats['d_logic_scores'] = score_data.get('d_logic_scores', {})
+
+            return float(round(final_score, 1)), True, context_stats
+
         except Exception as e:
             logger.error(f"馬スコア計算エラー（{horse_name}）: {e}")
-            return (0, False)
+            details = {
+                'has_knowledge_data': False,
+                'data_status': 'error',
+                'estimation_method': 'local_error',
+                'venue_distance_bonus': 0.0,
+                'track_bonus': 0.0,
+                'class_factor': 1.0,
+                'venue_history': {'wins': 0, 'total': 0, 'place_rate': 0.0, 'average_finish': None},
+                'distance_history': {'total': 0, 'average_finish': None},
+                'recent_form': {'finishes': [], 'average_finish': None},
+                'd_logic_scores': {},
+                'd_logic_total': 0.0,
+                'sire': None
+            }
+            return 0.0, False, details
     
-    def _calculate_jockey_score(self, jockey_name: str, context: Dict[str, Any]) -> float:
-        """
-        騎手スコアを計算（JRA版と全く同じロジック）
-        """
+    def _calculate_jockey_score(self, jockey_name: str, context: Dict[str, Any]) -> Tuple[float, Dict[str, float]]:
+        """騎手スコアと内訳を計算"""
         try:
             if not jockey_name:
-                return 0.0
-            
-            # JRA版と全く同じ計算方式を使用
+                return 0.0, {'venue_score': 0.0, 'post_score': 0.0, 'sire_score': 0.0}
+
             jockey_analysis = self.jockey_manager.calculate_jockey_score(
                 jockey_name,
                 context
             )
-            
-            jockey_score = jockey_analysis.get('total_score', 0)
-            
-            # JRA版と同様に-10～+10の範囲に制限
-            return max(-10, min(10, jockey_score))
-            
+
+            jockey_score = max(-10, min(10, jockey_analysis.get('total_score', 0.0)))
+
+            return jockey_score, {
+                'venue_score': jockey_analysis.get('venue_score', 0.0),
+                'post_score': jockey_analysis.get('post_score', 0.0),
+                'sire_score': jockey_analysis.get('sire_score', 0.0)
+            }
+
         except Exception as e:
             logger.error(f"騎手スコア計算エラー（{jockey_name}）: {e}")
-            return 0.0
+            return 0.0, {'venue_score': 0.0, 'post_score': 0.0, 'sire_score': 0.0}
     
     def _create_analysis_summary(self, results: List[Dict], context: Dict) -> Dict[str, Any]:
         """分析サマリーを作成（JRA版と同じ）"""
         try:
-            valid_results = [r for r in results if r.get('total_score', -1) >= 0]
+            valid_results = [r for r in results if r.get('has_data')]
             
             if not valid_results:
                 return {

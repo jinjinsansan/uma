@@ -55,7 +55,8 @@ class V2RaceScoresService:
         odds: Optional[List[float]] = None,
         popularities: Optional[List[int]] = None,
         dlogic_scores: Optional[Dict[str, Any]] = None,
-        ilogic_scores: Optional[Dict[str, Any]] = None
+        ilogic_scores: Optional[Dict[str, Any]] = None,
+        race_results: Optional[Dict[str, Any]] = None
     ):
         """
         レーススコアを保存
@@ -92,6 +93,9 @@ class V2RaceScoresService:
             if ilogic_scores:
                 data["ilogic_scores"] = json.dumps(ilogic_scores) if isinstance(ilogic_scores, dict) else ilogic_scores
                 data["ilogic_calculated_at"] = datetime.utcnow().isoformat()
+
+            if race_results:
+                data["race_results"] = json.dumps(race_results) if isinstance(race_results, dict) else race_results
             
             if existing:
                 # 更新

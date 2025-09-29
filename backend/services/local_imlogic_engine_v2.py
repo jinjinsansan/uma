@@ -116,6 +116,11 @@ class LocalIMLogicEngineV2:
             analysis_result['horse_weight'] = horse_weight
             analysis_result['jockey_weight'] = jockey_weight
             analysis_result['item_weights'] = item_weights
+            analysis_result['settings'] = {
+                'horse_weight': horse_weight,
+                'jockey_weight': jockey_weight,
+                'item_weights': item_weights
+            }
             
             # スコアリストをランキング形式に変換
             if 'results' in analysis_result:

@@ -6,6 +6,9 @@
 import json
 import os
 import logging
+import threading
+import time
+from collections import OrderedDict
 import requests
 from typing import Dict, Any, Optional
 from datetime import datetime
@@ -18,25 +21,39 @@ class LocalDLogicRawDataManagerV2:
     def __init__(self):
         """初期化：地方競馬版専用"""
         # キャッシュファイルパス（Renderでは/tmpを使用）
+        base_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
         if os.environ.get('RENDER'):
             # Renderでは書き込み可能な/tmpディレクトリを使用
-            self.knowledge_file = '/tmp/local_dlogic_raw_knowledge_v2.json'
-        else:
-            self.knowledge_file = os.path.join(
-                os.path.dirname(__file__), '..', 'data', 'local_dlogic_raw_knowledge_v2.json'
-            )
+            base_dir = '/tmp'
+
+        self.knowledge_file = os.path.join(base_dir, 'local_dlogic_raw_knowledge_v2.json')
+        self.cache_dir = os.path.join(base_dir, 'local_dlogic_cache')
+        self.index_file = os.path.join(self.cache_dir, 'index.json')
+        self._horse_index: Dict[str, Dict[str, str]] = {}
+        self._meta_info: Dict[str, Any] = {}
+        self._shard_cache: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+        self._shard_lock = threading.Lock()
+        self._max_shard_cache = int(os.environ.get("LOCAL_DLOGIC_SHARD_CACHE", "6"))
+        self._shard_size = int(os.environ.get("LOCAL_DLOGIC_SHARD_SIZE", "750"))
+        self._download_timeout = int(os.environ.get("LOCAL_DLOGIC_DOWNLOAD_TIMEOUT", "300"))
         
         # CDN URL
         self.cdn_url = "https://pub-059afaafefa84116b57d57e0a72b81bd.r2.dev/nankan_unified_knowledge_20250907.json"
         
-        print(f"🏇 地方競馬版マネージャーV2初期化")
-        print(f"   キャッシュ: {self.knowledge_file}")
-        
-        # ナレッジデータを読み込み
-        self.knowledge_data = self._load_knowledge()
-        
-        horse_count = len(self.knowledge_data.get('horses', {}))
-        print(f"✅ 地方競馬版マネージャーV2初期化完了: {horse_count}頭")
+        logger.info("🏇 地方競馬版D-LogicマネージャーV2初期化: cache=%s", self.knowledge_file)
+
+        # ロード制御
+        self._knowledge_data: Optional[Dict[str, Any]] = None
+        self._load_lock = threading.Lock()
+        self._last_loaded_at: Optional[datetime] = None
+
+        # 計算キャッシュ制御（JRA版と同等の仕組み）
+        self._calculation_cache: Dict[str, Dict[str, Any]] = {}
+        self._cache_lock = threading.Lock()
+        self._cache_hits: int = 0
+        self._cache_misses: int = 0
+        self._cache_log_interval: int = 20
+        self._max_cache_size: int = int(os.environ.get("LOCAL_DLOGIC_CACHE_SIZE", "500"))
     
     def _load_knowledge(self) -> Dict[str, Any]:
         """ナレッジファイルの読み込み"""
@@ -45,16 +62,16 @@ class LocalDLogicRawDataManagerV2:
             try:
                 with open(self.knowledge_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    
-                    # データ構造を確認
-                    if isinstance(data, dict) and 'horses' in data:
-                        horse_count = len(data['horses'])
-                        print(f"📂 キャッシュから読み込み: {horse_count}頭")
-                        return data
-                    else:
-                        print("⚠️ キャッシュのデータ構造が不正")
+
+                if isinstance(data, dict) and 'horses' in data:
+                    horse_count = len(data['horses'])
+                    logger.info("📂 地方競馬ナレッジ: キャッシュから読み込み (%s頭)", horse_count)
+                    self._save_sharded_cache(data)
+                    return data
+
+                logger.warning("⚠️ 地方競馬ナレッジ: キャッシュ構造が不正のため再取得します")
             except Exception as e:
-                print(f"⚠️ キャッシュ読み込みエラー: {e}")
+                logger.warning("⚠️ 地方競馬ナレッジ: キャッシュ読み込みエラー (%s)", e)
         
         # CDNからダウンロード
         return self._download_from_cdn()
@@ -62,21 +79,22 @@ class LocalDLogicRawDataManagerV2:
     def _download_from_cdn(self) -> Dict[str, Any]:
         """CDNからダウンロード（ストリーミング対応）"""
         try:
-            print(f"📥 CDNからダウンロード開始: {self.cdn_url}")
+            logger.info("📥 地方競馬ナレッジ: CDNからダウンロード開始 (%s)", self.cdn_url)
             
             # ストリーミングダウンロード（メモリ効率化）
-            response = requests.get(self.cdn_url, stream=True, timeout=300)
+            response = requests.get(self.cdn_url, stream=True, timeout=(10, self._download_timeout))
             
             if response.status_code == 200:
                 # コンテンツサイズを確認
                 content_length = response.headers.get('content-length')
                 if content_length:
-                    print(f"📦 ファイルサイズ: {int(content_length) / 1024 / 1024:.1f}MB")
+                    logger.info("📦 地方競馬ナレッジ: ファイルサイズ %.1fMB", int(content_length) / 1024 / 1024)
                 
                 # ストリーミングで内容を取得
                 content = b''
                 downloaded = 0
                 chunk_size = 1024 * 1024  # 1MB chunks
+                start_time = time.monotonic()
                 
                 for chunk in response.iter_content(chunk_size=chunk_size):
                     if chunk:
@@ -84,16 +102,17 @@ class LocalDLogicRawDataManagerV2:
                         downloaded += len(chunk)
                         if content_length and downloaded % (10 * chunk_size) == 0:
                             progress = (downloaded / int(content_length)) * 100
-                            print(f"📥 ダウンロード中: {progress:.1f}%")
+                            logger.debug("📥 地方競馬ナレッジ: ダウンロード進捗 %.1f%%", progress)
+                        if time.monotonic() - start_time > self._download_timeout:
+                            raise requests.exceptions.Timeout("Streaming download exceeded timeout")
                 
-                # JSONパース
-                print("🔄 JSONパース中...")
+                logger.info("🔄 地方競馬ナレッジ: JSONパース中")
                 data = json.loads(content.decode('utf-8'))
                 
                 # データ構造を確認（馬名が直接キーになっている）
                 if isinstance(data, dict) and 'horses' not in data:
                     horse_count = len(data)
-                    print(f"✅ ダウンロード完了: {horse_count}頭")
+                    logger.info("✅ 地方競馬ナレッジ: ダウンロード完了 (%s頭)", horse_count)
                     
                     # horsesキーでラップ
                     wrapped_data = {
@@ -106,40 +125,208 @@ class LocalDLogicRawDataManagerV2:
                     }
                     
                     # キャッシュに保存
-                    self._save_cache(wrapped_data)
+                    self._write_full_cache(wrapped_data)
+                    self._save_sharded_cache(wrapped_data)
                     return wrapped_data
                 else:
                     # 既にラップされている
                     horse_count = len(data.get('horses', {}))
-                    print(f"✅ ダウンロード完了: {horse_count}頭")
-                    self._save_cache(data)
+                    logger.info("✅ 地方競馬ナレッジ: ダウンロード完了 (%s頭)", horse_count)
+                    self._write_full_cache(data)
+                    self._save_sharded_cache(data)
                     return data
             else:
-                print(f"❌ ダウンロード失敗: HTTP {response.status_code}")
+                logger.error("❌ 地方競馬ナレッジ: ダウンロード失敗 HTTP %s", response.status_code)
         except requests.exceptions.Timeout:
-            print(f"❌ ダウンロードタイムアウト（300秒）")
+            logger.error("❌ 地方競馬ナレッジ: ダウンロードタイムアウト (300秒)")
         except json.JSONDecodeError as e:
-            print(f"❌ JSONパースエラー: {e}")
+            logger.error("❌ 地方競馬ナレッジ: JSONパースエラー (%s)", e)
         except Exception as e:
-            print(f"❌ ダウンロードエラー: {e}")
+            logger.error("❌ 地方競馬ナレッジ: ダウンロードエラー (%s)", e)
         
         # フォールバック
-        print("⚠️ CDNダウンロード失敗、空データで初期化")
+        logger.warning("⚠️ 地方競馬ナレッジ: CDN取得失敗のため空データで初期化")
         return {"horses": {}}
     
-    def _save_cache(self, data: Dict[str, Any]):
-        """キャッシュに保存"""
+    def _write_full_cache(self, data: Dict[str, Any]):
+        """元の単一JSONキャッシュを書き出し"""
         try:
             os.makedirs(os.path.dirname(self.knowledge_file), exist_ok=True)
             with open(self.knowledge_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False)
-            print(f"💾 キャッシュ保存完了")
+            logger.info("💾 地方競馬ナレッジ: キャッシュ保存完了")
         except Exception as e:
-            print(f"⚠️ キャッシュ保存失敗: {e}")
+            logger.warning("⚠️ 地方競馬ナレッジ: キャッシュ保存失敗 (%s)", e)
+
+    def _shard_filename(self, shard_id: int) -> str:
+        return f"shard_{shard_id:05d}.json"
+
+    def _write_shard(self, shard_id: int, shard_data: Dict[str, Any]):
+        os.makedirs(self.cache_dir, exist_ok=True)
+        shard_path = os.path.join(self.cache_dir, self._shard_filename(shard_id))
+        with open(shard_path, 'w', encoding='utf-8') as f:
+            json.dump(shard_data, f, ensure_ascii=False)
+
+    def _save_sharded_cache(self, data: Dict[str, Any]):
+        horses = data.get('horses', {})
+        if not horses:
+            return
+
+        os.makedirs(self.cache_dir, exist_ok=True)
+
+        # 既存シャードをクリーンアップ
+        for entry in os.listdir(self.cache_dir):
+            if entry.endswith('.json'):
+                try:
+                    os.remove(os.path.join(self.cache_dir, entry))
+                except OSError:
+                    logger.warning("⚠️ 地方競馬ナレッジ: 古いシャード削除に失敗 (%s)", entry)
+
+        index: Dict[str, Dict[str, str]] = {}
+        shard_data: Dict[str, Any] = {}
+        shard_id = 0
+        count = 0
+
+        for horse_name, horse_payload in horses.items():
+            if count > 0 and count % self._shard_size == 0:
+                self._write_shard(shard_id, shard_data)
+                shard_id += 1
+                shard_data = {}
+            shard_data[horse_name] = horse_payload
+            index[horse_name] = {"file": self._shard_filename(shard_id)}
+            count += 1
+
+        if shard_data:
+            self._write_shard(shard_id, shard_data)
+
+        index_content = {
+            "meta": data.get('meta', {}),
+            "generated_at": datetime.now().isoformat(),
+            "shard_count": shard_id + 1,
+            "horses": index
+        }
+
+        with open(self.index_file, 'w', encoding='utf-8') as f:
+            json.dump(index_content, f, ensure_ascii=False)
+
+        self._horse_index = index
+        self._meta_info = index_content.get('meta', {})
+
+    def _load_index(self) -> bool:
+        if not os.path.exists(self.index_file):
+            return False
+        try:
+            with open(self.index_file, 'r', encoding='utf-8') as f:
+                index_data = json.load(f)
+            horses = index_data.get('horses', {})
+            if not horses:
+                return False
+            self._horse_index = horses
+            self._meta_info = index_data.get('meta', {})
+            logger.info("📂 地方競馬ナレッジ: シャードインデックス読込 (%s頭)", len(self._horse_index))
+            return True
+        except Exception as e:
+            logger.warning("⚠️ 地方競馬ナレッジ: シャードインデックス読込失敗 (%s)", e)
+            return False
+
+    def _load_shard(self, shard_file: str) -> Dict[str, Any]:
+        with self._shard_lock:
+            if shard_file in self._shard_cache:
+                # LRU 更新
+                self._shard_cache.move_to_end(shard_file)
+                return self._shard_cache[shard_file]
+
+            shard_path = os.path.join(self.cache_dir, shard_file)
+            try:
+                with open(shard_path, 'r', encoding='utf-8') as f:
+                    shard_data = json.load(f)
+            except FileNotFoundError:
+                logger.warning("⚠️ 地方競馬ナレッジ: シャード %s が見つかりません。再構築を試みます", shard_file)
+                self._knowledge_data = None
+                self._horse_index = {}
+                self._meta_info = {}
+                self._shard_cache.clear()
+                if os.path.exists(self.knowledge_file):
+                    data = self._load_knowledge()
+                    self._knowledge_data = data
+                    self._last_loaded_at = datetime.now()
+                    if not self._horse_index:
+                        self._load_index()
+                    return self._load_shard(shard_file)
+                raise
+
+            self._shard_cache[shard_file] = shard_data
+            self._shard_cache.move_to_end(shard_file)
+            if len(self._shard_cache) > self._max_shard_cache:
+                self._shard_cache.popitem(last=False)
+
+            return shard_data
+
+    def _get_horse_entry(self, horse_name: str) -> Optional[Dict[str, Any]]:
+        self._ensure_loaded()
+        if self._knowledge_data is not None:
+            return self._knowledge_data.get('horses', {}).get(horse_name)
+
+        shard_info = self._horse_index.get(horse_name)
+        if not shard_info:
+            return None
+
+        shard_file = shard_info.get('file')
+        if not shard_file:
+            return None
+
+        shard_data = self._load_shard(shard_file)
+        return shard_data.get(horse_name)
+
+    def _ensure_loaded(self):
+        if self._knowledge_data is not None:
+            return
+
+        with self._load_lock:
+            if self._knowledge_data is not None:
+                return
+
+            if self._load_index():
+                self._last_loaded_at = datetime.now()
+                logger.info("✅ 地方競馬ナレッジ: インデックスのみロード完了 (%s頭)", len(self._horse_index))
+                return
+
+            data = self._load_knowledge()
+            self._knowledge_data = data
+            self._last_loaded_at = datetime.now()
+
+            horse_count = len(data.get('horses', {}))
+            logger.info("✅ 地方競馬ナレッジ: フルデータロード完了 (%s頭)", horse_count)
+
+            if not self._horse_index:
+                self._load_index()
+
+    @property
+    def knowledge_data(self) -> Dict[str, Any]:
+        self._ensure_loaded()
+
+        if self._knowledge_data is None and self._horse_index:
+            logger.debug("地方競馬ナレッジ: シャードからインメモリデータを組み立てています (一時的に重い処理)")
+            horses: Dict[str, Any] = {}
+            loaded_files = set()
+            for info in self._horse_index.values():
+                shard_file = info.get('file')
+                if not shard_file or shard_file in loaded_files:
+                    continue
+                shard_data = self._load_shard(shard_file)
+                horses.update(shard_data)
+                loaded_files.add(shard_file)
+
+            self._knowledge_data = {
+                "meta": self._meta_info,
+                "horses": horses
+            }
+
+        return self._knowledge_data or {"horses": {}}
     
     def get_raw_horse_data(self, horse_name: str) -> Optional[Dict[str, Any]]:
         """馬の生データを取得"""
-        races = self.knowledge_data.get('horses', {}).get(horse_name)
+        races = self._get_horse_entry(horse_name)
         if races is None:
             return None
         
@@ -159,6 +346,8 @@ class LocalDLogicRawDataManagerV2:
     
     def get_all_horse_names(self) -> list:
         """全馬名リストを取得"""
+        if self._horse_index:
+            return list(self._horse_index.keys())
         return list(self.knowledge_data.get('horses', {}).keys())
     
     def get_horse_data(self, horse_name: str) -> Optional[Dict[str, Any]]:
@@ -167,10 +356,31 @@ class LocalDLogicRawDataManagerV2:
     
     def is_loaded(self) -> bool:
         """データがロードされているか確認"""
-        return bool(self.knowledge_data and self.knowledge_data.get('horses'))
+        if self._knowledge_data is not None:
+            return bool(self._knowledge_data.get('horses'))
+        return bool(self._horse_index)
     
     def calculate_dlogic_realtime(self, horse_name: str) -> Dict[str, Any]:
-        """生データからリアルタイムD-Logic計算"""
+        """生データからリアルタイムD-Logic計算（メモリキャッシュ対応）"""
+        # メモリキャッシュチェック
+        with self._cache_lock:
+            cached = self._calculation_cache.get(horse_name)
+            if cached is not None:
+                self._cache_hits += 1
+                total_requests = self._cache_hits + self._cache_misses
+                if total_requests % self._cache_log_interval == 0:
+                    hit_rate = (self._cache_hits / total_requests) * 100 if total_requests else 0.0
+                    logger.info(
+                        "📊 地方D-Logicキャッシュ: hit=%s miss=%s hit_rate=%.1f%%", 
+                        self._cache_hits,
+                        self._cache_misses,
+                        hit_rate
+                    )
+                return cached
+
+        # キャッシュミス時の処理
+        self._cache_misses += 1
+
         raw_data = self.get_horse_raw_data(horse_name)
         if not raw_data:
             return {
@@ -198,16 +408,49 @@ class LocalDLogicRawDataManagerV2:
         
         # 総合スコア計算（ダンスインザダーク基準）
         total_score = self._calculate_total_score(scores)
-        
-        return {
+
+        result = {
             "horse_name": horse_name,
             "d_logic_scores": scores,
             "total_score": total_score,
             "grade": self._grade_performance(total_score),
-            "data_available": True,  # データ利用可能フラグ
+            "data_available": True,
             "calculation_time": datetime.now().isoformat()
         }
-    
+
+        # キャッシュに格納
+        if self._max_cache_size > 0:
+            with self._cache_lock:
+                if len(self._calculation_cache) >= self._max_cache_size:
+                    # 最も古いエントリを削除（FIFO）
+                    first_key = next(iter(self._calculation_cache), None)
+                    if first_key is not None:
+                        self._calculation_cache.pop(first_key, None)
+                self._calculation_cache[horse_name] = result
+
+        return result
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """キャッシュ統計を返す"""
+        total_requests = self._cache_hits + self._cache_misses
+        hit_rate = (self._cache_hits / total_requests) * 100 if total_requests else 0.0
+        return {
+            "hits": self._cache_hits,
+            "misses": self._cache_misses,
+            "requests": total_requests,
+            "hit_rate": round(hit_rate, 2),
+            "cache_size": len(self._calculation_cache),
+            "max_cache_size": self._max_cache_size,
+            "last_loaded_at": self._last_loaded_at.isoformat() if self._last_loaded_at else None
+        }
+
+    def clear_calculation_cache(self):
+        """計算キャッシュをクリア"""
+        with self._cache_lock:
+            self._calculation_cache.clear()
+            self._cache_hits = 0
+            self._cache_misses = 0
+
     def _calc_distance_aptitude(self, raw_data: Dict) -> float:
         """距離適性計算"""
         races = raw_data.get("races", raw_data.get("race_history", []))
@@ -628,4 +871,4 @@ class LocalDLogicRawDataManagerV2:
 
 # グローバルインスタンス（シングルトン）
 local_dlogic_manager_v2 = LocalDLogicRawDataManagerV2()
-print(f"🏇 地方競馬版マネージャーV2準備完了")
+logger.info("🏇 地方競馬版D-LogicマネージャーV2準備完了")

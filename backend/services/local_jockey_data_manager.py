@@ -5,9 +5,13 @@
 """
 import json
 import os
-import requests
-from typing import Dict, Any, Optional
 import logging
+import threading
+import datetime
+from collections import OrderedDict
+from typing import Dict, Any, Optional
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -17,18 +21,152 @@ class LocalJockeyDataManager:
     def __init__(self):
         """初期化"""
         # キャッシュファイルパス（Renderでは/tmpを使用）
+        base_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
         if os.environ.get('RENDER'):
-            self.cache_file = '/tmp/local_jockey_knowledge.json'
-        else:
-            self.cache_file = os.path.join(
-                os.path.dirname(__file__), '..', 'data', 'local_jockey_knowledge.json'
-            )
-        
-        # ナレッジデータ読み込み
-        self.knowledge_data = self._load_knowledge()
-        jockey_count = len(self.knowledge_data.get('jockeys', {}))
-        print(f"🏇 地方競馬版騎手マネージャー初期化: {jockey_count}騎手")
+            base_dir = '/tmp'
+
+        self.cache_file = os.path.join(base_dir, 'local_jockey_knowledge.json')
+        self.cache_dir = os.path.join(base_dir, 'local_jockey_cache')
+        self.index_file = os.path.join(self.cache_dir, 'index.json')
+        self._jockey_index: Dict[str, Dict[str, str]] = {}
+        self._meta_info: Dict[str, Any] = {}
+        self._shard_cache: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+        self._shard_lock = threading.Lock()
+        self._max_shard_cache = int(os.environ.get("LOCAL_JOCKEY_SHARD_CACHE", "4"))
+        self._shard_size = int(os.environ.get("LOCAL_JOCKEY_SHARD_SIZE", "250"))
+        self._download_timeout = int(os.environ.get("LOCAL_JOCKEY_DOWNLOAD_TIMEOUT", "180"))
+
+        self._knowledge_data: Optional[Dict[str, Any]] = None
+        self._load_lock = threading.Lock()
+        self._last_loaded_at: Optional[datetime.datetime] = None
+
+        logger.info("🏇 地方騎手ナレッジ初期化: cache=%s", self.cache_file)
     
+    def _write_full_cache(self, data: Dict[str, Any]):
+        try:
+            os.makedirs(os.path.dirname(self.cache_file), exist_ok=True)
+            with open(self.cache_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False)
+        except Exception as e:
+            logger.warning("⚠️ 地方騎手ナレッジ: フルキャッシュ保存失敗 (%s)", e)
+
+    def _shard_filename(self, shard_id: int) -> str:
+        return f"shard_{shard_id:05d}.json"
+
+    def _write_shard(self, shard_id: int, shard_data: Dict[str, Any]):
+        os.makedirs(self.cache_dir, exist_ok=True)
+        shard_path = os.path.join(self.cache_dir, self._shard_filename(shard_id))
+        with open(shard_path, 'w', encoding='utf-8') as f:
+            json.dump(shard_data, f, ensure_ascii=False)
+
+    def _save_sharded_cache(self, data: Dict[str, Any]):
+        jockeys = data.get('jockeys', {})
+        if not jockeys:
+            return
+
+        os.makedirs(self.cache_dir, exist_ok=True)
+
+        for entry in os.listdir(self.cache_dir):
+            if entry.endswith('.json'):
+                try:
+                    os.remove(os.path.join(self.cache_dir, entry))
+                except OSError:
+                    logger.warning("⚠️ 地方騎手ナレッジ: 古いシャード削除に失敗 (%s)", entry)
+
+        index: Dict[str, Dict[str, str]] = {}
+        shard: Dict[str, Any] = {}
+        shard_id = 0
+        count = 0
+
+        for jockey_name, payload in jockeys.items():
+            if count > 0 and count % self._shard_size == 0:
+                self._write_shard(shard_id, shard)
+                shard_id += 1
+                shard = {}
+            shard[jockey_name] = payload
+            index[jockey_name] = {"file": self._shard_filename(shard_id)}
+            count += 1
+
+        if shard:
+            self._write_shard(shard_id, shard)
+
+        index_content = {
+            "meta": data.get('meta', {}),
+            "generated_at": datetime.datetime.now().isoformat(),
+            "shard_count": shard_id + 1,
+            "jockeys": index
+        }
+
+        with open(self.index_file, 'w', encoding='utf-8') as f:
+            json.dump(index_content, f, ensure_ascii=False)
+
+        self._jockey_index = index
+        self._meta_info = index_content.get('meta', {})
+
+    def _load_index(self) -> bool:
+        if not os.path.exists(self.index_file):
+            return False
+        try:
+            with open(self.index_file, 'r', encoding='utf-8') as f:
+                index_data = json.load(f)
+            jockeys = index_data.get('jockeys', {})
+            if not jockeys:
+                return False
+            self._jockey_index = jockeys
+            self._meta_info = index_data.get('meta', {})
+            logger.info("📂 地方騎手ナレッジ: シャードインデックス読込 (%s騎手)", len(self._jockey_index))
+            return True
+        except Exception as e:
+            logger.warning("⚠️ 地方騎手ナレッジ: シャードインデックス読込失敗 (%s)", e)
+            return False
+
+    def _load_shard(self, shard_file: str) -> Dict[str, Any]:
+        with self._shard_lock:
+            if shard_file in self._shard_cache:
+                self._shard_cache.move_to_end(shard_file)
+                return self._shard_cache[shard_file]
+
+            shard_path = os.path.join(self.cache_dir, shard_file)
+            try:
+                with open(shard_path, 'r', encoding='utf-8') as f:
+                    shard_data = json.load(f)
+            except FileNotFoundError:
+                logger.warning("⚠️ 地方騎手ナレッジ: シャード %s が見つかりません。再構築を試みます", shard_file)
+                self._knowledge_data = None
+                self._jockey_index = {}
+                self._meta_info = {}
+                self._shard_cache.clear()
+                if os.path.exists(self.cache_file):
+                    data = self._load_knowledge()
+                    self._knowledge_data = data
+                    self._last_loaded_at = datetime.datetime.now()
+                    if not self._jockey_index:
+                        self._load_index()
+                    return self._load_shard(shard_file)
+                raise
+
+            self._shard_cache[shard_file] = shard_data
+            self._shard_cache.move_to_end(shard_file)
+            if len(self._shard_cache) > self._max_shard_cache:
+                self._shard_cache.popitem(last=False)
+            return shard_data
+
+    def _get_jockey_entry(self, jockey_name: str) -> Optional[Dict[str, Any]]:
+        self._ensure_loaded()
+        if self._knowledge_data is not None:
+            return self._knowledge_data.get('jockeys', {}).get(jockey_name)
+
+        shard_info = self._jockey_index.get(jockey_name)
+        if not shard_info:
+            return None
+
+        shard_file = shard_info.get('file')
+        if not shard_file:
+            return None
+
+        shard_data = self._load_shard(shard_file)
+        return shard_data.get(jockey_name)
+
     def _load_knowledge(self) -> Dict[str, Any]:
         """騎手ナレッジファイル読み込み"""
         # CDN URL
@@ -39,67 +177,113 @@ class LocalJockeyDataManager:
             try:
                 with open(self.cache_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    # データ構造を確認（騎手名が直接キーになっている場合）
-                    if isinstance(data, dict) and 'jockeys' not in data and len(data) > 0:
-                        # 既にラップされている場合はそのまま使用
-                        if list(data.keys())[0] not in ['jockeys', 'meta']:
-                            print(f"✅ 地方騎手キャッシュ読み込み: {len(data)}騎手")
-                            return {"jockeys": data}
-                    elif 'jockeys' in data:
-                        print(f"✅ 地方騎手キャッシュ読み込み: {len(data['jockeys'])}騎手")
-                        return data
+
+                if isinstance(data, dict) and 'jockeys' not in data and len(data) > 0:
+                    if list(data.keys())[0] not in ['jockeys', 'meta']:
+                        logger.info("✅ 地方騎手ナレッジ: キャッシュ読み込み (%s騎手)", len(data))
+                        wrapped = {"jockeys": data}
+                        self._save_sharded_cache(wrapped)
+                        return wrapped
+                elif 'jockeys' in data:
+                    logger.info("✅ 地方騎手ナレッジ: キャッシュ読み込み (%s騎手)", len(data['jockeys']))
+                    self._save_sharded_cache(data)
+                    return data
             except Exception as e:
-                print(f"⚠️ キャッシュ読み込みエラー: {e}")
+                logger.warning("⚠️ 地方騎手ナレッジ: キャッシュ読み込みエラー (%s)", e)
         
         # CDNからダウンロード（ストリーミング対応）
         try:
-            print(f"📥 地方騎手データをCDNからダウンロード開始: {cdn_url}")
-            response = requests.get(cdn_url, stream=True, timeout=300)
-            
+            logger.info("📥 地方騎手ナレッジ: CDNダウンロード開始 (%s)", cdn_url)
+            response = requests.get(cdn_url, stream=True, timeout=(10, self._download_timeout))
+
             if response.status_code == 200:
-                print("🔄 JSONパース中...")
+                logger.info("🔄 地方騎手ナレッジ: JSONパース中")
                 data = response.json()
-                
-                # データ構造を確認（騎手名が直接キーになっている）
+
                 if isinstance(data, dict) and 'jockeys' not in data:
                     jockey_count = len(data)
-                    print(f"✅ ダウンロード完了: {jockey_count}騎手")
-                    # jockeysキーでラップ
+                    logger.info("✅ 地方騎手ナレッジ: ダウンロード完了 (%s騎手)", jockey_count)
+
                     wrapped_data = {"jockeys": data}
-                    
-                    # キャッシュに保存（ラップした形式で）
+
                     try:
-                        os.makedirs(os.path.dirname(self.cache_file), exist_ok=True)
-                        with open(self.cache_file, 'w', encoding='utf-8') as f:
-                            json.dump(data, f, ensure_ascii=False)  # 元の形式で保存
-                        print(f"💾 キャッシュ保存完了")
+                        self._write_full_cache(wrapped_data)
+                        self._save_sharded_cache(wrapped_data)
+                        logger.info("💾 地方騎手ナレッジ: キャッシュ保存完了")
                     except Exception as e:
-                        print(f"⚠️ キャッシュ保存失敗: {e}")
-                    
+                        logger.warning("⚠️ 地方騎手ナレッジ: キャッシュ保存失敗 (%s)", e)
+
                     return wrapped_data
-                else:
-                    # 既にjockeysキーがある場合
-                    jockey_count = len(data.get('jockeys', {}))
-                    print(f"✅ ダウンロード完了: {jockey_count}騎手")
-                    return data
-            else:
-                print(f"❌ ダウンロード失敗: HTTP {response.status_code}")
+
+                jockey_count = len(data.get('jockeys', {}))
+                logger.info("✅ 地方騎手ナレッジ: ダウンロード完了 (%s騎手)", jockey_count)
+                self._write_full_cache(data)
+                self._save_sharded_cache(data)
+                return data
+
+            logger.error("❌ 地方騎手ナレッジ: ダウンロード失敗 HTTP %s", response.status_code)
         except Exception as e:
-            print(f"❌ ダウンロードエラー: {e}")
+            logger.error("❌ 地方騎手ナレッジ: ダウンロードエラー (%s)", e)
         
         # フォールバック
+        logger.warning("⚠️ 地方騎手ナレッジ: 取得失敗のため空データで初期化")
         return {"jockeys": {}}
     
+    def _ensure_loaded(self):
+        if self._knowledge_data is not None:
+            return
+
+        with self._load_lock:
+            if self._knowledge_data is not None:
+                return
+
+            if self._load_index():
+                self._last_loaded_at = datetime.datetime.now()
+                logger.info("✅ 地方騎手ナレッジ: インデックスのみロード完了 (%s騎手)", len(self._jockey_index))
+                return
+
+            data = self._load_knowledge()
+            self._knowledge_data = data
+            self._last_loaded_at = datetime.datetime.now()
+
+            jockey_count = len(data.get('jockeys', {}))
+            logger.info("✅ 地方騎手ナレッジ: フルデータロード完了 (%s騎手)", jockey_count)
+
+            if not self._jockey_index:
+                self._load_index()
+
+    @property
+    def knowledge_data(self) -> Dict[str, Any]:
+        self._ensure_loaded()
+        if self._knowledge_data is None and self._jockey_index:
+            logger.debug("地方騎手ナレッジ: シャードからインメモリデータを構築しています")
+            jockeys: Dict[str, Any] = {}
+            loaded_files = set()
+            for info in self._jockey_index.values():
+                shard_file = info.get('file')
+                if not shard_file or shard_file in loaded_files:
+                    continue
+                shard_data = self._load_shard(shard_file)
+                jockeys.update(shard_data)
+                loaded_files.add(shard_file)
+
+            self._knowledge_data = {
+                "meta": self._meta_info,
+                "jockeys": jockeys
+            }
+
+        return self._knowledge_data or {"jockeys": {}}
+
     def get_jockey_score(self, jockey_name: str) -> float:
         """騎手スコア取得"""
-        jockey_data = self.knowledge_data.get('jockeys', {}).get(jockey_name)
+        jockey_data = self._get_jockey_entry(jockey_name)
         if jockey_data:
             return jockey_data.get('avg_score', 50.0)
         return 50.0  # デフォルト値
     
     def get_jockey_data(self, jockey_name: str) -> Optional[Dict[str, Any]]:
         """騎手データを取得"""
-        return self.knowledge_data.get('jockeys', {}).get(jockey_name)
+        return self._get_jockey_entry(jockey_name)
     
     def calculate_venue_aptitude(self, jockey_name: str, venue: str) -> float:
         """騎手の開催場適性を計算"""

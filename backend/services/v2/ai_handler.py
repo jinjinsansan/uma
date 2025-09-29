@@ -63,6 +63,21 @@ class V2AIHandler:
             'flogic': ['f-logic', 'flogic', 'エフロジック', 'F-Logic', 'Fロジック', 'フェア値']
         }
 
+    @staticmethod
+    def _normalize_result_status(result: Dict[str, Any]) -> str:
+        """分析結果のステータスを統一判定"""
+        if result is None:
+            return 'unknown'
+        if result.get('has_data') is False:
+            return 'no_data'
+        status_raw = result.get('data_status')
+        if status_raw is None:
+            return 'valid'
+        status = str(status_raw).lower()
+        if status in ('no_data', 'missing_data', 'error', 'local_error'):
+            return 'no_data'
+        return 'valid'
+
     def _create_supabase_client(self):
         """Supabaseクライアントを生成"""
         from supabase import create_client
@@ -758,6 +773,8 @@ class V2AIHandler:
                     jockey_weight=jockey_weight,
                     item_weights=item_weights
                 )
+                if isinstance(analysis_result, dict):
+                    analysis_result.setdefault('race_snapshot', race_data)
                 
                 logger.info(f"IMLogic分析結果: status={analysis_result.get('status')}, results数={len(analysis_result.get('results', []))}")
                 
@@ -858,15 +875,27 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             # 全頭を順位付きで表示（I-Logic形式）
             emojis = ['🥇', '🥈', '🥉']
             # データ不足（None）の馬を除外、マイナススコアは有効
-            valid_scores = [s for s in scores if s.get('total_score') is not None and s.get('data_status') == 'ok']
-            no_data_scores = [s for s in scores if s.get('data_status') == 'no_data']
+            valid_scores = [
+                s for s in scores
+                if s.get('total_score') is not None and self._normalize_result_status(s) == 'valid'
+            ]
+            no_data_scores = [
+                s for s in scores
+                if self._normalize_result_status(s) == 'no_data'
+            ]
+
+            if not valid_scores:
+                valid_scores = [s for s in scores if s.get('total_score') is not None]
             
             for i, score_data in enumerate(valid_scores):
+                rank_value = score_data.get('rank')
+                if not isinstance(rank_value, (int, float)) or rank_value <= 0:
+                    rank_value = i + 1
                 # 上位3位まで絵文字、4位以降は数字表示
                 if i < 3:
-                    rank_display = f"{emojis[i]} {i+1}位:"
+                    rank_display = f"{emojis[i]} {int(rank_value)}位:"
                 else:
-                    rank_display = f"{i+1}位:"
+                    rank_display = f"{int(rank_value)}位:"
                 
                 # 'horse_name'と'horse'の両方に対応
                 horse_name = score_data.get('horse_name') or score_data.get('horse', '不明')
@@ -911,10 +940,16 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             (content, analysis_data) のタプル
         """
         try:
-            from services.metalogic_engine import metalogic_engine
-            
-            # レースデータの準備
-            analysis_result = await metalogic_engine.analyze_race(race_data)
+            venue = race_data.get('venue')
+            if self._is_local_racing(venue):
+                from services.local_metalogic_engine_v2 import local_metalogic_engine_v2
+                metalogic_engine_instance = local_metalogic_engine_v2
+                logger.info("MetaLogic: 地方競馬版エンジンを使用 (%s)", venue)
+                analysis_result = metalogic_engine_instance.analyze_race(race_data)
+            else:
+                from services.metalogic_engine import metalogic_engine
+                logger.info("MetaLogic: JRA版エンジンを使用 (%s)", venue)
+                analysis_result = await metalogic_engine.analyze_race(race_data)
             
             if analysis_result.get('status') != 'success':
                 return (analysis_result.get('message', '分析に失敗しました'), None)
@@ -1967,16 +2002,23 @@ F-Logic分析をご希望の場合は「F-Logic分析して」とお聞きくだ
                 #         horses=horses
                 #     )
                 
-                # オッズが取得できない場合はエラーメッセージを返す
-                if not market_odds:
-                    return ("オッズデータが取得できないため、F-Logic分析を実行できません。\n\nF-Logicは市場オッズとフェア値の比較が必要なため、オッズデータがない場合は分析できません。", None)
-                
-                # F-Logic分析実行
-                from services.flogic_engine import flogic_engine
-                result = flogic_engine.analyze_race(race_data, market_odds)
+                # F-Logic分析実行（市場オッズが無い場合はフェア値のみ算出）
+                has_market_odds = bool(market_odds)
+                if self._is_local_racing(venue):
+                    from services.local_flogic_engine_v2 import local_flogic_engine_v2
+                    flogic_engine_instance = local_flogic_engine_v2
+                    logger.info("F-Logic: 地方競馬版エンジンを使用 (%s)", venue)
+                else:
+                    from services.flogic_engine import flogic_engine
+                    flogic_engine_instance = flogic_engine
+                    logger.info("F-Logic: JRA版エンジンを使用 (%s)", venue)
+
+                result = flogic_engine_instance.analyze_race(race_data, market_odds if has_market_odds else None)
                 
                 if result.get('status') == 'success':
                     content = self._format_flogic_result(result, race_data)
+                    if not has_market_odds:
+                        content += "\n\n⚠️ 市場オッズが未提供のため、公正オッズ（フェア値）のみ表示しています。"
                     
                     # 分析データも返す
                     analysis_data = {

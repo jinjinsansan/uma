@@ -17,6 +17,7 @@ from api.v2.config import v2_config
 from services.v2.points_service import V2PointsService
 from services.v2.chat_service import V2ChatService
 from services.v2.ai_handler import V2AIHandler
+from services.v2.race_scores_service import V2RaceScoresService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v2/chat", tags=["v2-chat"])
@@ -259,6 +260,29 @@ async def create_chat(
             imlogic_settings_id=request.imlogic_settings_id,
             user_email=user_email
         )
+
+        # レーススコアを保存（軽量メタデータのみ）
+        try:
+            race_scores_service = V2RaceScoresService()
+            await race_scores_service.save_race_scores(
+                race_id=request.race_id,
+                race_date=request.race_date,
+                venue=request.venue,
+                race_number=request.race_number,
+                race_name=request.race_name,
+                horses=request.horses,
+                jockeys=request.jockeys or [],
+                posts=request.posts or [],
+                horse_numbers=request.horse_numbers or [],
+                sex_ages=request.sex_ages or [],
+                weights=request.weights or [],
+                trainers=request.trainers or [],
+                odds=request.odds or [],
+                popularities=request.popularities or [],
+                race_results=request.raceResults
+            )
+        except Exception as e:
+            logger.warning(f"v2_race_scores保存スキップ: {e}")
         
         # ポイント消費（管理者テストモード以外）
         if not is_admin_test:
@@ -271,7 +295,7 @@ async def create_chat(
                 description=f"{request.venue}{request.race_number}Rのチャット作成",
                 related_entity_id=chat_session["id"]
             )
-            remaining_points = points_data["current_points"] - 1
+            remaining_points = points_data["current_points"] - required_points
         else:
             # 管理者テストモードの場合はポイント変更なし
             points_service = V2PointsService()
@@ -496,6 +520,18 @@ async def send_message(
         )
         
         logger.info(f"process_message完了: {ai_response}")
+
+        response_payload = dict(ai_response)
+        response_payload['remaining_points'] = None
+        if not session.get('test_mode'):
+            try:
+                points_service = V2PointsService()
+                points_data = await points_service.get_user_points(user_id)
+                response_payload['remaining_points'] = points_data.get('current_points')
+                if response_payload.get('analysis_data') and isinstance(response_payload['analysis_data'], dict):
+                    response_payload['analysis_data']['remaining_points'] = points_data.get('current_points')
+            except Exception as points_error:
+                logger.warning(f"ポイント残高取得エラー: {points_error}")
         
         # チャットサービスに保存
         # ユーザーメッセージにもデフォルトのai_typeを設定
@@ -519,7 +555,10 @@ async def send_message(
         )
         
         # アシスタントの応答を返す
-        return {"message": assistant_response}
+        return {
+            "message": assistant_response,
+            "remaining_points": response_payload.get('remaining_points')
+        }
         
     except HTTPException:
         raise
@@ -567,33 +606,21 @@ async def get_race_scores(race_id: str):
     v2_race_scoresテーブルから取得
     """
     try:
-        # from services.v2.race_scores_service import V2RaceScoresService  # パフォーマンス最適化のため無効化
+        service = V2RaceScoresService()
+        scores = await service.get_race_scores(race_id)
 
-        # パフォーマンス最適化: スコア計算を完全にスキップ
-        return {
-            "dlogic": None,
-            "ilogic": None,
-            "flogic": None,
-            "metalogic": None,
-            "viewlogic": None,
-            "imlogic": None
-        }
+        if not scores:
+            return {}
 
-        # # 元のコード（無効化）
-        # service = V2RaceScoresService()
-        # scores = await service.get_race_scores(race_id)
-        #
-        # if scores:
-        #     # JSONBフィールドをパース
-        #     if scores.get("dlogic_scores") and isinstance(scores["dlogic_scores"], str):
-        #         import json
-        #         scores["dlogic_scores"] = json.loads(scores["dlogic_scores"])
-        #
-        #     if scores.get("ilogic_scores") and isinstance(scores["ilogic_scores"], str):
-        #         import json
-        #         scores["ilogic_scores"] = json.loads(scores["ilogic_scores"])
-        #
-        # return scores or {}
+        # JSON文字列を辞書に変換
+        for key in ("dlogic_scores", "ilogic_scores"):
+            if scores.get(key) and isinstance(scores[key], str):
+                try:
+                    scores[key] = json.loads(scores[key])
+                except json.JSONDecodeError:
+                    logger.warning(f"{key} のJSON変換に失敗: {scores[key]}")
+
+        return scores
 
     except Exception as e:
         logger.error(f"レーススコア取得エラー: {e}")

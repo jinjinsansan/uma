@@ -2209,32 +2209,51 @@ F-Logic（Fair Value Logic）は、理論的な公正オッズと市場オッズ
                         
                         # 直接関数を呼び出し
                         result_data = await race_analysis_chat(request_data)
-                        
+
                         logger.info(f"I-Logic関数レスポンス: {result_data}")
-                        
-                        # レスポンスの処理
+
                         if not result_data:
                             return ("I-Logic分析から空のレスポンスを受信しました。", None)
-                        
+
                         if result_data.get('status') != 'success':
                             error_msg = result_data.get('response', 'I-Logic分析でエラーが発生しました')
                             return (error_msg, None)
-                        
+
                         response_text = result_data.get('response', '')
-                        
+                        payload = result_data.get('analysis_payload')
+
+                        if isinstance(payload, dict) and payload.get('results'):
+                            structured_results = payload.get('results', [])
+                            analysis_data = {
+                                'type': 'ilogic',
+                                'race_info': payload.get('race_info') or {
+                                    'venue': venue,
+                                    'race_number': race_number,
+                                    'race_name': race_data.get('race_name', '')
+                                },
+                                'results': structured_results,
+                                'summary': payload.get('summary'),
+                                'weights': payload.get('weights'),
+                                'item_weights': payload.get('item_weights'),
+                                'top_horses': payload.get('top_horses') or [r.get('horse') for r in structured_results[:5] if r.get('horse')]
+                            }
+
+                            if not response_text:
+                                response_text = self._format_imlogic_result(payload, payload.get('race_info', {}))
+
+                            return (response_text, analysis_data)
+
                         if not response_text:
                             return ("I-Logic分析結果が空です。", None)
-                        
-                        # レスポンステキストから馬名とスコアを抽出
+
                         scores = self._parse_ilogic_response(response_text, horses)
-                        
-                        # 分析データを抽出
+
                         analysis_data = {
                             'type': 'ilogic',
                             'response_text': response_text,
                             'top_horses': scores[:5] if scores else []
                         }
-                        
+
                         return (response_text, analysis_data)
                         
                     except Exception as e:

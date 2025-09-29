@@ -219,28 +219,21 @@ async def race_analysis_chat(request: Dict[str, Any]):
         # フロントエンドから race_info が渡された場合（アーカイブページから）
         # ただし、horsesデータがない場合は自然言語処理を優先
         if race_info and race_info.get('horses') and len(race_info.get('horses', [])) > 0:
-            # race_infoから直接レースデータを取得して分析を実行
             try:
-                # chat.pyの共有インスタンスを使用
                 from api.chat import fast_engine_instance
                 try:
                     race_analysis_engine = get_race_analysis_engine(fast_engine_instance)
                 except RuntimeError as e:
-                    # 拡張ナレッジデータの取得に失敗した場合
                     logger.error(f"拡張ナレッジデータエラー: {e}")
                     return {
                         "status": "success",
                         "response": "レース分析中にエラーが発生しました。データが不足している可能性があります。",
                         "message": message
                     }
-                
-                # レース分析を実行
-                logger.info(f"Executing race analysis with provided race_info: {race_info}")
-                
-                # race_infoの形式を正規化
+
                 analysis_data = {
-                    'venue': race_info.get('venue'),
-                    'race_number': race_info.get('race_number'),
+                    'venue': race_info.get('venue', ''),
+                    'race_number': race_info.get('race_number', ''),
                     'race_name': race_info.get('race_name', ''),
                     'grade': race_info.get('grade', ''),
                     'distance': race_info.get('distance', ''),
@@ -250,23 +243,22 @@ async def race_analysis_chat(request: Dict[str, Any]):
                     'posts': race_info.get('posts', []),
                     'horse_numbers': race_info.get('horse_numbers', [])
                 }
-                
+
                 result = race_analysis_engine.analyze_race(analysis_data)
-                
-                # デバッグ用ログ
+
                 logger.info(f"Analysis result keys: {result.keys()}")
                 if 'error' in result:
                     logger.error(f"Analysis error: {result['error']}")
-                
-                # 分析結果の整形
+
+                payload = result if isinstance(result, dict) else None
+
                 if not result.get('error') and result.get('results'):
                     race_date = race_info.get('race_date') or race_info.get('date', '')
                     if race_date:
                         response_text = f"🏆 {race_date} {race_info.get('venue')}{race_info.get('race_number')}R {race_info.get('race_name', '')} のI-Logic分析\n\n"
                     else:
                         response_text = f"🏆 {race_info.get('venue')}{race_info.get('race_number')}R {race_info.get('race_name', '')} のI-Logic分析\n\n"
-                    
-                    # 上位馬の結果を表示
+
                     for i, horse_result in enumerate(result['results']):
                         position = i + 1
                         if position <= 3:
@@ -275,24 +267,24 @@ async def race_analysis_chat(request: Dict[str, Any]):
                             emoji = '🏅'
                         else:
                             emoji = ''
-                        
-                        # すべての馬で統一フォーマット表示
+
                         horse_name = horse_result['horse']
                         jockey_name = horse_result['jockey']
                         total_score = horse_result['total_score']
                         horse_score = horse_result.get('horse_score', 0)
                         jockey_score = horse_result.get('jockey_score', 0)
-                        
+
                         if emoji:
                             response_text += f"{emoji} {position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
                         else:
                             response_text += f"{position}位: {horse_name} × {jockey_name} 【{total_score:.1f}点】\n"
                         response_text += f"馬: {horse_score:.1f}点 / 騎手: {jockey_score:.1f}点\n\n"
-                    
+
                     return {
                         "status": "success",
                         "response": response_text,
-                        "message": message
+                        "message": message,
+                        "analysis_payload": payload
                     }
                 else:
                     error_msg = result.get('error', 'レース分析中にエラーが発生しました。')
@@ -301,9 +293,10 @@ async def race_analysis_chat(request: Dict[str, Any]):
                     return {
                         "status": "success",
                         "response": f"レース分析中にエラーが発生しました: {error_msg}",
-                        "message": message
+                        "message": message,
+                        "analysis_payload": payload
                     }
-                    
+
             except Exception as analysis_error:
                 logger.error(f"Race analysis execution error: {analysis_error}")
                 import traceback
@@ -429,7 +422,9 @@ async def race_analysis_chat(request: Dict[str, Any]):
                         from api.chat import fast_engine_instance
                         race_analysis_engine = get_race_analysis_engine(fast_engine_instance)
                         result = race_analysis_engine.analyze_race(race_data)
-                        
+
+                        payload = result if isinstance(result, dict) else None
+
                         # 結果をフォーマット
                         if 'error' in result:
                             response_text = f"分析エラー: {result['error']}"
@@ -463,7 +458,8 @@ async def race_analysis_chat(request: Dict[str, Any]):
                         return {
                             "status": "success",
                             "response": response_text,
-                            "message": message
+                            "message": message,
+                            "analysis_payload": payload
                         }
                         
                     except Exception as e:
@@ -480,15 +476,14 @@ async def race_analysis_chat(request: Dict[str, Any]):
         if message.lower() == "debug races":
             try:
                 from services.supabase_client import supabase_client
-                
+
                 if not supabase_client.is_available():
                     return {
                         "status": "success",
                         "response": "Supabaseに接続できません。環境変数を確認してください。",
                         "message": message
                     }
-                
-                # 最新のレースデータを取得（日付、開催場、レース番号でソート）
+
                 response = supabase_client.client.table('archive_races') \
                     .select('race_date, venue, race_number, race_name') \
                     .order('race_date', desc=True) \
@@ -496,14 +491,14 @@ async def race_analysis_chat(request: Dict[str, Any]):
                     .order('race_number') \
                     .limit(50) \
                     .execute()
-                
+
                 if response.data:
                     debug_msg = "📊 Supabaseに登録されている最新レース:\n\n"
                     for race in response.data:
                         debug_msg += f"• {race['race_date']} {race['venue']}{race['race_number']}R: {race['race_name']}\n"
                 else:
                     debug_msg = "Supabaseにレースデータが見つかりません。"
-                
+
                 return {
                     "status": "success",
                     "response": debug_msg,

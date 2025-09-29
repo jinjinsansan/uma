@@ -22,6 +22,7 @@ class V2RaceScoresService:
             raise ValueError("Supabase設定が不足しています")
         
         self.supabase: Client = create_client(supabase_url, supabase_key)
+        self._race_results_enabled = os.getenv("ENABLE_V2_RACE_RESULTS_COLUMN", "0") == "1"
     
     async def get_race_scores(self, race_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -94,8 +95,10 @@ class V2RaceScoresService:
                 data["ilogic_scores"] = json.dumps(ilogic_scores) if isinstance(ilogic_scores, dict) else ilogic_scores
                 data["ilogic_calculated_at"] = datetime.utcnow().isoformat()
 
-            if race_results:
+            if race_results and self._race_results_enabled:
                 data["race_results"] = json.dumps(race_results) if isinstance(race_results, dict) else race_results
+            elif race_results and not self._race_results_enabled:
+                logger.debug("race_results column disabled; skipping storage for race_id=%s", race_id)
             
             if existing:
                 # 更新

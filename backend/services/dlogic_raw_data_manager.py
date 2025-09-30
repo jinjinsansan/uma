@@ -7,12 +7,33 @@ try:
     import ujson as json
 except ImportError:
     import json
+import math
 import os
 import requests
 import time
-from typing import Dict, List, Any, Optional
+from functools import lru_cache
+from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 import mysql.connector
+
+DEFAULT_ML_WEIGHTS = {
+    "intercept": -12.441751110893705,
+    "coefficients": {
+        "dlogic_score": 0.12060730639282927,
+        "ilogic_score": 0.004889034773479541,
+        "horse_popularity": -0.0037477516774113546,
+        "horse_odds": -0.060843770618131045,
+        "knowledge_total_races": 0.1231063574725694,
+        "knowledge_win_rate": 0.024521137610138636,
+        "knowledge_place_rate": 0.8565581488510627,
+        "knowledge_avg_finish": 0.4573871931869974,
+        "knowledge_avg_popularity": 0.10441304686001143,
+        "knowledge_avg_corner4": -0.0407896445135403,
+        "knowledge_avg_kohan3f": -0.003388740510508107,
+        "track_win_rate": 2.689301767151803,
+        "track_avg_finish": 0.012024164320148086,
+    },
+}
 
 class DLogicRawDataManager:
     """D-Logic生データ管理システム"""
@@ -223,8 +244,8 @@ class DLogicRawDataManager:
         }
         
         # 総合スコア計算（ダンスインザダーク基準）
+        # 総合スコア計算（ダンスインザダーク基準）
         total_score = self._calculate_total_score(scores)
-        
         result = {
             "horse_name": horse_name,
             "d_logic_scores": scores,
@@ -232,6 +253,16 @@ class DLogicRawDataManager:
             "grade": self._grade_performance(total_score),
             "calculation_time": datetime.now().isoformat()
         }
+
+        ml_adjustment = self._apply_ml_adjustment(horse_name, raw_data, scores, total_score)
+        if ml_adjustment is not None:
+            result["baseline_total_score"] = total_score
+            result["baseline_grade"] = result["grade"]
+            result["total_score"] = ml_adjustment["score"]
+            result["grade"] = self._grade_performance(result["total_score"])
+            result["ml_probability"] = ml_adjustment["probability"]
+            result["ml_features"] = ml_adjustment["features"]
+            result["ml_debug"] = ml_adjustment["debug"]
 
         # キャッシュに保存（最大500頭まで）
         if len(self._calculation_cache) < 500:
@@ -671,6 +702,202 @@ class DLogicRawDataManager:
                     pass
         
         return sum(time_scores) / len(time_scores) if time_scores else 50.0
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _load_ml_weights() -> Optional[Dict[str, Any]]:
+        """ロジスティック回帰の重みを読み込み"""
+        weights_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "data",
+            "dlogic_logreg_weights.json",
+        )
+        try:
+            with open(weights_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if "intercept" in data and "coefficients" in data:
+                    return data
+        except FileNotFoundError:
+            print(f"⚠️ D-Logic ML weights file not found, falling back to defaults: {weights_path}")
+        except json.JSONDecodeError as exc:
+            print(f"⚠️ D-Logic ML weights JSON decode error: {exc}")
+        return DEFAULT_ML_WEIGHTS
+
+    def _apply_ml_adjustment(
+        self,
+        horse_name: str,
+        raw_data: Dict[str, Any],
+        scores: Dict[str, float],
+        baseline_total: float,
+    ) -> Optional[Dict[str, Any]]:
+        """ロジスティック回帰モデルによるスコア調整"""
+        ml_weights = self._load_ml_weights()
+        if not ml_weights:
+            return None
+
+        features = self._compute_ml_features(horse_name, raw_data, scores, baseline_total)
+        if not features:
+            return None
+
+        intercept = ml_weights.get("intercept", 0.0)
+        coefficients = ml_weights.get("coefficients", {})
+
+        z = intercept
+        used_features: Dict[str, float] = {}
+        contributions: Dict[str, float] = {}
+
+        for key, coef in coefficients.items():
+            value = features.get(key)
+            if value is None:
+                continue
+            z += coef * value
+            used_features[key] = value
+            contributions[key] = coef * value
+
+        try:
+            probability = 1.0 / (1.0 + math.exp(-z))
+        except OverflowError:
+            probability = 0.0 if z < 0 else 1.0
+
+        return {
+            "probability": probability,
+            "score": probability * 100.0,
+            "features": used_features,
+            "debug": {
+                "linear_combination": z,
+                "intercept": intercept,
+                "contributions": contributions,
+            },
+        }
+
+    def _compute_ml_features(
+        self,
+        _horse_name: str,
+        raw_data: Dict[str, Any],
+        _scores: Dict[str, float],
+        baseline_total: float,
+    ) -> Optional[Dict[str, Optional[float]]]:
+        races = raw_data.get("races", raw_data.get("race_history", []))
+        if not races:
+            return None
+
+        def safe_int(value) -> Optional[int]:
+            if value is None:
+                return None
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                return int(value)
+            try:
+                s = str(value).strip()
+                if not s:
+                    return None
+                sign = -1 if s.startswith("-") else 1
+                s = s.lstrip("+-")
+                if not s:
+                    return None
+                return sign * int(float(s))
+            except (ValueError, TypeError):
+                return None
+
+        def safe_odds(value) -> Optional[float]:
+            ivalue = safe_int(value)
+            if ivalue is None:
+                return None
+            return ivalue / 10.0
+
+        finishes: List[int] = []
+        popularity_values: List[int] = []
+        odds_values: List[float] = []
+        corner4_values: List[int] = []
+        kohan_values: List[int] = []
+
+        track_stats: Dict[str, Dict[str, Any]] = {}
+
+        for race in races:
+            finish = safe_int(race.get("KAKUTEI_CHAKUJUN", race.get("finish")))
+            if finish is None or finish <= 0:
+                continue
+            finishes.append(finish)
+
+            popularity = safe_int(race.get("TANSHO_NINKIJUN", race.get("popularity")))
+            if popularity is not None and popularity > 0:
+                popularity_values.append(popularity)
+
+            odds = safe_odds(race.get("TANSHO_ODDS", race.get("odds")))
+            if odds is not None and odds > 0:
+                odds_values.append(odds)
+
+            corner4 = safe_int(race.get("CORNER4_JUNI", race.get("corner4")))
+            if corner4 is not None and corner4 > 0:
+                corner4_values.append(corner4)
+
+            kohan3f = safe_int(race.get("KOHAN_3F", race.get("kohan_3f")))
+            if kohan3f is not None and kohan3f > 0:
+                kohan_values.append(kohan3f)
+
+            track_code = race.get("KEIBAJO_CODE") or race.get("TRACK_CODE")
+            if track_code:
+                stats = track_stats.setdefault(
+                    track_code,
+                    {"count": 0, "wins": 0, "finishes": []},
+                )
+                stats["count"] += 1
+                stats["finishes"].append(finish)
+                if finish == 1:
+                    stats["wins"] += 1
+
+        if not finishes:
+            return None
+
+        total_races = len(finishes)
+        wins = sum(1 for f in finishes if f == 1)
+        places = sum(1 for f in finishes if f <= 3)
+
+        avg_finish = sum(finishes) / total_races if total_races else None
+        avg_popularity = (
+            sum(popularity_values) / len(popularity_values)
+            if popularity_values
+            else None
+        )
+        avg_corner4 = (
+            sum(corner4_values) / len(corner4_values)
+            if corner4_values
+            else None
+        )
+        avg_kohan = (
+            sum(kohan_values) / len(kohan_values)
+            if kohan_values
+            else None
+        )
+        avg_odds = sum(odds_values) / len(odds_values) if odds_values else None
+
+        preferred_track: Optional[Tuple[str, Dict[str, Any]]] = None
+        if track_stats:
+            preferred_track = max(track_stats.items(), key=lambda item: item[1]["count"])
+
+        track_win_rate = None
+        track_avg_finish = None
+        if preferred_track:
+            track_data = preferred_track[1]
+            if track_data["count"] > 0:
+                track_win_rate = track_data["wins"] / track_data["count"]
+                track_avg_finish = sum(track_data["finishes"]) / track_data["count"]
+
+        return {
+            "dlogic_score": baseline_total,
+            "ilogic_score": baseline_total,
+            "horse_popularity": avg_popularity,
+            "horse_odds": avg_odds,
+            "knowledge_total_races": float(total_races),
+            "knowledge_win_rate": wins / total_races if total_races else None,
+            "knowledge_place_rate": places / total_races if total_races else None,
+            "knowledge_avg_finish": avg_finish,
+            "knowledge_avg_popularity": avg_popularity,
+            "knowledge_avg_corner4": avg_corner4,
+            "knowledge_avg_kohan3f": avg_kohan,
+            "track_win_rate": track_win_rate,
+            "track_avg_finish": track_avg_finish,
+        }
+
     
     def _calculate_total_score(self, scores: Dict[str, float]) -> float:
         """総合スコア計算（ダンスインザダーク基準）"""

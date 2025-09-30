@@ -263,3 +263,63 @@ async def get_transactions(
     except Exception as e:
         logger.error(f"取引履歴取得エラー: {e}")
         raise HTTPException(status_code=500, detail="取引履歴の取得に失敗しました")
+@router.post("/referral-milestone-bonus")
+async def claim_referral_milestone_bonus(
+    milestone: int,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    紹介マイルストーンボーナスを取得
+    milestone: 2, 5, または 10
+    """
+    try:
+        from supabase import create_client, Client
+        import os
+        
+        # マイルストーンの検証
+        if milestone not in [2, 5, 10]:
+            raise HTTPException(status_code=400, detail="無効なマイルストーンです")
+        
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        supabase: Client = create_client(supabase_url, supabase_key)
+        
+        # ユーザーの紹介数を取得
+        referral_result = supabase.table("v2_referrals").select("id").eq("referrer_id", user_id).eq("status", "completed").execute()
+        referral_count = len(referral_result.data) if referral_result.data else 0
+        
+        # マイルストーンに達しているか確認
+        if referral_count < milestone:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"紹介{milestone}名に達していません（現在: {referral_count}名）"
+            )
+        
+        # 既に受け取り済みか確認
+        transaction_type = f"referral_milestone_{milestone}"
+        service = V2PointsService()
+        
+        existing = supabase.table("v2_point_transactions").select("id").eq("user_id", user_id).eq("transaction_type", transaction_type).execute()
+        
+        if existing.data:
+            raise HTTPException(status_code=400, detail="このマイルストーンボーナスは既に受け取り済みです")
+        
+        # ボーナスポイントを付与（マイルストーンと同じポイント数）
+        transaction = await service.grant_points(
+            user_id=user_id,
+            amount=milestone,
+            transaction_type=transaction_type,
+            description=f"紹介{milestone}名達成デイリーボーナス"
+        )
+        
+        return {
+            "points_granted": milestone,
+            "message": f"紹介{milestone}名達成！デイリーボーナス+{milestone}Pを獲得しました",
+            "new_balance": transaction["balance_after"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"紹介マイルストーンボーナス取得エラー: {e}")
+        raise HTTPException(status_code=500, detail="ボーナスの取得に失敗しました")

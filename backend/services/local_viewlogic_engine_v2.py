@@ -18,6 +18,15 @@ from .local_jockey_data_manager import local_jockey_manager
 
 logger = logging.getLogger(__name__)
 
+# 地方競馬場コードマッピング
+TRACK_CODE_MAP = {
+    '30': '門別', '35': '盛岡', '36': '水沢',
+    '42': '浦和', '43': '船橋', '44': '大井', '45': '川崎',
+    '46': '金沢', '47': '笠松', '48': '名古屋',
+    '50': '園田', '51': '姫路',
+    '54': '高知', '55': '佐賀'
+}
+
 # ユーティリティ関数（JRA版と同じ）
 def safe_int(value, default=0):
     """安全に整数変換"""
@@ -284,21 +293,22 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             # 各レースの重要データのみ抽出
             formatted_races = []
             for race in recent_races:
-                # レース名の取得（RACE_NAMEフィールドを使用）
-                actual_race_name = race.get('RACE_NAME', '').strip() if race.get('RACE_NAME') else ''
+                # レース番号を取得
+                race_bango = race.get('RACE_BANGO', '')
                 grade_code = race.get('GRADE_CODE', '').strip() if race.get('GRADE_CODE') else ''
                 
-                # レース名の組み立て（グレードがある場合は追加）
-                if actual_race_name:
-                    if grade_code and grade_code not in ['', '00', '0']:
+                # レース名の組み立て（レース番号 + グレード）
+                if race_bango:
+                    # 先頭の0を削除（"01" → "1"）
+                    race_bango_str = str(race_bango).lstrip('0') or '0'
+                    
+                    if grade_code and grade_code not in ['', ' ', '00', '0']:
                         # グレード表示を追加
-                        grade_display = f"【{grade_code}】" if grade_code in ['A', 'B', 'S', 'P'] else f"({grade_code})"
-                        race_name = f"{actual_race_name} {grade_display}"
+                        race_name = f"{race_bango_str}R ({grade_code})"
                     else:
-                        race_name = actual_race_name
+                        race_name = f"{race_bango_str}R"
                 else:
-                    # RACE_NAMEがない場合は従来通りレース番号で表示
-                    race_name = f"{race.get('RACE_BANGO', '')}R" if race.get('RACE_BANGO') else '不明'
+                    race_name = '不明'
                 
                 # 着順の取得（フォーマット付き）
                 raw_finish = race.get('KAKUTEI_CHAKUJUN', '')
@@ -309,12 +319,23 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                 except:
                     finish_position = ''
                 
-                # 競馬場名の取得（track_nameフィールドを使用）
-                venue = race.get('track_name', '') or race.get('KEIBAJO_CODE', '')
+                # 競馬場名の取得（KEIBAJO_CODEをマッピング）
+                venue_code = str(race.get('KEIBAJO_CODE', ''))
+                venue = TRACK_CODE_MAP.get(venue_code, venue_code)
+                
+                # 開催日のフォーマット（例：2025/09/03）
+                kaisai_nen = race.get('KAISAI_NEN', '')
+                kaisai_gappi = race.get('KAISAI_GAPPI', '')
+                if kaisai_nen and kaisai_gappi and len(str(kaisai_gappi)) == 4:
+                    month = str(kaisai_gappi)[:2]
+                    day = str(kaisai_gappi)[2:]
+                    race_date = f"{kaisai_nen}/{month}/{day}"
+                else:
+                    race_date = '不明'
                 
                 formatted_race = {
                     # フォーマッターが期待する絵文字付きキーを使用
-                    '📅 開催日': f"{race.get('KAISAI_NEN', '')}年{race.get('KAISAI_GAPPI', '')[:2]}月{race.get('KAISAI_GAPPI', '')[2:]}日" if race.get('KAISAI_GAPPI') else '不明',
+                    '📅 開催日': race_date,
                     '🏟️ 競馬場': venue if venue else '不明',
                     '🏁 レース': race_name,
                     '📏 距離': f"{race.get('KYORI', 0)}m" if race.get('KYORI') else '不明',
@@ -325,7 +346,7 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     '🏃 上り': race.get('KOHAN_3F_TIME', '') if race.get('KOHAN_3F_TIME') else '',
                     '🏇 騎手': race.get('KISHUMEI_RYAKUSHO', '') if race.get('KISHUMEI_RYAKUSHO') else '',
                     # 互換性のため通常のキーも保持
-                    'date': f"{race.get('KAISAI_NEN', '')}年{race.get('KAISAI_GAPPI', '')[:2]}月{race.get('KAISAI_GAPPI', '')[2:]}日" if race.get('KAISAI_GAPPI') else '',
+                    'date': race_date,
                     'venue': venue,
                     'race_name': race_name,
                     'distance': f"{race.get('KYORI', 0)}m",

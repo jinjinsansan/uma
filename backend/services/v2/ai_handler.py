@@ -54,7 +54,7 @@ class V2AIHandler:
         # AI選択キーワード
         self.AI_KEYWORDS = {
             'imlogic': ['分析', '評価', 'IMLogic', 'IM', 'アイエム'],
-            'viewlogic_trend': ['騎手分析', '傾向', 'トレンド', '統計', 'データ', '過去', 'コース傾向', '騎手成績', '血統', '枠順'],
+            'viewlogic_trend': ['騎手分析', '傾向', 'トレンド', '統計', 'コース傾向', '騎手成績', '枠順'],
             'viewlogic_recommendation': ['推奨', 'おすすめ', '買い目', '馬券', '予想'],
             'viewlogic_flow': ['展開', 'ペース', '逃げ', '先行', '差し', '追込', '脚質', 'ハイペース', 'スローペース', '流れ'],
             'viewlogic_history': ['過去データ', '直近', '前走', '戦績', '成績', '最近のレース', '過去のレース', '５走', '5走', '使い方'],  # 新規追加
@@ -521,18 +521,19 @@ class V2AIHandler:
             # 馬名が含まれているかチェック
             for horse in horses:
                 if horse in message:
-                    # 過去データ関連のキーワードもあるか、または馬名だけでも反応
+                    # 過去データ関連のキーワードがあれば過去データと判定
                     for keyword in self.AI_KEYWORDS['viewlogic_history']:
                         if keyword in message_lower:
                             return ('viewlogic', 'history')
-                    # 馬名だけでも反応（ただし他のAIキーワードがない場合）
+                    # 馬名だけでも反応（ただし明示的な他のキーワードがない場合）
+                    # ※「データ」「血統」は除外（傾向分析や血統分析の可能性があるため）
                     if not any(kw in message_lower for kw_list in [
                         self.AI_KEYWORDS['dlogic'], 
                         self.AI_KEYWORDS['imlogic'],
                         self.AI_KEYWORDS['ilogic'],
                         self.AI_KEYWORDS['viewlogic_flow'],
-                        self.AI_KEYWORDS['viewlogic_trend'],
-                        self.AI_KEYWORDS['viewlogic_recommendation']
+                        self.AI_KEYWORDS['viewlogic_recommendation'],
+                        self.AI_KEYWORDS['viewlogic_sire']
                     ] for kw in kw_list):
                         return ('viewlogic', 'history')
             
@@ -550,8 +551,8 @@ class V2AIHandler:
                             self.AI_KEYWORDS['imlogic'],
                             self.AI_KEYWORDS['ilogic'],
                             self.AI_KEYWORDS['viewlogic_flow'],
-                            self.AI_KEYWORDS['viewlogic_trend'],
-                            self.AI_KEYWORDS['viewlogic_recommendation']
+                            self.AI_KEYWORDS['viewlogic_recommendation'],
+                            self.AI_KEYWORDS['viewlogic_sire']
                         ] for kw in kw_list):
                             return ('viewlogic', 'history')
                     
@@ -568,8 +569,8 @@ class V2AIHandler:
                                 self.AI_KEYWORDS['imlogic'],
                                 self.AI_KEYWORDS['ilogic'],
                                 self.AI_KEYWORDS['viewlogic_flow'],
-                                self.AI_KEYWORDS['viewlogic_trend'],
-                                self.AI_KEYWORDS['viewlogic_recommendation']
+                                self.AI_KEYWORDS['viewlogic_recommendation'],
+                                self.AI_KEYWORDS['viewlogic_sire']
                             ] for kw in kw_list):
                                 return ('viewlogic', 'history')
                     
@@ -585,8 +586,8 @@ class V2AIHandler:
                                 self.AI_KEYWORDS['imlogic'],
                                 self.AI_KEYWORDS['ilogic'],
                                 self.AI_KEYWORDS['viewlogic_flow'],
-                                self.AI_KEYWORDS['viewlogic_trend'],
-                                self.AI_KEYWORDS['viewlogic_recommendation']
+                                self.AI_KEYWORDS['viewlogic_recommendation'],
+                                self.AI_KEYWORDS['viewlogic_sire']
                             ] for kw in kw_list):
                                 return ('viewlogic', 'history')
 

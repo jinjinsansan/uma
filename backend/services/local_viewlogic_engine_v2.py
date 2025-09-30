@@ -333,29 +333,64 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                 else:
                     race_date = '不明'
                 
+                distance_display = f"{race.get('KYORI', 0)}m" if race.get('KYORI') else '不明'
+                track_display = 'ダート' if race.get('TRACK_CODE') in ['21', '22', '23', '24', '25', '26', '27', '28', '29'] else '芝'
+                popularity_raw = race.get('TANSHO_NINKIJUN', '')
+                popularity_display = ''
+                if popularity_raw:
+                    popularity_clean = str(popularity_raw).lstrip('0') or str(popularity_raw)
+                    popularity_display = f"{popularity_clean}番人気"
+                class_name = grade_code if grade_code and grade_code not in ['', ' ', '00', '0'] else ''
+                jockey_name = (race.get('KISHUMEI_RYAKUSHO', '') or '').strip()
+                corner_values = [race.get('CORNER1_JUNI'), race.get('CORNER2_JUNI'), race.get('CORNER3_JUNI'), race.get('CORNER4_JUNI')]
+                corner_display = '-'.join([c for c in corner_values if c not in (None, '', '00')])
+                weight_display = race.get('BATAIJU') if race.get('BATAIJU') else race.get('FUTAN_JURYO', '')
+                weight_numeric = weight_display
+                if isinstance(weight_numeric, str) and weight_numeric.strip().lstrip('-').isdigit():
+                    try:
+                        weight_numeric = int(weight_numeric)
+                    except ValueError:
+                        weight_numeric = weight_display
+                race_name_display = race_name if race_name and race_name != '不明' else (f"{race.get('RACE_BANGO', '')}R" if race.get('RACE_BANGO') else 'レース名不明')
+
                 formatted_race = {
                     # フォーマッターが期待する絵文字付きキーを使用
                     '📅 開催日': race_date,
                     '🏟️ 競馬場': venue if venue else '不明',
-                    '🏁 レース': race_name,
-                    '📏 距離': f"{race.get('KYORI', 0)}m" if race.get('KYORI') else '不明',
-                    '🌤️ 馬場': 'ダート' if race.get('TRACK_CODE') in ['21','22','23','24','25','26','27','28','29'] else '芝',
+                    '🏁 レース': race_name_display,
+                    '🏆 クラス': class_name,
+                    '📏 距離': distance_display,
+                    '🌤️ 馬場': track_display,
                     '🥇 着順': finish_position if finish_position else '',
-                    '📊 人気': f"{race.get('TANSHO_NINKIJUN', '')}番人気" if race.get('TANSHO_NINKIJUN') else '',
+                    '📊 人気': popularity_display,
                     '⏱️ タイム': race.get('SOHA_TIME', '') if race.get('SOHA_TIME') else '',
                     '🏃 上り': race.get('KOHAN_3F_TIME', '') if race.get('KOHAN_3F_TIME') else '',
-                    '🏇 騎手': race.get('KISHUMEI_RYAKUSHO', '') if race.get('KISHUMEI_RYAKUSHO') else '',
+                    '🏇 騎手': jockey_name,
                     # 互換性のため通常のキーも保持
+                    '開催日': race_date,
+                    '競馬場': venue if venue else '不明',
+                    'レース': race_name_display,
+                    'レース名': race_name_display,
+                    'クラス': class_name,
+                    '距離': distance_display,
+                    '馬場': track_display,
+                    '着順': finish_position if finish_position else '',
+                    '人気': popularity_display,
+                    'タイム': race.get('SOHA_TIME', '') if race.get('SOHA_TIME') else '',
+                    '上り': race.get('KOHAN_3F_TIME', '') if race.get('KOHAN_3F_TIME') else '',
+                    '騎手': jockey_name,
+                    '馬体重': weight_display,
+                    'コーナー': corner_display,
                     'date': race_date,
                     'venue': venue,
-                    'race_name': race_name,
-                    'distance': f"{race.get('KYORI', 0)}m",
-                    'track_type': 'ダート' if race.get('TRACK_CODE') in ['21','22','23','24','25','26','27','28','29'] else '芝',
+                    'race_name': race_name_display,
+                    'distance': distance_display,
+                    'track_type': track_display,
                     'finish': finish_position,
                     'horse_count': race.get('TOSU', 0),
                     'horse_number': race.get('UMA_BAN', 0),
-                    'jockey': race.get('KISHUMEI_RYAKUSHO', ''),
-                    'weight': race.get('FUTAN_JURYO', 0),
+                    'jockey': jockey_name,
+                    'weight': weight_numeric,
                     'odds': float(race.get('TANSHO_ODDS', 0)) / 10 if race.get('TANSHO_ODDS') else 0,
                     'popularity': race.get('TANSHO_NINKIJUN', 0),
                     'corner1': race.get('CORNER1_JUNI', 0),

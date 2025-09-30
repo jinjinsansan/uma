@@ -39,8 +39,10 @@ class V2AIHandler:
 
         # SirePerformanceAnalyzerをシングルトンで初期化（高速化）
         from services.sire_performance_analyzer import get_sire_performance_analyzer
-        self.sire_analyzer = get_sire_performance_analyzer()
-        logger.info("✅ SirePerformanceAnalyzer初期化完了")
+        from services.local_sire_performance_analyzer import get_local_sire_performance_analyzer
+        self.sire_analyzer = get_sire_performance_analyzer()  # JRA用
+        self.local_sire_analyzer = get_local_sire_performance_analyzer()  # 地方競馬用
+        logger.info("✅ SirePerformanceAnalyzer初期化完了（JRA + 地方競馬）")
 
         # Anthropic APIクライアント（V2では使用しないためコメントアウト）
         # self.anthropic_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY")) if Anthropic else None
@@ -3219,14 +3221,27 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
 
             # SirePerformanceAnalyzerから産駒成績を取得する準備
             venue_code = None
-            if not is_local and distance:  # JRAの場合のみ産駒成績を表示
-                # 会場コードマッピング
-                venue_codes = {
-                    '札幌': '01', '函館': '02', '福島': '03', '新潟': '04',
-                    '東京': '05', '中山': '06', '中京': '07', '京都': '08',
-                    '阪神': '09', '小倉': '10'
-                }
-                venue_code = venue_codes.get(venue, '')
+            if distance:
+                if is_local:
+                    # 地方競馬の会場コードマッピング
+                    local_venue_codes = {
+                        '大井': '42',
+                        '川崎': '43',
+                        '船橋': '44',
+                        '浦和': '45',
+                        '盛岡': '35',
+                        '水沢': '36'
+                    }
+                    venue_code = local_venue_codes.get(venue, '')
+                else:
+                    # JRAの会場コードマッピング
+                    venue_codes = {
+                        '札幌': '01', '函館': '02', '福島': '03', '新潟': '04',
+                        '東京': '05', '中山': '06', '中京': '07', '京都': '08',
+                        '阪神': '09', '小倉': '10'
+                    }
+                    venue_code = venue_codes.get(venue, '')
+                
                 # 距離を文字列に変換（例: 2400m → '2400'）
                 if isinstance(distance, str) and distance.endswith('m'):
                     distance = distance[:-1]
@@ -3299,13 +3314,15 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                     lines.append("")
 
                     # 産駒成績を追加（SirePerformanceAnalyzerを使用）
-                    if venue_code and distance and self.sire_analyzer:
+                    # is_localに応じて適切なAnalyzerを選択
+                    analyzer = self.local_sire_analyzer if is_local else self.sire_analyzer
+                    if analyzer:
                         try:
                             # modeに応じて産駒成績を取得・表示
                             if mode != 'broodmare':
                                 # 父の産駒成績を取得（father または both の場合）
                                 if sire and sire != 'データなし':
-                                    sire_perf = self.sire_analyzer.analyze_sire_performance(
+                                    sire_perf = analyzer.analyze_sire_performance(
                                         sire, venue_code, distance
                                     )
                                     if 'message' not in sire_perf:
@@ -3325,7 +3342,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                             if mode != 'father':
                                 # 母父の産駒成績を取得（broodmare または both の場合）
                                 if broodmare_sire and broodmare_sire != 'データなし':
-                                    bm_perf = self.sire_analyzer.analyze_broodmare_sire_performance(
+                                    bm_perf = analyzer.analyze_broodmare_sire_performance(
                                         broodmare_sire, venue_code, distance
                                     )
                                     if 'message' not in bm_perf:

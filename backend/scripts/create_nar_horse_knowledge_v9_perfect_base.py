@@ -219,10 +219,10 @@ def fetch_race_data(years, schedule_master):
             LPAD(COALESCE(se.corner_2, '00'), 2, '0') as "CORNER2_JUNI",
             LPAD(COALESCE(se.corner_3, '00'), 2, '0') as "CORNER3_JUNI",
             LPAD(COALESCE(se.corner_4, '00'), 2, '0') as "CORNER4_JUNI",
-            COALESCE(um.seibetsu_code, '0') as "SEIBETSU_CODE",
+            COALESCE(nu.seibetsu_code, '0') as "SEIBETSU_CODE",
             CASE
-                WHEN um.seinengappi IS NOT NULL AND um.seinengappi != '' THEN
-                    LPAD(GREATEST(0, (se.kaisai_nen::int - SUBSTRING(um.seinengappi, 1, 4)::int))::text, 2, '0')
+                WHEN nu.seinengappi IS NOT NULL AND nu.seinengappi != '' THEN
+                    LPAD(GREATEST(0, (se.kaisai_nen::int - SUBSTRING(nu.seinengappi, 1, 4)::int))::text, 2, '0')
                 ELSE '00'
             END as "BAREI",
             COALESCE(se.kohan_3f, '000') as "KOHAN_3F",
@@ -244,8 +244,8 @@ def fetch_race_data(years, schedule_master):
             COALESCE(ra.tenko_code, '0') as "TENKO_CODE",
             COALESCE(ra.babajotai_code_shiba, '0') as "SHIBA_BABAJOTAI_CODE",
             COALESCE(ra.babajotai_code_dirt, '0') as "DIRT_BABAJOTAI_CODE",
-            COALESCE(um.ketto_joho_01a, '') as "sire",
-            COALESCE(um.ketto_joho_02a, '') as "broodmare_sire"
+            COALESCE(nu.ketto_joho_01b, '') as "sire",
+            COALESCE(nu.ketto_joho_03b, '') as "broodmare_sire"
         FROM nvd_se se
         LEFT JOIN nvd_ra ra ON (
             se.kaisai_nen = ra.kaisai_nen
@@ -253,7 +253,7 @@ def fetch_race_data(years, schedule_master):
             AND se.keibajo_code = ra.keibajo_code
             AND se.race_bango = ra.race_bango
         )
-        LEFT JOIN nvd_um um ON se.ketto_toroku_bango = um.ketto_toroku_bango
+        LEFT JOIN nvd_nu nu ON se.ketto_toroku_bango = nu.ketto_toroku_bango
         WHERE se.keibajo_code IN ('42', '43', '44', '45', '35', '36')
             AND se.kaisai_nen IN %s
             AND se.bamei IS NOT NULL

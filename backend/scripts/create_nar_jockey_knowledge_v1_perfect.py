@@ -178,7 +178,7 @@ def fetch_jockey_data(years):
             se.bamei,
             se.kakutei_chakujun,
             ra.shusso_tosu,
-            COALESCE(um.ketto_joho_01b, '') as sire
+            COALESCE(nu.ketto_joho_01b, '') as sire
         FROM nvd_se se
         JOIN nvd_ra ra ON (
             se.kaisai_nen = ra.kaisai_nen
@@ -186,7 +186,7 @@ def fetch_jockey_data(years):
             AND se.keibajo_code = ra.keibajo_code
             AND se.race_bango = ra.race_bango
         )
-        LEFT JOIN nvd_um um ON se.ketto_toroku_bango = um.ketto_toroku_bango
+        LEFT JOIN nvd_nu nu ON se.ketto_toroku_bango = nu.ketto_toroku_bango
         WHERE se.kaisai_nen IN %s
             AND se.keibajo_code IN ('42','43','44','45','35','36')
             AND se.kishumei_ryakusho IS NOT NULL

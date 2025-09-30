@@ -33,7 +33,9 @@ class V2AIHandler:
         # /logic-chatと同じ動作を保証
         # DLogicRawDataManagerは血統分析で使用するため初期化
         from services.dlogic_raw_data_manager import DLogicRawDataManager
-        self.dlogic_manager = DLogicRawDataManager()  # 血統分析用（一度だけ初期化）
+        from services.local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
+        self.dlogic_manager = DLogicRawDataManager()  # JRA用血統分析
+        self.local_dlogic_manager = local_dlogic_manager_v2  # 地方競馬用血統分析
 
         # SirePerformanceAnalyzerをシングルトンで初期化（高速化）
         from services.sire_performance_analyzer import get_sire_performance_analyzer
@@ -3201,8 +3203,8 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             is_local = self._is_local_racing(venue)
 
             # 統合ナレッジファイルからデータを取得
-            # 初期化済みのDLogicマネージャーを使用（高速化）
-            dlogic_manager = self.dlogic_manager
+            # is_localに応じて適切なマネージャーを選択
+            dlogic_manager = self.local_dlogic_manager if is_local else self.dlogic_manager
 
             lines = []
             # modeに応じてタイトルを変更

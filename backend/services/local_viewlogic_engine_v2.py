@@ -253,8 +253,15 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             }
         """
         try:
-            # 馬データを取得
-            horse_data = self.data_manager.get_horse_data(horse_name)
+            # 馬名を正規化（前後の空白を除去）
+            normalized_name = horse_name.strip().strip('　')  # 半角・全角空白を除去
+            
+            # 馬データを取得（複数パターンを試行）
+            horse_data = self.data_manager.get_horse_data(normalized_name)
+            
+            # 見つからない場合、元の名前でも試す
+            if not horse_data:
+                horse_data = self.data_manager.get_horse_data(horse_name)
             
             if not horse_data:
                 return {
@@ -377,8 +384,15 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             }
         """
         try:
-            # 騎手データを取得
-            jockey_data = self.jockey_manager.get_jockey_data(jockey_name)
+            # 騎手名を正規化（前後の空白を除去、「騎手」を削除）
+            normalized_name = jockey_name.replace('騎手', '').strip().strip('　')
+            
+            # 騎手データを取得（複数パターンを試行）
+            jockey_data = self.jockey_manager.get_jockey_data(normalized_name)
+            
+            # 見つからない場合、元の名前でも試す
+            if not jockey_data:
+                jockey_data = self.jockey_manager.get_jockey_data(jockey_name)
             
             if not jockey_data:
                 return {

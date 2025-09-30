@@ -291,24 +291,51 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             recent_races = races[:limit] if len(races) >= limit else races
             
             # 各レースの重要データのみ抽出
+            def extract_race_name(race_data: Dict[str, Any]) -> str:
+                candidate_keys = [
+                    'KYOSOMEI_HONDAI', 'KYOSOMEI_FUKUMEI', 'TOKUBETUMEI', 'RACE_NAME',
+                    'RACE_TITLE', 'RACE_TITLE_SHORT', 'RACE_NAME_SHORT', 'RACE_NAME_JP',
+                    'SPECIAL_RACE_NAME'
+                ]
+                invalid_values = {'', '不明', 'None', '0', '00', '000', '0000', '-', '--'}
+                for key in candidate_keys:
+                    value = race_data.get(key)
+                    if value is None:
+                        continue
+                    text = str(value).strip()
+                    if text and text not in invalid_values:
+                        return text
+                race_bango = str(race_data.get('RACE_BANGO') or '').strip()
+                if race_bango:
+                    race_bango_clean = race_bango.lstrip('0') or '0'
+                    return f"{race_bango_clean}R"
+                return 'レース名不明'
+
+            def normalize_class_name(race_data: Dict[str, Any]) -> str:
+                class_candidates = [
+                    race_data.get('GRADE_CODE'),
+                    race_data.get('RACE_CLASS'),
+                    race_data.get('CLASS_CODE'),
+                    race_data.get('RACE_GRADE')
+                ]
+                for value in class_candidates:
+                    if value is None:
+                        continue
+                    text = str(value).strip()
+                    if not text:
+                        continue
+                    text = text.replace('（', '').replace('）', '').replace('(', '').replace(')', '').strip()
+                    if not text or text in {'0', '00', '000', '99'}:
+                        continue
+                    if len(text) == 1 and text.isalpha():
+                        continue
+                    return text
+                return ''
+
             formatted_races = []
             for race in recent_races:
-                # レース番号を取得
-                race_bango = race.get('RACE_BANGO', '')
-                grade_code = race.get('GRADE_CODE', '').strip() if race.get('GRADE_CODE') else ''
-                
-                # レース名の組み立て（レース番号 + グレード）
-                if race_bango:
-                    # 先頭の0を削除（"01" → "1"）
-                    race_bango_str = str(race_bango).lstrip('0') or '0'
-                    
-                    if grade_code and grade_code not in ['', ' ', '00', '0']:
-                        # グレード表示を追加
-                        race_name = f"{race_bango_str}R ({grade_code})"
-                    else:
-                        race_name = f"{race_bango_str}R"
-                else:
-                    race_name = '不明'
+                race_name = extract_race_name(race)
+                class_name = normalize_class_name(race)
                 
                 # 着順の取得（フォーマット付き）
                 raw_finish = race.get('KAKUTEI_CHAKUJUN', '')
@@ -340,7 +367,6 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                 if popularity_raw:
                     popularity_clean = str(popularity_raw).lstrip('0') or str(popularity_raw)
                     popularity_display = f"{popularity_clean}番人気"
-                class_name = grade_code if grade_code and grade_code not in ['', ' ', '00', '0'] else ''
                 jockey_name = (race.get('KISHUMEI_RYAKUSHO', '') or '').strip()
                 corner_values = [race.get('CORNER1_JUNI'), race.get('CORNER2_JUNI'), race.get('CORNER3_JUNI'), race.get('CORNER4_JUNI')]
                 corner_display = '-'.join([c for c in corner_values if c not in (None, '', '00')])

@@ -2908,7 +2908,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 # レース名とクラス名の表示（どちらか一方でも表示）
                 if race_name or class_name:
                     # レース名とクラス名の組み合わせを適切に処理
-                    if race_name and class_name:
+                    if race_name and class_name and class_name not in race_name:
                         race_display = f"{race_name}（{class_name}）"
                     elif race_name:
                         race_display = race_name

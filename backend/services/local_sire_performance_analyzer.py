@@ -159,7 +159,16 @@ class LocalSirePerformanceAnalyzer:
                         continue
 
                     # 馬場状態別に集計（芝とダートで別フィールド）
-                    track_condition = race.get('SHIBA_BABAJOTAI_CODE', race.get('DIRT_BABAJOTAI_CODE', ''))
+                    # 芝馬場状態コードが0または空の場合はダート馬場状態を使用
+                    shiba_condition = race.get('SHIBA_BABAJOTAI_CODE', '')
+                    dirt_condition = race.get('DIRT_BABAJOTAI_CODE', '')
+                    
+                    # 芝コードが0または空の場合はダートを使用
+                    if shiba_condition in [0, '0', '', None]:
+                        track_condition = dirt_condition
+                    else:
+                        track_condition = shiba_condition
+                    
                     condition_name = self._get_track_condition(track_condition)
 
                     if condition_name in by_condition:
@@ -277,7 +286,17 @@ class LocalSirePerformanceAnalyzer:
                     except (ValueError, TypeError):
                         continue
 
-                    track_condition = race.get('SHIBA_BABAJOTAI_CODE', race.get('DIRT_BABAJOTAI_CODE', ''))
+                    # 馬場状態別に集計（芝とダートで別フィールド）
+                    # 芝馬場状態コードが0または空の場合はダート馬場状態を使用
+                    shiba_condition = race.get('SHIBA_BABAJOTAI_CODE', '')
+                    dirt_condition = race.get('DIRT_BABAJOTAI_CODE', '')
+                    
+                    # 芝コードが0または空の場合はダートを使用
+                    if shiba_condition in [0, '0', '', None]:
+                        track_condition = dirt_condition
+                    else:
+                        track_condition = shiba_condition
+                    
                     condition_name = self._get_track_condition(track_condition)
 
                     if condition_name in by_condition:

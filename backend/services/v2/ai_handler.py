@@ -1139,9 +1139,11 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 
                 # 馬名チェック
                 target_horse = None
+                logger.info(f"ViewLogic過去データ: 馬名マッチング開始 horses={horses}, message={message}")
                 for horse in horses:
                     if horse in message:
                         target_horse = horse
+                        logger.info(f"ViewLogic過去データ: 馬名マッチ成功 target_horse={target_horse}")
                         break
                 
                 # 騎手名チェック
@@ -1163,7 +1165,9 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 # 実際のデータ取得処理
                 if target_horse:
                     # 馬の過去データ取得
+                    logger.info(f"ViewLogic過去データ: 馬データ取得開始 target_horse={target_horse}, engine={type(viewlogic_engine).__name__}")
                     result = viewlogic_engine.get_horse_history(target_horse)
+                    logger.info(f"ViewLogic過去データ: 馬データ取得結果 status={result.get('status')}, message={result.get('message', 'N/A')}")
                     if result['status'] == 'success':
                         content = self._format_horse_history(result, target_horse)
                         # プログレスメッセージと実際のコンテンツを結合

@@ -255,15 +255,22 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
         try:
             # 馬名を正規化（前後の空白を除去）
             normalized_name = horse_name.strip().strip('　')  # 半角・全角空白を除去
+            logger.info(f"地方ViewLogic過去データ: 馬データ取得 horse_name='{horse_name}', normalized='{normalized_name}'")
             
             # 馬データを取得（複数パターンを試行）
             horse_data = self.data_manager.get_horse_data(normalized_name)
             
             # 見つからない場合、元の名前でも試す
             if not horse_data:
+                logger.info(f"地方ViewLogic過去データ: 正規化名でデータなし、元の名前で再試行")
                 horse_data = self.data_manager.get_horse_data(horse_name)
             
             if not horse_data:
+                logger.warning(f"地方ViewLogic過去データ: データなし horse_name='{horse_name}'")
+                # ナレッジファイル内の馬名をサンプル表示（デバッグ用）
+                all_horses = list(self.data_manager.knowledge_data.get('horses', {}).keys())
+                sample_horses = all_horses[:5] if all_horses else []
+                logger.info(f"地方ViewLogic過去データ: ナレッジファイル内のサンプル馬名={sample_horses}")
                 return {
                     'status': 'error',
                     'message': f'{horse_name}のデータベースにデータがありません'

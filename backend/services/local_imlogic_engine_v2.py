@@ -129,20 +129,26 @@ class LocalIMLogicEngineV2:
                 )
 
                 if not has_data:
-                    total_score = None
-                    horse_score_disp = None
-                    jockey_score_disp = None
-                else:
-                    total_score = round(
-                        horse_score * (horse_weight / 100.0) +
-                        jockey_score * (jockey_weight / 100.0),
-                        1
-                    )
-                    horse_score_disp = round(horse_score, 1)
-                    jockey_score_disp = round(jockey_score, 1)
+                    results.append({
+                        'rank': 0,
+                        'horse_number': horse_number,
+                        'post': post,
+                        'horse': horse_name,
+                        'jockey': jockey_name,
+                        'total_score': None,
+                        'horse_score': None,
+                        'jockey_score': None,
+                        'horse_weight_pct': horse_weight,
+                        'jockey_weight_pct': jockey_weight,
+                        'data_status': 'no_data'
+                    })
+                    continue
 
-                data_status = horse_details.get('data_status', 'no_data')
-                estimation_method = horse_details.get('estimation_method', 'local_default')
+                total_score = round(
+                    horse_score * (horse_weight / 100.0) +
+                    jockey_score * (jockey_weight / 100.0),
+                    1
+                )
 
                 results.append({
                     'rank': 0,
@@ -151,25 +157,17 @@ class LocalIMLogicEngineV2:
                     'horse': horse_name,
                     'jockey': jockey_name,
                     'total_score': total_score,
-                    'horse_score': horse_score_disp,
-                    'jockey_score': jockey_score_disp,
+                    'horse_score': round(horse_score, 1),
+                    'jockey_score': round(jockey_score, 1),
                     'horse_weight_pct': horse_weight,
                     'jockey_weight_pct': jockey_weight,
-                    'has_data': has_data,
-                    'estimation_method': estimation_method,
-                    'horse_details': horse_details,
-                    'jockey_details': {
-                        'venue': round(jockey_breakdown.get('venue_score', 0.0), 1),
-                        'post': round(jockey_breakdown.get('post_score', 0.0), 1),
-                        'sire': round(jockey_breakdown.get('sire_score', 0.0), 1)
-                    },
-                    'data_status': data_status
+                    'data_status': 'ok'
                 })
 
             except Exception as exc:
                 logger.error(f"IMLogic地方版分析エラー ({horse_name}): {exc}")
                 results.append({
-                    'rank': 999,
+                    'rank': 0,
                     'horse_number': horse_numbers[idx] if idx < len(horse_numbers) else idx + 1,
                     'post': posts[idx] if idx < len(posts) else idx + 1,
                     'horse': horse_name,
@@ -179,28 +177,7 @@ class LocalIMLogicEngineV2:
                     'jockey_score': None,
                     'horse_weight_pct': horse_weight,
                     'jockey_weight_pct': jockey_weight,
-                    'has_data': False,
-                    'estimation_method': 'local_error',
-                    'horse_details': {
-                        'has_knowledge_data': False,
-                        'data_status': 'error',
-                        'estimation_method': 'local_error',
-                        'venue_distance_bonus': 0.0,
-                        'track_bonus': 0.0,
-                        'class_factor': 1.0,
-                        'venue_history': {'wins': 0, 'total': 0, 'place_rate': 0.0, 'average_finish': None},
-                        'distance_history': {'total': 0, 'average_finish': None},
-                        'recent_form': {'finishes': [], 'average_finish': None},
-                        'd_logic_scores': {},
-                        'd_logic_total': 0.0,
-                        'sire': None
-                    },
-                    'jockey_details': {
-                        'venue': 0.0,
-                        'post': 0.0,
-                        'sire': 0.0
-                    },
-                    'data_status': 'error'
+                    'data_status': 'no_data'
                 })
 
         valid_results = [r for r in results if r['total_score'] is not None]
@@ -214,16 +191,7 @@ class LocalIMLogicEngineV2:
         for offset, result in enumerate(invalid_results, start=1):
             result['rank'] = len(valid_results) + offset
 
-        all_results = valid_results + invalid_results
-
-        summary = self.ilogic_engine._create_analysis_summary(all_results, context)
-        total_runners = len(all_results) if all_results else 1
-        confidence = round((len(valid_results) / total_runners) * 100.0, 1)
-        summary['confidence'] = confidence
-        summary['top_3'] = [
-            f"{item['horse']} ({item['total_score']:.1f}点)"
-            for item in valid_results[:3]
-        ] if valid_results else []
+        ordered_results = valid_results + invalid_results
 
         response = {
             'status': 'success',
@@ -244,18 +212,8 @@ class LocalIMLogicEngineV2:
                 'jockey_weight': jockey_weight,
                 'item_weights': normalized_item_weights
             },
-            'horse_weight': horse_weight,
-            'jockey_weight': jockey_weight,
-            'item_weights': normalized_item_weights,
-            'weights': {
-                'horse': horse_weight,
-                'jockey': jockey_weight
-            },
-            'results': all_results,
-            'scores': all_results,
-            'rankings': all_results,
-            'summary': summary,
-            'top_horses': [r['horse'] for r in valid_results[:5]],
+            'results': ordered_results,
+            'scores': ordered_results,
             'analyzed_at': datetime.now().isoformat()
         }
 

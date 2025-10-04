@@ -43,6 +43,15 @@ class V2AIHandler:
         self.sire_analyzer = get_sire_performance_analyzer()  # JRA用
         self.local_sire_analyzer = get_local_sire_performance_analyzer()  # 地方競馬用
         logger.info("✅ SirePerformanceAnalyzer初期化完了（JRA + 地方競馬）")
+        
+        # N-Logicエンジン初期化
+        self.nlogic_engine = None
+        try:
+            from services.nlogic_engine import NLogicEngine
+            self.nlogic_engine = NLogicEngine()
+            logger.info("✅ N-Logicエンジン初期化完了")
+        except Exception as e:
+            logger.warning(f"⚠️ N-Logicエンジン初期化失敗（利用不可）: {e}")
 
         # Anthropic APIクライアント（V2では使用しないためコメントアウト）
         # self.anthropic_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY")) if Anthropic else None
@@ -64,6 +73,7 @@ class V2AIHandler:
             'viewlogic_data': ['データ上位', 'データ分析', 'データ抽出', '複勝率上位', '上位3頭', '上位三頭', 'トップ3'],  # データ分析サブエンジン
             'dlogic': ['d-logic', 'ディーロジック', 'D-Logic', 'Dロジック', '指数', 'スコア', '12項目', '評価点'],
             'ilogic': ['i-logic', 'ilogic', 'アイロジック', 'I-Logic', 'Iロジック', '騎手', '総合', 'レースアナリシス', 'アナリシス'],
+            'nlogic': ['n-logic', 'nlogic', 'エヌロジック', 'N-Logic', 'Nロジック', 'オッズ予測', '支持率', 'レース予測', 'オッズ'],
             'flogic': ['f-logic', 'flogic', 'エフロジック', 'F-Logic', 'Fロジック', 'フェア値']
         }
 
@@ -630,6 +640,11 @@ class V2AIHandler:
         for keyword in self.AI_KEYWORDS['ilogic']:
             if keyword.lower() in message_lower:
                 return ('ilogic', 'analysis')
+        
+        # N-Logic（オッズ予測）
+        for keyword in self.AI_KEYWORDS['nlogic']:
+            if keyword.lower() in message_lower:
+                return ('nlogic', 'prediction')
         
         # ViewLogic推奨
         for keyword in self.AI_KEYWORDS['viewlogic_recommendation']:
@@ -1744,6 +1759,12 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 content, analysis_data = result
             else:
                 content = result
+        elif determined_ai == 'nlogic':
+            result = await self.process_nlogic_message(message, race_data)
+            if isinstance(result, tuple):
+                content, analysis_data = result
+            else:
+                content = result
         elif determined_ai == 'column':
             logger.info(f"コラム処理開始: determined_ai={determined_ai}, user_email={user_email}")
             content, analysis_data = self._handle_column_request(race_data, user_email)
@@ -1760,6 +1781,7 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             'flogic': 'F-Logic AI',
             'dlogic': 'D-Logic AI',
             'ilogic': 'I-Logic AI',
+            'nlogic': 'N-Logic AI',
             'imlogic': 'IMLogic AI',
             'viewlogic': 'ViewLogic AI',
             'column': 'コラムシステム'
@@ -3683,3 +3705,114 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         except Exception as e:
             logger.error(f"血統データ取得エラー ({horse_name}): {e}")
             return None
+    
+    async def process_nlogic_message(
+        self,
+        message: str,
+        race_data: Dict[str, Any]
+    ) -> Tuple[str, Optional[Dict[str, Any]]]:
+        """
+        N-Logic処理（オッズ予測）
+        
+        Args:
+            message: ユーザーメッセージ
+            race_data: レースデータ
+        
+        Returns:
+            (応答テキスト, 分析データ)
+        """
+        try:
+            if not self.nlogic_engine:
+                return ("⚠️ N-Logicエンジンが初期化されていません。現在利用できません。", None)
+            
+            logger.info("N-Logic処理開始")
+            
+            # 予測実行
+            result = self.nlogic_engine.predict_race(race_data)
+            
+            if result.get('status') != 'success':
+                error_message = result.get('message', '不明なエラー')
+                return (f"⚠️ N-Logic予測に失敗しました\n\n{error_message}", None)
+            
+            # 結果フォーマット
+            content = self._format_nlogic_result(result)
+            
+            # 分析データ
+            analysis_data = {
+                'venue': result.get('venue'),
+                'race_number': result.get('race_number'),
+                'type': 'nlogic_prediction',
+                'predictions': result.get('predictions'),
+                'total_horses': result.get('total_horses')
+            }
+            
+            return (content, analysis_data)
+            
+        except Exception as e:
+            logger.error(f"N-Logic処理エラー: {e}")
+            import traceback
+            traceback.print_exc()
+            return (f"⚠️ N-Logic処理中にエラーが発生しました: {str(e)}", None)
+    
+    def _format_nlogic_result(self, result: Dict[str, Any]) -> str:
+        """N-Logic結果のフォーマット"""
+        try:
+            lines = []
+            lines.append("🎯 **N-Logic オッズ予測**")
+            lines.append("")
+            
+            venue = result.get('venue', '不明')
+            race_number = result.get('race_number', '')
+            total_horses = result.get('total_horses', 0)
+            
+            if race_number:
+                lines.append(f"📍 {venue} {race_number}R")
+            else:
+                lines.append(f"📍 {venue}")
+            lines.append(f"🏇 出走頭数: {total_horses}頭")
+            lines.append("")
+            
+            # 予測結果
+            predictions = result.get('predictions', {})
+            if not predictions:
+                lines.append("⚠️ 予測結果がありません")
+                return "\n".join(lines)
+            
+            # 順位順にソート
+            sorted_predictions = sorted(
+                predictions.items(),
+                key=lambda x: x[1]['rank']
+            )
+            
+            lines.append("### 【予測オッズ - 上位10頭】")
+            lines.append("")
+            
+            for horse_name, pred in sorted_predictions[:10]:
+                rank = pred['rank']
+                odds = pred['odds']
+                support_rate = pred['support_rate'] * 100
+                
+                if rank == 1:
+                    emoji = '🥇'
+                elif rank == 2:
+                    emoji = '🥈'
+                elif rank == 3:
+                    emoji = '🥉'
+                else:
+                    emoji = f'**{rank}位**'
+                
+                lines.append(f"{emoji} **{horse_name}**")
+                lines.append(f"　予測オッズ: **{odds}倍**　支持率: {support_rate:.1f}%")
+                lines.append("")
+            
+            lines.append("---")
+            lines.append("")
+            lines.append("💡 **N-Logicについて**")
+            lines.append("レース内の力関係を考慮したオッズ予測エンジンです。")
+            lines.append("CatBoost + QuerySoftMax手法により、従来の単体予測より高精度な支持率を算出します。")
+            
+            return "\n".join(lines)
+            
+        except Exception as e:
+            logger.error(f"N-Logic結果フォーマットエラー: {e}")
+            return f"⚠️ 結果の表示に失敗しました: {str(e)}"

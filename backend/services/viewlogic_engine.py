@@ -1460,6 +1460,7 @@ class ViewLogicEngine:
                 'status': 'success',
                 'type': 'betting_recommendation',
                 'venue': venue,
+                'race_number': race_data.get('race_number', ''),
                 'total_horses': len(horses),
                 'top_5_horses': top_5_horses[:5],  # 上位5頭（馬名のみ）
                 'top_5_horses_with_scores': top_5_horses_with_scores[:5],  # スコア付き上位5頭

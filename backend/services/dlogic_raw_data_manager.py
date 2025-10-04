@@ -254,15 +254,16 @@ class DLogicRawDataManager:
             "calculation_time": datetime.now().isoformat()
         }
 
-        ml_adjustment = self._apply_ml_adjustment(horse_name, raw_data, scores, total_score)
-        if ml_adjustment is not None:
-            result["baseline_total_score"] = total_score
-            result["baseline_grade"] = result["grade"]
-            result["total_score"] = ml_adjustment["score"]
-            result["grade"] = self._grade_performance(result["total_score"])
-            result["ml_probability"] = ml_adjustment["probability"]
-            result["ml_features"] = ml_adjustment["features"]
-            result["ml_debug"] = ml_adjustment["debug"]
+        # ロジスティック回帰を一時的に無効化（的中率検証のため）
+        # ml_adjustment = self._apply_ml_adjustment(horse_name, raw_data, scores, total_score)
+        # if ml_adjustment is not None:
+        #     result["baseline_total_score"] = total_score
+        #     result["baseline_grade"] = result["grade"]
+        #     result["total_score"] = ml_adjustment["score"]
+        #     result["grade"] = self._grade_performance(result["total_score"])
+        #     result["ml_probability"] = ml_adjustment["probability"]
+        #     result["ml_features"] = ml_adjustment["features"]
+        #     result["ml_debug"] = ml_adjustment["debug"]
 
         # キャッシュに保存（最大500頭まで）
         if len(self._calculation_cache) < 500:

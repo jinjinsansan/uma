@@ -1409,6 +1409,7 @@ class ViewLogicEngine:
             
             # 展開予想の上位5頭を取得（race_simulationのfinishから取得）
             top_5_horses = []
+            top_5_horses_with_scores = []  # スコア付き上位5頭
             if flow_result and flow_result.get('status') == 'success':
                 # race_simulationのfinishから上位5頭を取得
                 if 'race_simulation' in flow_result and 'finish' in flow_result['race_simulation']:
@@ -1419,6 +1420,11 @@ class ViewLogicEngine:
                         horse_name = horse_info.get('horse_name')
                         if horse_name and horse_name in horses:
                             top_5_horses.append(horse_name)
+                            # スコア情報も追加
+                            top_5_horses_with_scores.append({
+                                'horse_name': horse_name,
+                                'score': horse_info.get('flow_score', 0)
+                            })
                     logger.info(f"展開予想上位5頭: {top_5_horses}")
                             
                 # もし上記で取得できなければ、旧形式を試す（後方互換性のため）
@@ -1432,6 +1438,11 @@ class ViewLogicEngine:
                                 horse_name = horse_part.split('(')[0].strip()
                                 if horse_name in horses:
                                     top_5_horses.append(horse_name)
+                                    # 旧形式にはスコアがないので0点
+                                    top_5_horses_with_scores.append({
+                                        'horse_name': horse_name,
+                                        'score': 0
+                                    })
                                     if len(top_5_horses) >= 5:
                                         break
             
@@ -1450,7 +1461,8 @@ class ViewLogicEngine:
                 'type': 'betting_recommendation',
                 'venue': venue,
                 'total_horses': len(horses),
-                'top_5_horses': top_5_horses[:5],  # 上位5頭を含める
+                'top_5_horses': top_5_horses[:5],  # 上位5頭（馬名のみ）
+                'top_5_horses_with_scores': top_5_horses_with_scores[:5],  # スコア付き上位5頭
                 'recommendations': recommendations,
                 'last_updated': datetime.now().isoformat()
             }

@@ -2443,22 +2443,33 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         try:
             lines = []
             lines.append("🎯 ViewLogic推奨馬券")
-            lines.append("")
             
             venue = result.get('venue', '不明')
+            race_number = result.get('race_number', '')
             total_horses = result.get('total_horses', 0)
-            top_5_horses = result.get('top_5_horses', [])
+            top_5_horses_with_scores = result.get('top_5_horses_with_scores', [])
             recommendations = result.get('recommendations', [])
             
-            lines.append(f"**開催場**: {venue}")
-            lines.append(f"**出走頭数**: {total_horses}頭")
+            # レース情報
+            if race_number:
+                lines.append(f"{venue} {race_number}R")
+            else:
+                lines.append(f"{venue}")
+            lines.append("")
             
-            # 展開予想の上位5頭を表示
-            if top_5_horses:
-                lines.append("")
-                lines.append("**🏇 ViewLogic展開予想 上位5頭**:")
-                for i, horse in enumerate(top_5_horses[:5], 1):
-                    lines.append(f"  {i}. {horse}")
+            # 上位5頭をカード形式で表示
+            if top_5_horses_with_scores:
+                lines.append("【上位5頭】")
+                emojis = ['🥇', '🥈', '🥉', '4位:', '5位:']
+                for i, horse_info in enumerate(top_5_horses_with_scores[:5]):
+                    emoji = emojis[i] if i < 5 else f"{i+1}位:"
+                    horse_name = horse_info.get('horse_name', '不明')
+                    score = horse_info.get('score', 0)
+                    # スコアが0の場合は点数を表示しない
+                    if score > 0:
+                        lines.append(f"{emoji} {i+1}位: {horse_name} ({score:.1f}点)")
+                    else:
+                        lines.append(f"{emoji} {i+1}位: {horse_name}")
             
             lines.append("")
             
@@ -2466,7 +2477,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 lines.append("⚠️ 推奨馬券を生成できませんでした。")
                 return "\n".join(lines)
             
-            lines.append("### 📋 推奨馬券")
+            lines.append("【推奨馬券】")
             lines.append("")
             
             for rec in recommendations:
@@ -2779,22 +2790,33 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
         try:
             lines = []
             lines.append("🎯 ViewLogic推奨馬券")
-            lines.append("")
             
             venue = result.get('venue', '不明')
+            race_number = result.get('race_number', '')
             total_horses = result.get('total_horses', 0)
-            top_5_horses = result.get('top_5_horses', [])
+            top_5_horses_with_scores = result.get('top_5_horses_with_scores', [])
             recommendations = result.get('recommendations', [])
             
-            lines.append(f"**開催場**: {venue}")
-            lines.append(f"**出走頭数**: {total_horses}頭")
+            # レース情報
+            if race_number:
+                lines.append(f"{venue} {race_number}R")
+            else:
+                lines.append(f"{venue}")
+            lines.append("")
             
-            # 展開予想の上位5頭を表示
-            if top_5_horses:
-                lines.append("")
-                lines.append("**🏇 ViewLogic展開予想 上位5頭**:")
-                for i, horse in enumerate(top_5_horses[:5], 1):
-                    lines.append(f"  {i}. {horse}")
+            # 上位5頭をカード形式で表示
+            if top_5_horses_with_scores:
+                lines.append("【上位5頭】")
+                emojis = ['🥇', '🥈', '🥉', '4位:', '5位:']
+                for i, horse_info in enumerate(top_5_horses_with_scores[:5]):
+                    emoji = emojis[i] if i < 5 else f"{i+1}位:"
+                    horse_name = horse_info.get('horse_name', '不明')
+                    score = horse_info.get('score', 0)
+                    # スコアが0の場合は点数を表示しない
+                    if score > 0:
+                        lines.append(f"{emoji} {i+1}位: {horse_name} ({score:.1f}点)")
+                    else:
+                        lines.append(f"{emoji} {i+1}位: {horse_name}")
             
             lines.append("")
             
@@ -2802,7 +2824,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 lines.append("⚠️ 推奨馬券を生成できませんでした。")
                 return "\n".join(lines)
             
-            lines.append("### 📋 推奨馬券")
+            lines.append("【推奨馬券】")
             lines.append("")
             
             for rec in recommendations:

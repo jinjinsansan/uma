@@ -845,6 +845,7 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             flow_result = self.predict_race_flow_advanced(race_data)
 
             top_5_horses: List[str] = []
+            top_5_horses_with_scores: List[Dict[str, Any]] = []  # スコア付き上位5頭
             if flow_result and flow_result.get('status') == 'success':
                 if 'race_simulation' in flow_result and 'finish' in flow_result['race_simulation']:
                     finish_order = flow_result['race_simulation']['finish']
@@ -852,6 +853,11 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                         horse_name = horse_info.get('horse_name')
                         if horse_name and horse_name in horses:
                             top_5_horses.append(horse_name)
+                            # スコア情報も追加
+                            top_5_horses_with_scores.append({
+                                'horse_name': horse_name,
+                                'score': horse_info.get('flow_score', 0)
+                            })
                 elif 'prediction' in flow_result and 'predicted_result' in flow_result['prediction']:
                     for rank_info in flow_result['prediction']['predicted_result']:
                         if '位' in rank_info:
@@ -861,6 +867,11 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                                 horse_name = horse_part.split('(')[0].strip()
                                 if horse_name in horses:
                                     top_5_horses.append(horse_name)
+                                    # 旧形式にはスコアがないので0点
+                                    top_5_horses_with_scores.append({
+                                        'horse_name': horse_name,
+                                        'score': 0
+                                    })
                                     if len(top_5_horses) >= 5:
                                         break
 
@@ -884,7 +895,8 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                 'type': 'betting_recommendation',
                 'venue': venue,
                 'total_horses': len(horses),
-                'top_5_horses': top_5_horses[:5],
+                'top_5_horses': top_5_horses[:5],  # 上位5頭（馬名のみ）
+                'top_5_horses_with_scores': top_5_horses_with_scores[:5],  # スコア付き上位5頭
                 'recommendations': recommendations,
                 'last_updated': datetime.now().isoformat()
             }

@@ -17,6 +17,25 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
+# 推論側と揃える特徴量順序
+FEATURE_COLUMNS = [
+    'knowledge_total_races',
+    'knowledge_win_rate',
+    'knowledge_place_rate',
+    'knowledge_avg_finish',
+    'knowledge_avg_popularity',
+    'knowledge_avg_corner4',
+    'knowledge_avg_kohan3f',
+    'track_win_rate',
+    'track_avg_finish',
+    'distance_aptitude',
+    'jockey_win_rate',
+    'jockey_place_rate',
+    'venue_code',
+    'distance',
+    'horse_count',
+]
+
 # バックエンドのパスを追加
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -51,12 +70,7 @@ def prepare_features(df: pd.DataFrame):
     print("\n🔧 特徴量とラベルを準備中...")
     
     # 必要な列を確認
-    required_cols = [
-        'race_id', 'horse_name', 'actual_rank', 'actual_support_rate',
-        'knowledge_total_races', 'knowledge_win_rate', 'knowledge_place_rate',
-        'knowledge_avg_finish', 'knowledge_avg_popularity', 'knowledge_avg_corner4',
-        'knowledge_avg_kohan3f', 'venue_code', 'distance'
-    ]
+    required_cols = ['race_id', 'horse_name', 'actual_rank', 'actual_support_rate'] + FEATURE_COLUMNS
     
     missing_cols = [col for col in required_cols if col not in df.columns]
     if missing_cols:
@@ -68,13 +82,7 @@ def prepare_features(df: pd.DataFrame):
     print("✅ データをrace_idでソート完了")
     
     # 特徴量
-    feature_cols = [
-        'knowledge_total_races', 'knowledge_win_rate', 'knowledge_place_rate',
-        'knowledge_avg_finish', 'knowledge_avg_popularity', 'knowledge_avg_corner4',
-        'knowledge_avg_kohan3f', 'venue_code', 'distance'
-    ]
-    
-    X = df[feature_cols].values
+    X = df[FEATURE_COLUMNS].values
     
     # ラベル（順位予測用）
     y_rank = df['actual_rank'].values
@@ -106,18 +114,15 @@ def train_rank_model(X_train, y_train, group_ids):
         group_id=group_ids
     )
     
-    # CatBoost Ranker
     model = CatBoostRanker(
         iterations=1000,
         learning_rate=0.03,
         depth=6,
-        loss_function='PairLogit',
+        loss_function='QuerySoftMax',
         verbose=100,
         random_seed=42
     )
-    
     model.fit(train_pool)
-    
     print("✅ Rank Model学習完了")
     return model
 
@@ -128,29 +133,25 @@ def train_support_model(X_train, y_train, group_ids, rank_weights):
     print("\n🔧 Support Rate Model学習開始...")
     print("   目的: 支持率予測（Rankerとして学習、予測時にSoftmax適用）")
     
-    # Rank Weightを特徴量に追加
     X_train_with_weight = np.column_stack([X_train, rank_weights])
-    
-    # Poolデータ作成
+
     train_pool = Pool(
         data=X_train_with_weight,
         label=y_train,
         group_id=group_ids
     )
-    
-    # CatBoost Ranker（PairLogitLoss）
-    # 予測時にSoftmaxを適用することで支持率に変換
+
     model = CatBoostRanker(
         iterations=1000,
         learning_rate=0.03,
         depth=6,
-        loss_function='PairLogit',
+        loss_function='QuerySoftMax',
         verbose=100,
         random_seed=42
     )
-    
+
     model.fit(train_pool)
-    
+
     print("✅ Support Rate Model学習完了")
     print("   ※予測時にSoftmaxを適用して支持率に変換します")
     return model
@@ -178,7 +179,7 @@ def save_models(rank_model, support_model, output_dir):
         'support_model': support_path,
         'iterations': 1000,
         'loss_functions': {
-            'rank': 'PairLogit',
+            'rank': 'QuerySoftMax',
             'support': 'QuerySoftMax'
         }
     }
@@ -197,10 +198,6 @@ def main():
     parser.add_argument('--output', type=str, default='data', help='モデル出力ディレクトリ')
     
     args = parser.parse_args()
-    
-    print("=" * 60)
-    print("N-Logic モデル学習パイプライン")
-    print("=" * 60)
     
     # Step 0: CatBoostチェック
     if not check_catboost():
@@ -239,7 +236,19 @@ def main():
     
     # Step 4: Rank Weight生成
     print("\n🔧 Rank Weight生成中...")
-    rank_weights = rank_model.predict(X_train)
+    rank_scores = rank_model.predict(X_train)
+    rank_weights = np.zeros_like(rank_scores, dtype=float)
+    for race_id in np.unique(group_ids):
+        mask = group_ids == race_id
+        group_scores = rank_scores[mask]
+        if group_scores.size == 0:
+            continue
+        exp_scores = np.exp(group_scores - np.max(group_scores))
+        denom = exp_scores.sum()
+        if denom <= 0:
+            rank_weights[mask] = 1.0 / group_scores.size
+        else:
+            rank_weights[mask] = exp_scores / denom
     print(f"✅ Rank Weight生成完了（範囲: {rank_weights.min():.3f} - {rank_weights.max():.3f}）")
     
     # Step 5: Support Model学習

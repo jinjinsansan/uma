@@ -102,6 +102,8 @@ def add_features(df, viewlogic_manager):
     print("Step 2: 特徴量計算")
     print("=" * 60)
     
+    race_counts = df['race_id'].value_counts().to_dict()
+    
     # 競馬場コードマップ
     venue_code_map = {
         '01': '札幌', '02': '函館', '03': '福島', '04': '新潟',
@@ -204,6 +206,14 @@ def add_features(df, viewlogic_manager):
         else:
             actual_support_rate = 0.0
         
+        # 騎手データ（ナレッジ未整備のため暫定値）
+        jockey_win_rate = 0.12
+        jockey_place_rate = 0.32
+
+        # 出走頭数
+        horse_count = int(race_counts.get(row['race_id'], 0))
+        horse_count = horse_count if horse_count > 0 else 10
+
         # 特徴量辞書
         features = {
             'race_id': row['race_id'],
@@ -223,8 +233,11 @@ def add_features(df, viewlogic_manager):
             'track_win_rate': track_win_rate,
             'track_avg_finish': track_avg_finish,
             'distance_aptitude': distance_aptitude,
+            'jockey_win_rate': jockey_win_rate,
+            'jockey_place_rate': jockey_place_rate,
             'venue_code': int(venue_code),
             'distance': distance,
+            'horse_count': horse_count,
         }
         
         features_list.append(features)

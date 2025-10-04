@@ -10,6 +10,25 @@ from typing import Dict, Any, List, Optional, Tuple
 import numpy as np
 from datetime import datetime
 
+# 特徴量の並び順（学習時と共通）
+FEATURE_COLUMNS = [
+    'knowledge_total_races',
+    'knowledge_win_rate',
+    'knowledge_place_rate',
+    'knowledge_avg_finish',
+    'knowledge_avg_popularity',
+    'knowledge_avg_corner4',
+    'knowledge_avg_kohan3f',
+    'track_win_rate',
+    'track_avg_finish',
+    'distance_aptitude',
+    'jockey_win_rate',
+    'jockey_place_rate',
+    'venue_code',
+    'distance',
+    'horse_count',
+]
+
 logger = logging.getLogger(__name__)
 
 # CatBoostは学習時のみ使用、予測時は動的インポート
@@ -45,10 +64,13 @@ class NLogicEngine:
         try:
             from services.viewlogic_data_manager import ViewLogicDataManager
             self.viewlogic_manager = ViewLogicDataManager()
+            # テスト互換性のためのエイリアス
+            self.knowledge_manager = self.viewlogic_manager
             logger.info("N-Logic: ViewLogicDataManager initialized")
         except Exception as e:
             logger.error(f"N-Logic: ViewLogicDataManager initialization failed: {e}")
             self.viewlogic_manager = None
+            self.knowledge_manager = None
         
         logger.info("N-Logicエンジンを初期化しました")
     
@@ -336,28 +358,13 @@ class NLogicEngine:
             n = len(features_list)
             return np.ones(n) / n
         
-        # 特徴量を配列に変換
-        feature_order = [
-            'knowledge_total_races', 'knowledge_win_rate', 'knowledge_place_rate',
-            'knowledge_avg_finish', 'knowledge_avg_popularity', 'knowledge_avg_corner4',
-            'knowledge_avg_kohan3f', 'venue_code', 'distance'
-        ]
-        
-        X = []
-        for features in features_list:
-            row = [features.get(key, 0.0) for key in feature_order]
-            X.append(row)
-        
-        X = np.array(X)
-        
-        # Rank Modelで予測
+        X = np.array([[features.get(key, 0.0) for key in FEATURE_COLUMNS] for features in features_list])
         predictions = self.rank_model.predict(X)
-        
-        # Softmaxで正規化
-        exp_preds = np.exp(predictions - np.max(predictions))  # 数値安定化
-        softmax_probs = exp_preds / np.sum(exp_preds)
-        
-        return softmax_probs
+        exp_preds = np.exp(predictions - np.max(predictions))
+        denom = np.sum(exp_preds)
+        if denom <= 0:
+            return np.ones_like(predictions) / len(predictions)
+        return exp_preds / denom
     
     def _predict_support_rates(
         self, 
@@ -370,29 +377,18 @@ class NLogicEngine:
             n = len(features_list)
             return np.ones(n) / n
         
-        # 特徴量を配列に変換（Rank Weightを追加）
-        feature_order = [
-            'knowledge_total_races', 'knowledge_win_rate', 'knowledge_place_rate',
-            'knowledge_avg_finish', 'knowledge_avg_popularity', 'knowledge_avg_corner4',
-            'knowledge_avg_kohan3f', 'venue_code', 'distance'
-        ]
-        
         X = []
         for i, features in enumerate(features_list):
-            row = [features.get(key, 0.0) for key in feature_order]
-            row.append(rank_weights[i])  # Rank Weightを追加
+            row = [features.get(key, 0.0) for key in FEATURE_COLUMNS]
+            row.append(rank_weights[i])
             X.append(row)
-        
         X = np.array(X)
-        
-        # Support Modelで予測
         predictions = self.support_model.predict(X)
-        
-        # Softmaxで正規化（支持率に変換）
-        exp_preds = np.exp(predictions - np.max(predictions))  # 数値安定化
-        softmax_probs = exp_preds / np.sum(exp_preds)
-        
-        return softmax_probs
+        exp_preds = np.exp(predictions - np.max(predictions))
+        denom = np.sum(exp_preds)
+        if denom <= 0:
+            return np.ones_like(predictions) / len(predictions)
+        return exp_preds / denom
     
     def _convert_to_odds(
         self,

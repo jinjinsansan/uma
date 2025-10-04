@@ -46,6 +46,7 @@ class V2AIHandler:
         
         # N-Logicエンジン初期化
         self.nlogic_engine = None
+        self.local_nlogic_engine = None
         try:
             from services.nlogic_engine import NLogicEngine
             self.nlogic_engine = NLogicEngine()
@@ -53,12 +54,24 @@ class V2AIHandler:
         except Exception as e:
             logger.warning(f"⚠️ N-Logicエンジン初期化失敗（利用不可）: {e}")
 
+        try:
+            from services.local_nlogic_engine import LocalNLogicEngine
+            self.local_nlogic_engine = LocalNLogicEngine()
+            logger.info("✅ 地方版N-Logicエンジン初期化完了")
+        except Exception as e:
+            logger.warning("⚠️ 地方版N-Logicエンジン初期化失敗（利用不可）: %s", e)
+
         # Anthropic APIクライアント（V2では使用しないためコメントアウト）
         # self.anthropic_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY")) if Anthropic else None
         self.anthropic_client = None  # V2チャットでは使用しない
         
-        # 地方競馬場リスト（南関東4場）
-        self.LOCAL_VENUES = ['川崎', '大井', '船橋', '浦和']
+        # 地方競馬場リスト（N-Logic地方版がカバーする競馬場）
+        base_local_venues = ['川崎', '大井', '船橋', '浦和']
+        if self.local_nlogic_engine:
+            base_local_venues = sorted(
+                set(base_local_venues) | set(self.local_nlogic_engine.LOCAL_VENUE_CODE_MAP.keys())
+            )
+        self.LOCAL_VENUES = base_local_venues
         
         # AI選択キーワード
         self.AI_KEYWORDS = {
@@ -488,9 +501,8 @@ class V2AIHandler:
 
         Returns:
             (ai_type, sub_type) のタプル
-            - ai_type: 'imlogic', 'viewlogic', 'dlogic', 'ilogic', 'column'
-            - sub_type: 'analysis', 'trend', 'opinion', 'display' など
         """
+
         message_lower = message.lower()
 
         # コラム表示の判定（最優先）
@@ -3722,13 +3734,21 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             (応答テキスト, 分析データ)
         """
         try:
-            if not self.nlogic_engine:
+            venue = race_data.get('venue', '')
+
+            engine = self.nlogic_engine
+            engine_label = 'JRA'
+
+            if self._is_local_racing(venue) and self.local_nlogic_engine:
+                engine = self.local_nlogic_engine
+                engine_label = '地方'
+
+            if not engine:
                 return ("⚠️ N-Logicエンジンが初期化されていません。現在利用できません。", None)
-            
-            logger.info("N-Logic処理開始")
-            
+
+            logger.info("N-Logic処理開始 (engine=%s, venue=%s)", engine_label, venue)
             # 予測実行
-            result = self.nlogic_engine.predict_race(race_data)
+            result = engine.predict_race(race_data)
             
             if result.get('status') != 'success':
                 error_message = result.get('message', '不明なエラー')

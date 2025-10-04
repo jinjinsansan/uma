@@ -53,26 +53,41 @@ class NLogicEngine:
     # 定数
     PAYBACK_RATE = 0.8  # 単勝払戻率
     
-    def __init__(self):
+    def __init__(
+        self,
+        data_manager: Optional[Any] = None,
+        model_prefix: str = 'nlogic',
+    ):
         """初期化"""
         self.rank_model = None
         self.support_model = None
         self._models_loaded = False
+        self.model_prefix = model_prefix
+        self.rank_model_filename = f"{model_prefix}_rank_model.cbm"
+        self.support_model_filename = f"{model_prefix}_support_model.cbm"
+        self._model_base_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+
+        # データマネージャー初期化
+        self.viewlogic_manager = None
+        self.knowledge_manager = None
+
+        if data_manager is not None:
+            self.viewlogic_manager = data_manager
+            self.knowledge_manager = data_manager
+            logger.info("N-Logic: custom data manager injected (%s)", type(data_manager).__name__)
+        else:
+            try:
+                from services.viewlogic_data_manager import ViewLogicDataManager
+                self.viewlogic_manager = ViewLogicDataManager()
+                self.knowledge_manager = self.viewlogic_manager
+                logger.info("N-Logic: ViewLogicDataManager initialized")
+            except Exception as e:
+                logger.error("N-Logic: ViewLogicDataManager initialization failed: %s", e)
+                self.viewlogic_manager = None
+                self.knowledge_manager = None
+
         self._load_models()
-        
-        # ViewLogicDataManagerを使用（unified_knowledge_20250903.json）
-        try:
-            from services.viewlogic_data_manager import ViewLogicDataManager
-            self.viewlogic_manager = ViewLogicDataManager()
-            # テスト互換性のためのエイリアス
-            self.knowledge_manager = self.viewlogic_manager
-            logger.info("N-Logic: ViewLogicDataManager initialized")
-        except Exception as e:
-            logger.error(f"N-Logic: ViewLogicDataManager initialization failed: {e}")
-            self.viewlogic_manager = None
-            self.knowledge_manager = None
-        
-        logger.info("N-Logicエンジンを初期化しました")
+        logger.info("N-Logicエンジンを初期化しました (model_prefix=%s)", self.model_prefix)
     
     def _load_models(self):
         """学習済みモデルの読み込み"""
@@ -81,9 +96,8 @@ class NLogicEngine:
                 logger.warning("N-Logic: CatBoost未インストール、モデル読み込みスキップ")
                 return
             
-            base_dir = os.path.dirname(os.path.dirname(__file__))
-            rank_model_path = os.path.join(base_dir, 'data', 'nlogic_rank_model.cbm')
-            support_model_path = os.path.join(base_dir, 'data', 'nlogic_support_model.cbm')
+            rank_model_path = os.path.join(self._model_base_dir, self.rank_model_filename)
+            support_model_path = os.path.join(self._model_base_dir, self.support_model_filename)
             
             if os.path.exists(rank_model_path):
                 self.rank_model = CatBoost()
@@ -289,7 +303,10 @@ class NLogicEngine:
         try:
             return int(value)
         except (ValueError, TypeError):
-            return default
+            try:
+                return int(float(value))
+            except (ValueError, TypeError):
+                return default
     
     def _get_track_stats(self, races: List[Dict], venue: str) -> Tuple[float, float]:
         """コース別成績を取得"""

@@ -156,14 +156,16 @@ def train_support_model(X_train, y_train, group_ids, rank_weights):
     print("   ※予測時にSoftmaxを適用して支持率に変換します")
     return model
 
-def save_models(rank_model, support_model, output_dir):
+def save_models(rank_model, support_model, output_dir, model_prefix: str = 'nlogic'):
     """モデルの保存"""
     print("\n💾 モデル保存中...")
     
     os.makedirs(output_dir, exist_ok=True)
     
-    rank_path = os.path.join(output_dir, 'nlogic_rank_model.cbm')
-    support_path = os.path.join(output_dir, 'nlogic_support_model.cbm')
+    rank_filename = f"{model_prefix}_rank_model.cbm"
+    support_filename = f"{model_prefix}_support_model.cbm"
+    rank_path = os.path.join(output_dir, rank_filename)
+    support_path = os.path.join(output_dir, support_filename)
     
     rank_model.save_model(rank_path)
     support_model.save_model(support_path)
@@ -178,6 +180,7 @@ def save_models(rank_model, support_model, output_dir):
         'rank_model': rank_path,
         'support_model': support_path,
         'iterations': 1000,
+        'model_prefix': model_prefix,
         'loss_functions': {
             'rank': 'QuerySoftMax',
             'support': 'QuerySoftMax'
@@ -196,6 +199,7 @@ def main():
     parser = argparse.ArgumentParser(description='N-Logic モデル学習パイプライン')
     parser.add_argument('--data', type=str, help='学習データCSVファイルパス')
     parser.add_argument('--output', type=str, default='data', help='モデル出力ディレクトリ')
+    parser.add_argument('--model-prefix', type=str, default='nlogic', help='保存するモデルファイル名のプレフィックス (例: nlogic, nlogic_nar)')
     
     args = parser.parse_args()
     
@@ -256,7 +260,7 @@ def main():
     
     # Step 6: モデル保存
     output_dir = os.path.join(os.path.dirname(__file__), '..', args.output)
-    save_models(rank_model, support_model, output_dir)
+    save_models(rank_model, support_model, output_dir, model_prefix=args.model_prefix)
     
     print("\n" + "=" * 60)
     print("🎉 すべての学習が完了しました！")

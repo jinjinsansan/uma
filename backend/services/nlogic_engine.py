@@ -331,10 +331,33 @@ class NLogicEngine:
     
     def _predict_rank_weights(self, features_list: List[Dict]) -> np.ndarray:
         """順位予測（Rank Weight生成）"""
-        # Phase 2で実装予定
-        # 現在は仮実装（均等weight）
-        n = len(features_list)
-        return np.ones(n) / n
+        if not self.rank_model:
+            logger.warning("N-Logic: Rank Model未読み込み、均等weightを返します")
+            n = len(features_list)
+            return np.ones(n) / n
+        
+        # 特徴量を配列に変換
+        feature_order = [
+            'knowledge_total_races', 'knowledge_win_rate', 'knowledge_place_rate',
+            'knowledge_avg_finish', 'knowledge_avg_popularity', 'knowledge_avg_corner4',
+            'knowledge_avg_kohan3f', 'venue_code', 'distance'
+        ]
+        
+        X = []
+        for features in features_list:
+            row = [features.get(key, 0.0) for key in feature_order]
+            X.append(row)
+        
+        X = np.array(X)
+        
+        # Rank Modelで予測
+        predictions = self.rank_model.predict(X)
+        
+        # Softmaxで正規化
+        exp_preds = np.exp(predictions - np.max(predictions))  # 数値安定化
+        softmax_probs = exp_preds / np.sum(exp_preds)
+        
+        return softmax_probs
     
     def _predict_support_rates(
         self, 
@@ -342,10 +365,34 @@ class NLogicEngine:
         rank_weights: np.ndarray
     ) -> np.ndarray:
         """支持率予測（QuerySoftmax的手法）"""
-        # Phase 2で実装予定
-        # 現在は仮実装（均等支持率）
-        n = len(features_list)
-        return np.ones(n) / n
+        if not self.support_model:
+            logger.warning("N-Logic: Support Model未読み込み、均等支持率を返します")
+            n = len(features_list)
+            return np.ones(n) / n
+        
+        # 特徴量を配列に変換（Rank Weightを追加）
+        feature_order = [
+            'knowledge_total_races', 'knowledge_win_rate', 'knowledge_place_rate',
+            'knowledge_avg_finish', 'knowledge_avg_popularity', 'knowledge_avg_corner4',
+            'knowledge_avg_kohan3f', 'venue_code', 'distance'
+        ]
+        
+        X = []
+        for i, features in enumerate(features_list):
+            row = [features.get(key, 0.0) for key in feature_order]
+            row.append(rank_weights[i])  # Rank Weightを追加
+            X.append(row)
+        
+        X = np.array(X)
+        
+        # Support Modelで予測
+        predictions = self.support_model.predict(X)
+        
+        # Softmaxで正規化（支持率に変換）
+        exp_preds = np.exp(predictions - np.max(predictions))  # 数値安定化
+        softmax_probs = exp_preds / np.sum(exp_preds)
+        
+        return softmax_probs
     
     def _convert_to_odds(
         self,

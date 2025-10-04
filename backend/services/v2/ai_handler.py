@@ -3634,7 +3634,7 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             horse_data = dlogic_manager.get_horse_raw_data(horse_name)
 
             if not horse_data or 'races' not in horse_data:
-                logger.warning(f"馬データが見つかりません: {horse_name}")
+                logger.debug(f"馬データが見つかりません（新馬の可能性）: {horse_name}")
                 return None
 
             # 最新のレースから血統データを取得

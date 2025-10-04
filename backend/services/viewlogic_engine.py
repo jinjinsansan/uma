@@ -2294,7 +2294,7 @@ class ViewLogicEngine:
                 
                 # horse_dataの型をチェック
                 if not isinstance(horse_data, dict):
-                    logger.error(f"馬 {horse_name} のデータが辞書ではありません: type={type(horse_data)}, value={horse_data}")
+                    logger.debug(f"馬 {horse_name} のデータが見つかりません（新馬の可能性）: type={type(horse_data)}")
                     horse_performances.append({
                         'horse_name': horse_name,
                         'course_key': course_key,

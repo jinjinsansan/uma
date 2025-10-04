@@ -3734,10 +3734,10 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 error_message = result.get('message', '不明なエラー')
                 return (f"⚠️ N-Logic予測に失敗しました\n\n{error_message}", None)
             
-            # 結果フォーマット
-            content = self._format_nlogic_result(result)
+            # カード形式で表示するため、簡易的なメッセージのみ
+            content = f"🎯 N-Logic オッズ予測を生成しました（{result.get('total_horses')}頭）"
             
-            # 分析データ
+            # 分析データ（カード表示用）
             analysis_data = {
                 'venue': result.get('venue'),
                 'race_number': result.get('race_number'),

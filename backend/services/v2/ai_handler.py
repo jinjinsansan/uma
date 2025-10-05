@@ -2519,7 +2519,6 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 ticket_type = rec.get('ticket_type', '馬券')
                 horses = rec.get('horses', [])
                 confidence = rec.get('confidence', 0)
-                investment = rec.get('investment', 0)
                 reason = rec.get('reason', '')
                 buy_type = rec.get('buy_type', '')
                 combinations = rec.get('combinations', 0)
@@ -2558,17 +2557,9 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 # 買い方詳細
                 if buy_type and combinations > 0:
                     lines.append(f"   買い方: {buy_type} ({combinations}点買い)")
-                
-                lines.append(f"   💰 投資額: **{investment:,}円**")
                 lines.append(f"   📊 信頼度: {confidence}%")
                 if reason:
                     lines.append(f"   💭 {reason}")
-                lines.append("")
-            
-            # 総投資額
-            total_investment = sum(rec.get('investment', 0) for rec in recommendations)
-            lines.append("---")
-            lines.append(f"💵 **総投資額**: {total_investment:,}円")
             
             lines.append("")
             lines.append("※ ViewLogic展開予想の上位馬を基にした推奨馬券です")
@@ -2866,7 +2857,6 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 ticket_type = rec.get('ticket_type', '馬券')
                 horses = rec.get('horses', [])
                 confidence = rec.get('confidence', 0)
-                investment = rec.get('investment', 0)
                 reason = rec.get('reason', '')
                 buy_type = rec.get('buy_type', '')
                 combinations = rec.get('combinations', 0)
@@ -2905,17 +2895,9 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 # 買い方詳細
                 if buy_type and combinations > 0:
                     lines.append(f"   買い方: {buy_type} ({combinations}点買い)")
-                
-                lines.append(f"   💰 投資額: **{investment:,}円**")
                 lines.append(f"   📊 信頼度: {confidence}%")
                 if reason:
                     lines.append(f"   💭 {reason}")
-                lines.append("")
-            
-            # 総投資額
-            total_investment = sum(rec.get('investment', 0) for rec in recommendations)
-            lines.append("---")
-            lines.append(f"💵 **総投資額**: {total_investment:,}円")
             
             lines.append("")
             lines.append("※ ViewLogic展開予想の上位馬を基にした推奨馬券です")

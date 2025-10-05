@@ -918,7 +918,6 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
         """展開予想の上位5頭から実践的な馬券買い目を生成"""
         try:
             recommendations: List[Dict[str, Any]] = []
-            budget = 10000
 
             if len(top_5_horses) < 3:
                 return []
@@ -929,7 +928,6 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'ticket_type': '単勝',
                     'horses': [top_5_horses[0]],
                     'confidence': 75,
-                    'investment': int(budget * 0.2),
                     'reason': f'ViewLogic展開予想1位の{top_5_horses[0]}',
                     'buy_type': 'ストレート'
                 })
@@ -941,7 +939,6 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'ticket_type': '馬連',
                     'horses': box_horses,
                     'confidence': 65,
-                    'investment': int(budget * 0.25),
                     'reason': f'上位3頭（{", ".join(box_horses)}）のBOX買い',
                     'buy_type': 'BOX',
                     'combinations': 3
@@ -961,7 +958,6 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                         '3着': third_candidates
                     },
                     'confidence': 45,
-                    'investment': int(budget * 0.25),
                     'reason': f'{first}の1着固定、2-3着流し',
                     'buy_type': '流し',
                     'combinations': len(second_candidates) * len(third_candidates)
@@ -978,7 +974,6 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                         '相手': partners
                     },
                     'confidence': 80,
-                    'investment': int(budget * 0.15),
                     'reason': f'{axis}軸のワイド、確実性重視',
                     'buy_type': '軸流し',
                     'combinations': len(partners)
@@ -991,7 +986,6 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'ticket_type': '3連複',
                     'horses': box_horses,
                     'confidence': 55,
-                    'investment': int(budget * 0.15),
                     'reason': f'上位4頭のBOX、配当狙い',
                     'buy_type': 'BOX',
                     'combinations': 4
@@ -1022,7 +1016,6 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             sorted_horses = sorted(horse_scores.items(), key=lambda x: x[1]['total_score'], reverse=True)
 
             recommendations: List[Dict[str, Any]] = []
-            budget = 10000
 
             if len(sorted_horses) >= 2:
                 top_horses = [sorted_horses[0][0], sorted_horses[1][0]]
@@ -1031,7 +1024,6 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'ticket_type': '馬連',
                     'horses': top_horses,
                     'confidence': 85,
-                    'investment': int(budget * 0.4),
                     'reason': f'{top_horses[0]} × {top_horses[1]}の鉄板構成'
                 })
 
@@ -1043,7 +1035,6 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'ticket_type': '3連複',
                     'horses': [axis_horse] + target_horses,
                     'confidence': 65,
-                    'investment': int(budget * 0.35),
                     'reason': f'{axis_horse}軸の手堅い組み合わせ'
                 })
 
@@ -1056,13 +1047,8 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                     'ticket_type': '馬連',
                     'horses': [sorted_horses[0][0], surprise_horse],
                     'confidence': 25,
-                    'investment': int(budget * 0.25),
                     'reason': f'{surprise_horse}は{surprise_reason}'
                 })
-
-            total_invested = sum(rec['investment'] for rec in recommendations)
-            if total_invested < budget and recommendations:
-                recommendations[-1]['investment'] += budget - total_invested
 
             return recommendations
 

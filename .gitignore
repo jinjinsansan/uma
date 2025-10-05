@@ -82,3 +82,10 @@ backend/knowledge/*.json
 backend/jockey_knowledge.json
 backend/unified_knowledge_*.json
 .serena/cache/
+
+# Backup scripts
+backend/scripts/*.backup_*
+
+# Local helper scripts
+backend/scripts/upload_horse_r2.sh
+backend/scripts/upload_r2.sh

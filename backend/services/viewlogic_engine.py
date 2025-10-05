@@ -1486,7 +1486,6 @@ class ViewLogicEngine:
             
             # 推奨馬券を生成
             recommendations = []
-            budget = 10000  # デフォルト予算1万円
             
             if len(sorted_horses) >= 2:
                 # 本命馬券（上位2頭の馬連）
@@ -1496,7 +1495,6 @@ class ViewLogicEngine:
                     'ticket_type': '馬連',
                     'horses': top_horses,
                     'confidence': 85,
-                    'investment': int(budget * 0.4),
                     'reason': f'{top_horses[0]} × {top_horses[1]}の鉄板構成'
                 })
                 
@@ -1509,7 +1507,6 @@ class ViewLogicEngine:
                     'ticket_type': '3連複',
                     'horses': [axis_horse] + target_horses,
                     'confidence': 65,
-                    'investment': int(budget * 0.35),
                     'reason': f'{axis_horse}軸の手堅い組み合わせ'
                 })
                 
@@ -1523,16 +1520,8 @@ class ViewLogicEngine:
                     'ticket_type': '馬連',
                     'horses': [sorted_horses[0][0], surprise_horse],
                     'confidence': 25,
-                    'investment': int(budget * 0.25),
                     'reason': f'{surprise_horse}は{surprise_reason}'
                 })
-            
-            # 予算が余った場合の調整
-            total_invested = sum(rec['investment'] for rec in recommendations)
-            if total_invested < budget:
-                remaining = budget - total_invested
-                if recommendations:
-                    recommendations[-1]['investment'] += remaining
             
             return recommendations
             
@@ -2151,7 +2140,6 @@ class ViewLogicEngine:
         """
         try:
             recommendations = []
-            budget = 10000  # デフォルト予算1万円
             
             # 最低3頭は必要
             if len(top_5_horses) < 3:
@@ -2164,7 +2152,6 @@ class ViewLogicEngine:
                     'ticket_type': '単勝',
                     'horses': [top_5_horses[0]],
                     'confidence': 75,
-                    'investment': int(budget * 0.2),  # 20%
                     'reason': f'ViewLogic展開予想1位の{top_5_horses[0]}',
                     'buy_type': 'ストレート'
                 })
@@ -2177,7 +2164,6 @@ class ViewLogicEngine:
                     'ticket_type': '馬連',
                     'horses': box_horses,
                     'confidence': 65,
-                    'investment': int(budget * 0.25),  # 25%
                     'reason': f'上位3頭（{", ".join(box_horses)}）のBOX買い',
                     'buy_type': 'BOX',
                     'combinations': 3  # 3頭BOXは3通り
@@ -2198,7 +2184,6 @@ class ViewLogicEngine:
                         '3着': third_candidates
                     },
                     'confidence': 45,
-                    'investment': int(budget * 0.25),  # 25%
                     'reason': f'{first}の1着固定、2-3着流し',
                     'buy_type': '流し',
                     'combinations': len(second_candidates) * len(third_candidates)
@@ -2216,7 +2201,6 @@ class ViewLogicEngine:
                         '相手': partners
                     },
                     'confidence': 80,
-                    'investment': int(budget * 0.15),  # 15%
                     'reason': f'{axis}軸のワイド、確実性重視',
                     'buy_type': '軸流し',
                     'combinations': len(partners)
@@ -2230,7 +2214,6 @@ class ViewLogicEngine:
                     'ticket_type': '3連複',
                     'horses': box_horses,
                     'confidence': 55,
-                    'investment': int(budget * 0.15),  # 15%
                     'reason': f'上位4頭のBOX、配当狙い',
                     'buy_type': 'BOX',
                     'combinations': 4  # 4頭から3頭選ぶ組み合わせ

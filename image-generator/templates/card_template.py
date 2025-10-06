@@ -168,7 +168,12 @@ def translate_dlogic_key(key: str) -> str:
         '2_bloodline_evaluation': '血統評価',
         '3_jockey_compatibility': '騎手相性',
         '4_trainer_evaluation': '厩舎評価',
-        '5_track_aptitude': '馬場適性'
+        '5_track_aptitude': '馬場適性',
+        '6_course_record': 'コース実績',
+        '7_recent_form': '近走成績',
+        '8_weight_impact': '斤量影響',
+        '9_pace_suitability': 'ペース適性',
+        '10_race_spacing': '間隔適性'
     }
     return mapping.get(key, key)
 

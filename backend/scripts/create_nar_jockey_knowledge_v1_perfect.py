@@ -353,17 +353,9 @@ def aggregate_jockey_stats(rows, schedule_master):
 def save_jockey_knowledge(jockeys, output_file):
     """騎手ナレッジファイルの保存"""
     try:
-        # メタデータ付きで保存（馬版と同じ構造）
-        output_data = {
-            "metadata": {
-                "version": "1.0",
-                "created_at": datetime.now().isoformat(),
-                "total_jockeys": len(jockeys),
-                "data_period": "2019-2025",
-                "sdk_version": "NAR_JOCKEY_SDK_V1_PERFECT"
-            },
-            "jockeys": jockeys
-        }
+        # 騎手データをトップレベルに保存（JRA版と同じ構造）
+        # メタデータは含めない（週次更新との互換性のため）
+        output_data = jockeys
 
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(output_data, f, ensure_ascii=False, indent=2)

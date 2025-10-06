@@ -381,6 +381,69 @@ class LocalJockeyDataManager:
             }
         }
     
+    def get_jockey_post_position_fukusho_rates(self, jockey_names: list) -> Dict[str, Dict[str, Dict[str, float]]]:
+        """
+        騎手の枠順別複勝率を取得（地方競馬版）
+        
+        Args:
+            jockey_names: 騎手名のリスト
+        
+        Returns:
+            {騎手名: {カテゴリ: {'fukusho_rate': 複勝率, 'race_count': レース数}}}
+            地方競馬用カテゴリ: '内枠（1-3）', '中枠（4-6）', '外枠（7-8）'
+        """
+        result = {}
+        
+        for jockey_name in jockey_names:
+            jockey_data = self.get_jockey_data(jockey_name)
+            
+            if not jockey_data or 'post_position_stats' not in jockey_data:
+                # データがない場合はデフォルト値
+                result[jockey_name] = {
+                    '内枠（1-3）': {'fukusho_rate': 0.0, 'race_count': 0},
+                    '中枠（4-6）': {'fukusho_rate': 0.0, 'race_count': 0},
+                    '外枠（7-8）': {'fukusho_rate': 0.0, 'race_count': 0}
+                }
+                continue
+            
+            post_stats = jockey_data['post_position_stats']
+            
+            # カテゴリ別に集計（地方競馬は1-8枠）
+            categories = {
+                '内枠（1-3）': [f'枠{i}' for i in range(1, 4)],
+                '中枠（4-6）': [f'枠{i}' for i in range(4, 7)],
+                '外枠（7-8）': [f'枠{i}' for i in range(7, 9)]
+            }
+            
+            jockey_result = {}
+            for category, post_keys in categories.items():
+                total_races = 0
+                fukusho_count = 0
+                
+                for post_key in post_keys:
+                    if post_key in post_stats:
+                        stats = post_stats[post_key]
+                        race_count = stats.get('race_count', 0)
+                        fukusho_rate = stats.get('fukusho_rate', 0)
+                        
+                        total_races += race_count
+                        fukusho_count += int(race_count * fukusho_rate / 100)
+                
+                # 複勝率を計算
+                if total_races > 0:
+                    category_fukusho_rate = round((fukusho_count / total_races) * 100, 1)
+                else:
+                    category_fukusho_rate = 0.0
+                
+                jockey_result[category] = {
+                    'fukusho_rate': category_fukusho_rate,
+                    'race_count': total_races
+                }
+            
+            result[jockey_name] = jockey_result
+        
+        return result
+    
     def is_loaded(self) -> bool:
         """データがロードされているか確認"""
         return bool(self.knowledge_data and self.knowledge_data.get('jockeys'))

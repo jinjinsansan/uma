@@ -172,73 +172,112 @@ def extract_top_pick(engine: str, data: Dict[str, Any]) -> Optional[Dict[str, An
         }
     
     elif engine == 'flogic':
-        results = data.get('results', [])
-        if not results:
+        rankings = data.get('rankings', [])
+        if not rankings or not isinstance(rankings, list):
             return None
         
-        sorted_results = sorted(
-            [r for r in results if r and r.get('has_data') != False],
-            key=lambda x: x.get('rank', 9999)
-        )
-        
-        if not sorted_results:
+        top = rankings[0] if rankings else None
+        if not top:
             return None
         
-        top = sorted_results[0]
+        signal = top.get('investment_signal') or top.get('value_rating')
+        expected_value = top.get('expected_value')
+        odds_divergence = top.get('odds_divergence')
+        
+        description_parts = []
+        if expected_value is not None:
+            description_parts.append(f"期待値 {float(expected_value):.2f}")
+        if odds_divergence is not None:
+            description_parts.append(f"乖離 {float(odds_divergence):.2f}倍")
+        
         return {
             'engine': 'flogic',
             'label': 'F-Logic',
-            'horseName': top.get('horse') or top.get('horse_name', '不明'),
-            'badge': f"RANK {top.get('rank', 1)}",
-            'highlight': f"総合 {top.get('total_score', 0):.1f}点" if top.get('total_score') else None,
-            'description': f"騎手 {top.get('jockey') or top.get('jockey_name', '')}" if top.get('jockey') or top.get('jockey_name') else None
+            'horseName': top.get('horse', '不明'),
+            'badge': 'RANK 1',
+            'highlight': f"投資判断 {signal}" if signal else None,
+            'description': ' / '.join(description_parts) if description_parts else None
         }
     
     elif engine == 'metalogic':
-        results = data.get('results', [])
-        if not results:
+        rankings = data.get('rankings', [])
+        if not rankings or not isinstance(rankings, list):
             return None
         
-        sorted_results = sorted(
-            [r for r in results if r and r.get('has_data') != False],
-            key=lambda x: x.get('rank', 9999)
-        )
-        
-        if not sorted_results:
+        top = rankings[0] if rankings else None
+        if not top:
             return None
         
-        top = sorted_results[0]
+        score = top.get('meta_score') or top.get('score')
+        contributions = top.get('details', {})
+        values = []
+        for key in ['d_logic', 'i_logic', 'view_logic']:
+            val = contributions.get(key)
+            if val is not None:
+                values.append(f"{float(val):.1f}")
+        
         return {
             'engine': 'metalogic',
             'label': 'Meta-Logic',
-            'horseName': top.get('horse') or top.get('horse_name', '不明'),
+            'horseName': top.get('horse', '不明'),
             'badge': f"RANK {top.get('rank', 1)}",
-            'highlight': f"総合 {top.get('total_score', 0):.1f}点" if top.get('total_score') else None,
-            'description': f"騎手 {top.get('jockey') or top.get('jockey_name', '')}" if top.get('jockey') or top.get('jockey_name') else None
+            'highlight': f"メタスコア {float(score):.2f}点" if score is not None else None,
+            'description': f"構成 {'/'.join(values)}" if values else None
         }
     
     elif engine == 'viewlogic':
-        results = data.get('results', [])
-        if not results:
-            return None
+        data_type = str(data.get('type') or data.get('analysis_type') or data.get('analysisType') or '')
         
-        sorted_results = sorted(
-            [r for r in results if r and r.get('has_data') != False],
-            key=lambda x: x.get('rank', 9999)
-        )
+        # betting_recommendation type
+        if data_type == 'betting_recommendation' or 'recommendations' in data:
+            recommendations = data.get('recommendations', [])
+            if not recommendations or not isinstance(recommendations, list):
+                return None
+            
+            top = recommendations[0]
+            ticket = top.get('ticket_type') or top.get('type', '推奨馬券')
+            horses = top.get('horses')
+            if isinstance(horses, list):
+                horses = ' - '.join(horses)
+            confidence = top.get('confidence')
+            
+            return {
+                'engine': 'viewlogic',
+                'label': 'View-Logic',
+                'horseName': horses or '推奨馬券',
+                'badge': str(ticket),
+                'highlight': f"信頼度 {confidence}%" if confidence else None,
+                'description': top.get('reason')
+            }
         
-        if not sorted_results:
-            return None
+        # data_analysis type
+        if data_type == 'data_analysis' or 'top_horses' in data:
+            top_horses = data.get('top_horses', [])
+            if not top_horses or not isinstance(top_horses, list):
+                return None
+            
+            top = top_horses[0]
+            if isinstance(top, list):
+                horse, rate = top[0], top[1] if len(top) > 1 else None
+                return {
+                    'engine': 'viewlogic',
+                    'label': 'View-Logic',
+                    'horseName': str(horse) if horse else '不明',
+                    'badge': 'TOP HORSE',
+                    'highlight': f"複勝率 {float(rate) * 100:.1f}%" if rate is not None else None,
+                    'description': None
+                }
+            elif isinstance(top, str):
+                return {
+                    'engine': 'viewlogic',
+                    'label': 'View-Logic',
+                    'horseName': top,
+                    'badge': 'TOP HORSE',
+                    'highlight': None,
+                    'description': None
+                }
         
-        top = sorted_results[0]
-        return {
-            'engine': 'viewlogic',
-            'label': 'View-Logic',
-            'horseName': top.get('horse') or top.get('horse_name', '不明'),
-            'badge': f"RANK {top.get('rank', 1)}",
-            'highlight': f"総合 {top.get('total_score', 0):.1f}点" if top.get('total_score') else None,
-            'description': f"騎手 {top.get('jockey') or top.get('jockey_name', '')}" if top.get('jockey') or top.get('jockey_name') else None
-        }
+        return None
     
     # 他のエンジンタイプも同様に実装...
     return None
@@ -385,7 +424,7 @@ def generate_prediction_section(top_pick: Dict[str, Any], colors: Dict[str, str]
                         <p style="font-size: 24px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.35em;">
                             {top_pick.get('badge', 'TOP PICK')}
                         </p>
-                        <p style="font-size: 64px; font-weight: 700; color: white; line-height: 1.25; white-space: nowrap;">
+                        <p style="font-size: 64px; font-weight: 700; color: white; line-height: 1.25; word-break: break-word; overflow-wrap: break-word;">
                             {top_pick.get('horseName', '不明')}
                         </p>
                         {f'<p style="font-size: 36px; font-weight: 600; color: {colors["text"]}; line-height: 1.25;">{top_pick.get("highlight")}</p>' if top_pick.get('highlight') else ''}

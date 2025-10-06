@@ -197,23 +197,22 @@ def generate_card_body(
     
     return f"""
     <div data-share-card style="
-        margin: 0;
+        margin: 0 auto;
         display: flex;
-        width: 1200px;
-        height: 675px;
-        flex-direction: row;
-        gap: 20px;
+        width: 1280px;
+        flex-direction: column;
+        gap: 24px;
+        border-radius: 36px;
+        border: 1px solid #1C2534;
         background: linear-gradient(to bottom, #070B12, #05070A, #020305);
-        padding: 28px 32px;
+        padding: 32px 40px;
         color: #EAECEF;
         box-shadow: 0 40px 120px rgba(0,0,0,0.45);
     ">
-        <div style="flex: 1; display: flex; flex-direction: column; gap: 14px; justify-content: space-between;">
-            {generate_header(race_meta)}
-            {generate_prediction_section(top_pick, colors) if top_pick else '<div>No prediction available</div>'}
-            {generate_footer(hashtags, generated_at)}
-        </div>
-        {f'<div style="width: 360px; display: flex; flex-direction: column;">{generate_user_note_section(user_note)}</div>' if user_note else ''}
+        {generate_header(race_meta)}
+        {generate_prediction_section(top_pick, colors) if top_pick else '<div>No prediction available</div>'}
+        {generate_user_note_section(user_note) if user_note else ''}
+        {generate_footer(hashtags, generated_at)}
     </div>
     """
 
@@ -226,19 +225,19 @@ def generate_header(race_meta: Dict[str, Any]) -> str:
     distance = str(race_meta.get('distance', '')) if race_meta.get('distance') else ''
     
     return f"""
-    <header style="display: flex; flex-direction: column; gap: 8px;">
+    <header style="display: flex; flex-direction: column; gap: 16px;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
-            <span style="display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; border: 1px solid rgba(240,185,11,0.4); background: rgba(240,185,11,0.1); padding: 3px 12px; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4em; color: #F0B90B;">
+            <span style="display: inline-flex; align-items: center; gap: 8px; border-radius: 9999px; border: 1px solid rgba(240,185,11,0.4); background: rgba(240,185,11,0.1); padding: 4px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.45em; color: #F0B90B;">
                 競馬予想AI D-logic
             </span>
-            <span style="border-radius: 9999px; border: 1px solid #1F2633; background: rgba(11,14,17,0.8); padding: 3px 12px; font-size: 9px; text-transform: uppercase; letter-spacing: 0.25em; color: #94A3B8;">
+            <span style="border-radius: 9999px; border: 1px solid #1F2633; background: rgba(11,14,17,0.8); padding: 4px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3em; color: #94A3B8;">
                 Prediction Card
             </span>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
-            {f'<p style="font-size: 18px; font-weight: 600; color: white; line-height: 1.2;">{venue}{f" {race_number}R" if race_number else ""}</p>' if venue else ''}
-            {f'<p style="font-size: 28px; font-weight: 600; color: white; line-height: 1.15;">{race_name}</p>' if race_name else ''}
-            {f'<p style="font-size: 14px; color: #A3A9B7; line-height: 1.4;">{" / ".join([x for x in [date, distance] if x])}</p>' if date or distance else ''}
+        <div style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
+            {f'<p style="font-size: 26px; font-weight: 600; color: white; line-height: 1.25;">{venue}{f" {race_number}R" if race_number else ""}</p>' if venue else ''}
+            {f'<p style="font-size: 42px; font-weight: 600; color: white; line-height: 1.2;">{race_name}</p>' if race_name else ''}
+            {f'<p style="font-size: 20px; color: #A3A9B7; line-height: 1.625;">{" / ".join([x for x in [date, distance] if x])}</p>' if date or distance else ''}
         </div>
     </header>
     """
@@ -246,30 +245,33 @@ def generate_header(race_meta: Dict[str, Any]) -> str:
 def generate_prediction_section(top_pick: Dict[str, Any], colors: Dict[str, str]) -> str:
     """予想セクションを生成"""
     return f"""
-    <section style="position: relative; overflow: hidden; border-radius: 20px; border: 1px solid #1F2733; background: #080C13; padding: 20px; flex: 1;">
-        <div style="pointer-events: none; position: absolute; left: -20px; top: -40px; height: 120px; width: 120px; border-radius: 9999px; background: rgba(240,185,11,0.1); filter: blur(32px);"></div>
+    <section style="position: relative; overflow: hidden; border-radius: 28px; border: 1px solid #1F2733; background: #080C13; padding: 24px;">
+        <div style="pointer-events: none; position: absolute; left: -40px; top: -96px; height: 208px; width: 208px; border-radius: 9999px; background: rgba(240,185,11,0.1); filter: blur(48px);"></div>
+        <div style="pointer-events: none; position: absolute; bottom: 0; right: 0; height: 192px; width: 192px; border-radius: 9999px; background: rgba(44,53,68,0.4); filter: blur(48px);"></div>
         
-        <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 14px; height: 100%; justify-content: center;">
+        <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 24px;">
             <div style="text-align: center;">
-                <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.35em; color: #94A3B8;">ENGINE TOP PICK</p>
-                <p style="margin-top: 4px; font-size: 16px; font-weight: 600; color: white;">
+                <p style="font-size: 18px; text-transform: uppercase; letter-spacing: 0.4em; color: #94A3B8;">ENGINE TOP PICK</p>
+                <p style="margin-top: 8px; font-size: 28px; font-weight: 600; color: white;">
                     {top_pick.get('label', '')} 1位予想
                 </p>
             </div>
             
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; border-radius: 20px; border: 1px solid {colors['border']}; background: linear-gradient(to bottom, #0E141F, #0B101A, #070B12); padding: 28px 32px; text-align: center; width: 100%; box-shadow: 0 0 30px {colors['shadow']}33;">
-                <span style="display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; background: {colors['gradient']}; padding: 6px 18px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3em; color: black; box-shadow: 0 8px 20px rgba(0,0,0,0.3);">
-                    {top_pick.get('label', '')}
-                </span>
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                    <p style="font-size: 14px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.3em;">
-                        {top_pick.get('badge', 'TOP PICK')}
-                    </p>
-                    <p style="font-size: 42px; font-weight: 700; color: white; line-height: 1.2;">
-                        {top_pick.get('horseName', '不明')}
-                    </p>
-                    {f'<p style="font-size: 24px; font-weight: 600; color: {colors["text"]}; line-height: 1.2;">{top_pick.get("highlight")}</p>' if top_pick.get('highlight') else ''}
-                    {f'<p style="max-width: 100%; font-size: 16px; color: #A0AEC0; line-height: 1.5;">{top_pick.get("description")}</p>' if top_pick.get('description') else ''}
+            <div style="display: flex; justify-content: center; width: 100%;">
+                <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 20px; border-radius: 28px; border: 1px solid {colors['border']}; background: linear-gradient(to bottom, #0E141F, #0B101A, #070B12); padding: 48px 40px; text-align: center; width: 100%; max-width: 512px; box-shadow: 0 0 40px {colors['shadow']}33;">
+                    <span style="display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; background: {colors['gradient']}; padding: 8px 24px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.35em; color: black; box-shadow: 0 10px 25px rgba(0,0,0,0.35);">
+                        {top_pick.get('label', '')}
+                    </span>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+                        <p style="font-size: 24px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.35em;">
+                            {top_pick.get('badge', 'TOP PICK')}
+                        </p>
+                        <p style="font-size: 64px; font-weight: 700; color: white; line-height: 1.25;">
+                            {top_pick.get('horseName', '不明')}
+                        </p>
+                        {f'<p style="font-size: 36px; font-weight: 600; color: {colors["text"]}; line-height: 1.25;">{top_pick.get("highlight")}</p>' if top_pick.get('highlight') else ''}
+                        {f'<p style="max-width: 420px; font-size: 24px; color: #A0AEC0; line-height: 1.625;">{top_pick.get("description")}</p>' if top_pick.get('description') else ''}
+                    </div>
                 </div>
             </div>
         </div>
@@ -281,12 +283,12 @@ def generate_user_note_section(user_note: str) -> str:
     # HTMLエスケープ
     escaped_note = str(user_note).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
     return f"""
-    <section style="border-radius: 18px; border: 1px solid #1F2733; background: #080C13; padding: 20px; height: 100%; display: flex; flex-direction: column;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-            <p style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3em; color: #FACC15;">MY NOTE</p>
-            <span style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.25em; color: #3C4454;">USER MEMO</span>
+    <section style="border-radius: 24px; border: 1px solid #1F2733; background: #080C13; padding: 28px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <p style="font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3em; color: #FACC15;">MY NOTE</p>
+            <span style="font-size: 16px; text-transform: uppercase; letter-spacing: 0.3em; color: #3C4454;">USER MEMO</span>
         </div>
-        <p style="white-space: pre-wrap; font-size: 18px; font-weight: 600; line-height: 1.6; color: #FFFFFF; flex: 1; overflow: hidden;">
+        <p style="white-space: pre-wrap; font-size: 28px; font-weight: 600; line-height: 1.75; color: #FFFFFF;">
             {escaped_note}
         </p>
     </section>
@@ -298,7 +300,7 @@ def generate_footer(hashtags: List[str], generated_at: Optional[str]) -> str:
     generated_text = f"Shared {generated_at}" if generated_at else "Generated with D-Logic AI Predictions"
     
     return f"""
-    <footer style="display: flex; flex-direction: column; gap: 2px; font-size: 9px; text-transform: uppercase; letter-spacing: 0.25em; color: #6B7280;">
+    <footer style="display: flex; flex-direction: column; gap: 4px; font-size: 16px; text-transform: uppercase; letter-spacing: 0.3em; color: #6B7280;">
         <p>{hashtag_line}</p>
         <p>{generated_text}</p>
     </footer>

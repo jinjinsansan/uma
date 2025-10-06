@@ -173,7 +173,11 @@ def translate_dlogic_key(key: str) -> str:
         '7_recent_form': '近走成績',
         '8_weight_impact': '斤量影響',
         '9_pace_suitability': 'ペース適性',
-        '10_race_spacing': '間隔適性'
+        '10_race_spacing': '間隔適性',
+        '11_field_suitability': '馬場適性',
+        '12_time_index': 'タイム指数',
+        '13_class_performance': 'クラス実績',
+        '14_consistency': '安定性'
     }
     return mapping.get(key, key)
 
@@ -296,7 +300,7 @@ def generate_user_note_section(user_note: str) -> str:
 
 def generate_footer(hashtags: List[str], generated_at: Optional[str]) -> str:
     """フッター部分を生成"""
-    hashtag_line = ' '.join([f"#{tag}" if not tag.startswith('#') else tag for tag in hashtags]) if hashtags else '#dlogic #競馬AI #予想共有'
+    hashtag_line = ' '.join([f"#{tag}" if not tag.startswith('#') else tag for tag in hashtags]) if hashtags else '#Dlogic #競馬予想AI #競馬予想'
     generated_text = f"Shared {generated_at}" if generated_at else "Generated with D-Logic AI Predictions"
     
     return f"""

@@ -130,43 +130,45 @@ def extract_top_pick(engine: str, data: Dict[str, Any]) -> Optional[Dict[str, An
         }
     
     elif engine == 'nlogic':
-        # N-LOGICの処理: predictions, results, scoresなど複数の形式に対応
-        predictions = data.get('predictions', [])
-        results = data.get('results', [])
+        # N-LOGICの処理: predictionsはオブジェクト形式（辞書）
+        predictions = data.get('predictions', {})
         
-        top_list = predictions if predictions else results
-        
-        if not top_list or not isinstance(top_list, list):
+        if not predictions or not isinstance(predictions, dict):
             return None
         
-        # 1位を取得
-        top = None
-        if top_list:
-            # rankフィールドがある場合はそれでソート
-            if any(item.get('rank') for item in top_list if isinstance(item, dict)):
-                sorted_list = sorted(
-                    [item for item in top_list if isinstance(item, dict)],
-                    key=lambda x: x.get('rank', 9999)
-                )
-                top = sorted_list[0] if sorted_list else None
-            else:
-                # なければ最初の要素を使用
-                top = top_list[0] if isinstance(top_list[0], dict) else None
+        # オブジェクトをリストに変換してrankでソート
+        entries = [
+            {'horse': horse, **info}
+            for horse, info in predictions.items()
+            if info and isinstance(info, dict)
+        ]
         
-        if not top:
+        # rankでソート
+        sorted_entries = sorted(
+            [e for e in entries if e.get('rank') is not None],
+            key=lambda x: int(x.get('rank', 9999))
+        )
+        
+        if not sorted_entries:
             return None
         
-        # 勝率を取得
-        win_rate = top.get('win_rate') or top.get('winning_rate')
-        highlight_text = f"勝率 {float(win_rate):.1f}%" if win_rate else None
+        top = sorted_entries[0]
+        
+        # 勝率を取得（support_rateをパーセント表示）
+        support_rate = top.get('support_rate')
+        highlight_text = f"勝率 {float(support_rate):.1f}%" if support_rate else None
+        
+        # オッズを取得
+        odds = top.get('odds') or top.get('fair_odds')
+        description_text = f"予測オッズ {float(odds):.1f}倍" if odds else None
         
         return {
             'engine': 'nlogic',
             'label': 'N-LOGIC',
-            'horseName': top.get('horse') or top.get('horse_name', '不明'),
+            'horseName': top.get('horse', '不明'),
             'badge': f"RANK {top.get('rank', 1)}",
             'highlight': highlight_text,
-            'description': f"予測オッズ {top.get('odds', 0):.1f}倍" if top.get('odds') else None
+            'description': description_text
         }
     
     # 他のエンジンタイプも同様に実装...

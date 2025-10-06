@@ -314,20 +314,40 @@ def format_dlogic_details(data: Dict[str, Any]) -> Optional[str]:
 def translate_dlogic_key(key: str) -> str:
     """D-LOGICのキーを日本語に変換"""
     mapping = {
+        # 番号付きキー（新フォーマット）
         '1_distance_aptitude': '距離適性',
         '2_bloodline_evaluation': '血統評価',
         '3_jockey_compatibility': '騎手相性',
         '4_trainer_evaluation': '厩舎評価',
         '5_track_aptitude': '馬場適性',
-        '6_course_record': 'コース実績',
-        '7_recent_form': '近走成績',
+        '6_weather_aptitude': '天候適性',
+        '7_popularity_factor': '人気影響',
         '8_weight_impact': '斤量影響',
-        '9_pace_suitability': 'ペース適性',
-        '10_race_spacing': '間隔適性',
-        '11_field_suitability': '馬場適性',
+        '9_horse_weight_impact': '馬体重影響',
+        '10_corner_specialist_degree': 'コーナー巧者度',
+        '11_margin_analysis': '着差分析',
         '12_time_index': 'タイム指数',
-        '13_class_performance': 'クラス実績',
-        '14_consistency': '安定性'
+        # 番号なしキー（旧フォーマット対応）
+        'distance_aptitude': '距離適性',
+        'bloodline_evaluation': '血統評価',
+        'jockey_compatibility': '騎手相性',
+        'trainer_evaluation': '厩舎評価',
+        'track_aptitude': '馬場適性',
+        'weather_aptitude': '天候適性',
+        'popularity_factor': '人気影響',
+        'weight_impact': '斤量影響',
+        'horse_weight_impact': '馬体重影響',
+        'corner_specialist_degree': 'コーナー巧者度',
+        'margin_analysis': '着差分析',
+        'time_index': 'タイム指数',
+        # その他のキー
+        'course_record': 'コース実績',
+        'recent_form': '近走成績',
+        'pace_suitability': 'ペース適性',
+        'race_spacing': '間隔適性',
+        'field_suitability': '馬場適性',
+        'class_performance': 'クラス実績',
+        'consistency': '安定性'
     }
     return mapping.get(key, key)
 

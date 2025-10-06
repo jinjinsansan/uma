@@ -171,6 +171,52 @@ def extract_top_pick(engine: str, data: Dict[str, Any]) -> Optional[Dict[str, An
             'description': description_text
         }
     
+    elif engine == 'flogic':
+        results = data.get('results', [])
+        if not results:
+            return None
+        
+        sorted_results = sorted(
+            [r for r in results if r and r.get('has_data') != False],
+            key=lambda x: x.get('rank', 9999)
+        )
+        
+        if not sorted_results:
+            return None
+        
+        top = sorted_results[0]
+        return {
+            'engine': 'flogic',
+            'label': 'F-Logic',
+            'horseName': top.get('horse') or top.get('horse_name', '不明'),
+            'badge': f"RANK {top.get('rank', 1)}",
+            'highlight': f"総合 {top.get('total_score', 0):.1f}点" if top.get('total_score') else None,
+            'description': f"騎手 {top.get('jockey') or top.get('jockey_name', '')}" if top.get('jockey') or top.get('jockey_name') else None
+        }
+    
+    elif engine == 'metalogic':
+        results = data.get('results', [])
+        if not results:
+            return None
+        
+        sorted_results = sorted(
+            [r for r in results if r and r.get('has_data') != False],
+            key=lambda x: x.get('rank', 9999)
+        )
+        
+        if not sorted_results:
+            return None
+        
+        top = sorted_results[0]
+        return {
+            'engine': 'metalogic',
+            'label': 'Meta-Logic',
+            'horseName': top.get('horse') or top.get('horse_name', '不明'),
+            'badge': f"RANK {top.get('rank', 1)}",
+            'highlight': f"総合 {top.get('total_score', 0):.1f}点" if top.get('total_score') else None,
+            'description': f"騎手 {top.get('jockey') or top.get('jockey_name', '')}" if top.get('jockey') or top.get('jockey_name') else None
+        }
+    
     elif engine == 'viewlogic':
         results = data.get('results', [])
         if not results:

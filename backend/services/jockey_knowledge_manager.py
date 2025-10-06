@@ -41,11 +41,17 @@ class JockeyKnowledgeManager:
             # キャッシュをチェック
             if self._is_cache_valid():
                 logger.info("騎手ナレッジをキャッシュから読み込み中...")
-                return self._load_from_cache()
+                if self._load_from_cache():
+                    return True
+                logger.warning("キャッシュ読み込みに失敗。CDNからの取得を試みます。")
             
             # CDNからダウンロード
             logger.info("騎手ナレッジをCDNから取得中...")
-            return self._download_from_cdn()
+            if self._download_from_cdn():
+                return True
+
+            logger.warning("CDNからの取得に失敗。ローカルファイルにフォールバックします。")
+            return self._load_from_local()
             
         except Exception as e:
             logger.error(f"騎手ナレッジファイルの読み込みエラー: {e}")

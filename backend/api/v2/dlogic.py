@@ -85,7 +85,17 @@ def get_dlogic_manager():
 def get_dlogic_engine():
     global dlogic_engine
     if dlogic_engine is None:
-        dlogic_engine = ModernDLogicEngine(get_dlogic_manager())
+        # FastDLogicEngineはsingletonなので遅延インポートして共通インスタンスを取得
+        from services.fast_dlogic_engine import FastDLogicEngine
+
+        base_engine = FastDLogicEngine()
+
+        # FastDLogicEngineのraw_managerが最新のマネージャーを参照するように同期
+        manager = get_dlogic_manager()
+        if hasattr(base_engine, "raw_manager") and base_engine.raw_manager is not manager:
+            base_engine.raw_manager = manager
+
+        dlogic_engine = ModernDLogicEngine(base_engine)
     return dlogic_engine
 
 # リクエストモデル

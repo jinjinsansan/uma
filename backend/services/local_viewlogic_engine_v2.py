@@ -219,18 +219,21 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
         self._ensure_data_manager_compatibility()
         self._ensure_jockey_manager_compatibility()
         
-        logger.info(f"地方競馬版ViewLogicエンジンV2初期化完了")
-        horse_count = len(self.data_manager.knowledge_data.get('horses', {}))
-        jockey_count = len(self.jockey_manager.knowledge_data.get('jockeys', {}))
+        logger.info("地方競馬版ViewLogicエンジンV2初期化完了")
+        horse_count = self.data_manager.get_total_horses() if hasattr(self.data_manager, 'get_total_horses') else len(self.data_manager.knowledge_data.get('horses', {}))
+        jockey_count = self.jockey_manager.get_total_jockeys() if hasattr(self.jockey_manager, 'get_total_jockeys') else len(self.jockey_manager.knowledge_data.get('jockeys', {}))
         logger.info(f"馬データ: {horse_count}頭, 騎手データ: {jockey_count}騎手")
     
     def get_engine_info(self) -> Dict[str, Any]:
         """エンジン情報を返す"""
+        horses_count = self.data_manager.get_total_horses() if hasattr(self.data_manager, 'get_total_horses') else len(self.data_manager.knowledge_data.get('horses', {}))
+        jockeys_count = self.jockey_manager.get_total_jockeys() if hasattr(self.jockey_manager, 'get_total_jockeys') else len(self.jockey_manager.knowledge_data.get('jockeys', {}))
+
         return {
             "engine_type": "LocalViewLogicEngineV2",
             "venue": "南関東4場",
-            "knowledge_horses": len(self.data_manager.knowledge_data.get('horses', {})),
-            "knowledge_jockeys": len(self.jockey_manager.knowledge_data.get('jockeys', {})),
+            "knowledge_horses": horses_count,
+            "knowledge_jockeys": jockeys_count,
             "manager_type": "V2",
             "subengines": [
                 "展開予想 (predict_race_flow_advanced)",
@@ -278,8 +281,9 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
             if not horse_data:
                 logger.warning(f"地方ViewLogic過去データ: データなし horse_name='{horse_name}'")
                 # ナレッジファイル内の馬名をサンプル表示（デバッグ用）
-                all_horses = list(self.data_manager.knowledge_data.get('horses', {}).keys())
-                sample_horses = all_horses[:5] if all_horses else []
+                sample_horses = []
+                if hasattr(self.data_manager, 'get_sample_horses'):
+                    sample_horses = self.data_manager.get_sample_horses(limit=5)
                 logger.info(f"地方ViewLogic過去データ: ナレッジファイル内のサンプル馬名={sample_horses}")
                 return {
                     'status': 'error',

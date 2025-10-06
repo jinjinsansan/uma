@@ -319,7 +319,8 @@ def update_unified_knowledge():
                 horses_data[horse_name] = {
                     "horse_name": horse_name,
                     "total_races": 0,
-                    "races": []
+                    "races": [],
+                    "last_update": datetime.now().isoformat()
                 }
                 updated_horses += 1
             
@@ -331,8 +332,9 @@ def update_unified_knowledge():
             if len(horses_data[horse_name]["races"]) > 9:
                 horses_data[horse_name]["races"] = horses_data[horse_name]["races"][:9]
             
-            # total_racesを更新
+            # total_racesとlast_updateを更新
             horses_data[horse_name]["total_races"] = len(horses_data[horse_name]["races"])
+            horses_data[horse_name]["last_update"] = datetime.now().isoformat()
         
         print(f"\n📊 更新結果:")
         print(f"  新規レース: {new_races}件")

@@ -37,11 +37,17 @@ class LocalRaceAnalysisEngineV2:
     
     def get_engine_info(self) -> Dict[str, Any]:
         """エンジン情報を返す"""
+        if hasattr(self.raw_manager, 'get_total_horses'):
+            horse_count = self.raw_manager.get_total_horses()
+        else:
+            horses = getattr(self.raw_manager, 'knowledge_data', {}).get('horses', {})
+            horse_count = len(horses) if isinstance(horses, dict) else 0
+
         return {
             "engine_type": "LocalRaceAnalysisEngineV2",
             "venue": "南関東4場",
             "baseline_horse": self.baseline_horse,
-            "knowledge_horses": len(self.raw_manager.knowledge_data.get('horses', {})),
+            "knowledge_horses": horse_count,
             "manager_type": "V2"
         }
     

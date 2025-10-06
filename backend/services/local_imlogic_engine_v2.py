@@ -34,8 +34,8 @@ class LocalIMLogicEngineV2:
         self.current_ai_mode = "IMLogic"
         
         # 初期化完了メッセージ
-        horse_count = len(self.dlogic_manager.knowledge_data.get('horses', {}))
-        jockey_count = len(self.jockey_manager.knowledge_data.get('jockeys', {}))
+        horse_count = self.dlogic_manager.get_total_horses() if hasattr(self.dlogic_manager, 'get_total_horses') else len(self.dlogic_manager.knowledge_data.get('horses', {}))
+        jockey_count = self.jockey_manager.get_total_jockeys() if hasattr(self.jockey_manager, 'get_total_jockeys') else len(self.jockey_manager.knowledge_data.get('jockeys', {}))
         logger.info(f"🏇 地方競馬版IMLogic統合エンジンV2初期化完了")
         logger.info(f"   馬データ: {horse_count}頭, 騎手データ: {jockey_count}騎手")
     
@@ -45,8 +45,8 @@ class LocalIMLogicEngineV2:
             "engine_type": "LocalIMLogicEngineV2",
             "venue": "南関東4場",
             "current_ai_mode": self.current_ai_mode,
-            "knowledge_horses": len(self.dlogic_manager.knowledge_data.get('horses', {})),
-            "knowledge_jockeys": len(self.jockey_manager.knowledge_data.get('jockeys', {})),
+            "knowledge_horses": self.dlogic_manager.get_total_horses() if hasattr(self.dlogic_manager, 'get_total_horses') else len(self.dlogic_manager.knowledge_data.get('horses', {})),
+            "knowledge_jockeys": self.jockey_manager.get_total_jockeys() if hasattr(self.jockey_manager, 'get_total_jockeys') else len(self.jockey_manager.knowledge_data.get('jockeys', {})),
             "manager_type": "V2"
         }
     

@@ -10,9 +10,9 @@ import datetime
 import requests
 from urllib.parse import quote
 
-# 新しいAPI認証情報
-ACCESS_KEY = "62b127c384fe4a78f4110c5fd3ebbf4e"
-SECRET_KEY = "2876eb1b13d17ed1b002fb9164ce6db7d81f989cff3a848d72c17749a1f31a26"
+# 新しいAPI認証情報（2025-10-06更新）
+ACCESS_KEY = "80bb7aca390fc82976b09b1005f7f531"
+SECRET_KEY = "dd64d5ea1bedd6acfff0a42ebc771c81c459976fff03fd6677f5ba65b0e7fbbd"
 ENDPOINT = "https://954dcc10adf822b50ccceedef0aa97e6.r2.cloudflarestorage.com"
 BUCKET = "dlogic-knowledge-files"
 REGION = "auto"
@@ -106,8 +106,14 @@ def upload_file():
     print(f"  URL: {url}")
     
     try:
-        # アップロード実行
-        response = requests.put(url, data=file_data, headers=signed_headers)
+        # アップロード実行（タイムアウト600秒、SSL検証有効）
+        response = requests.put(
+            url, 
+            data=file_data, 
+            headers=signed_headers,
+            timeout=600,  # 10分のタイムアウト
+            verify=True   # SSL証明書検証
+        )
         
         if response.status_code in [200, 201]:
             print(f"✅ アップロード成功！")
@@ -125,6 +131,8 @@ def upload_file():
             
     except Exception as e:
         print(f"❌ エラー: {e}")
+        import traceback
+        print(f"詳細: {traceback.format_exc()}")
         return False
 
 if __name__ == "__main__":

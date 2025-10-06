@@ -35,7 +35,11 @@ class LocalFastDLogicEngineV2:  # FastDLogicEngineを継承しない独立実装
         self.mysql_config = None
         
         # 初期化完了メッセージ
-        horse_count = len(self.raw_manager.knowledge_data.get('horses', {}))
+        if hasattr(self.raw_manager, 'get_total_horses'):
+            horse_count = self.raw_manager.get_total_horses()
+        else:
+            horses = getattr(self.raw_manager, 'knowledge_data', {}).get('horses', {})
+            horse_count = len(horses) if isinstance(horses, dict) else 0
         logger = logging.getLogger(__name__)
         logger.info("🏇 地方競馬版D-Logic計算エンジンV2初期化完了 (ナレッジ: %s頭)", horse_count)
         LocalFastDLogicEngineV2._initialized = True

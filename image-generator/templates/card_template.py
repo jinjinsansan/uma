@@ -16,6 +16,7 @@ def generate_card_html(card_data: Dict[str, Any]) -> str:
     user_note = card_data.get('userNote')
     hashtags = card_data.get('hashtags', [])
     generated_at = card_data.get('generatedAt')
+    referral_url = card_data.get('referralUrl')
     
     # 最初の分析データから馬情報を取得
     top_pick = None
@@ -47,7 +48,7 @@ def generate_card_html(card_data: Dict[str, Any]) -> str:
         </style>
     </head>
     <body>
-        {generate_card_body(race_meta, top_pick, user_note, hashtags, generated_at)}
+        {generate_card_body(race_meta, top_pick, user_note, hashtags, generated_at, referral_url)}
     </body>
     </html>
     """
@@ -356,7 +357,8 @@ def generate_card_body(
     top_pick: Optional[Dict[str, Any]],
     user_note: Optional[str],
     hashtags: List[str],
-    generated_at: Optional[str]
+    generated_at: Optional[str],
+    referral_url: Optional[str] = None
 ) -> str:
     """カードのボディ部分を生成"""
     
@@ -390,7 +392,7 @@ def generate_card_body(
         {generate_header(race_meta)}
         {generate_prediction_section(top_pick, colors) if top_pick else '<div>No prediction available</div>'}
         {generate_user_note_section(user_note) if user_note else ''}
-        {generate_footer(hashtags, generated_at)}
+        {generate_footer(hashtags, generated_at, referral_url)}
     </div>
     """
 
@@ -472,14 +474,20 @@ def generate_user_note_section(user_note: str) -> str:
     </section>
     """
 
-def generate_footer(hashtags: List[str], generated_at: Optional[str]) -> str:
+def generate_footer(hashtags: List[str], generated_at: Optional[str], referral_url: Optional[str] = None) -> str:
     """フッター部分を生成"""
     hashtag_line = ' '.join([f"#{tag}" if not tag.startswith('#') else tag for tag in hashtags]) if hashtags else '#Dlogic #競馬予想AI #競馬予想'
     generated_text = f"Shared {generated_at}" if generated_at else "Generated with D-Logic AI Predictions"
     
+    # 招待URL行を事前に生成（f-stringのネストを回避）
+    referral_line = ''
+    if referral_url:
+        referral_line = f'<p style="font-size: 18px; text-transform: none; letter-spacing: 0; color: #0ECB81; font-weight: 600;">{referral_url}</p>'
+    
     return f"""
-    <footer style="display: flex; flex-direction: column; gap: 4px; font-size: 16px; text-transform: uppercase; letter-spacing: 0.3em; color: #6B7280;">
+    <footer style="display: flex; flex-direction: column; gap: 6px; font-size: 16px; text-transform: uppercase; letter-spacing: 0.3em; color: #6B7280;">
         <p>{hashtag_line}</p>
+        {referral_line}
         <p>{generated_text}</p>
     </footer>
     """

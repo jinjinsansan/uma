@@ -55,6 +55,72 @@ class LocalDLogicRawDataManagerV2:
         self._cache_log_interval: int = 20
         self._max_cache_size: int = int(os.environ.get("LOCAL_DLOGIC_CACHE_SIZE", "500"))
     
+    def get_total_horses(self) -> int:
+        """インデックスを優先して総馬数を取得（フルロードを回避）"""
+        if self._horse_index:
+            return len(self._horse_index)
+
+        if os.path.exists(self.index_file):
+            if self._load_index():
+                return len(self._horse_index)
+
+        if self._knowledge_data and 'horses' in self._knowledge_data:
+            return len(self._knowledge_data.get('horses', {}))
+
+        return 0
+
+    def get_sample_horses(self, limit: int = 20) -> list:
+        """キャッシュプリウォーム用に馬名サンプルを取得"""
+        if limit <= 0:
+            return []
+
+        if self._horse_index or self._load_index():
+            return list(self._horse_index.keys())[:limit]
+
+        horses = self._knowledge_data.get('horses', {}) if self._knowledge_data else {}
+        return list(horses.keys())[:limit]
+
+    def get_shard_cache_stats(self) -> Dict[str, Any]:
+        """シャードキャッシュの利用状況を取得"""
+        with self._shard_lock:
+            return {
+                "loaded_shards": len(self._shard_cache),
+                "max_cached_shards": self._max_shard_cache,
+                "cached_horses_estimate": sum(len(shard.keys()) for shard in self._shard_cache.values()),
+                "index_loaded": bool(self._horse_index),
+                "has_full_knowledge": self._knowledge_data is not None,
+                "shard_directory_exists": os.path.exists(self.cache_dir)
+            }
+
+    def get_calculation_cache_stats(self) -> Dict[str, Any]:
+        """計算キャッシュ統計を取得"""
+        with self._cache_lock:
+            total_requests = self._cache_hits + self._cache_misses
+            hit_rate = (self._cache_hits / total_requests) * 100 if total_requests else 0.0
+            return {
+                "entries": len(self._calculation_cache),
+                "max_entries": self._max_cache_size,
+                "hits": self._cache_hits,
+                "misses": self._cache_misses,
+                "hit_rate": round(hit_rate, 2)
+            }
+
+    def get_diagnostics(self) -> Dict[str, Any]:
+        """監視用の診断情報を返す"""
+        shard_stats = self.get_shard_cache_stats()
+        cache_stats = self.get_calculation_cache_stats()
+        return {
+            "total_horses": self.get_total_horses(),
+            "index_loaded": shard_stats["index_loaded"],
+            "loaded_shards": shard_stats["loaded_shards"],
+            "max_cached_shards": shard_stats["max_cached_shards"],
+            "cached_horses_estimate": shard_stats["cached_horses_estimate"],
+            "calculation_cache": cache_stats,
+            "knowledge_loaded": shard_stats["has_full_knowledge"],
+            "shard_dir_exists": shard_stats["shard_directory_exists"],
+            "last_loaded_at": self._last_loaded_at.isoformat() if self._last_loaded_at else None
+        }
+
     def _load_knowledge(self) -> Dict[str, Any]:
         """ナレッジファイルの読み込み"""
         # キャッシュファイルが存在する場合

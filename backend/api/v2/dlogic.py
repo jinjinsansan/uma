@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Request
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel
@@ -12,6 +12,7 @@ except ImportError:
     REDIS_MODULE_AVAILABLE = False
 from services.dlogic_raw_data_manager import DLogicRawDataManager
 from services.modern_dlogic_engine import ModernDLogicEngine
+from middleware.rate_limiter import limiter
 import hashlib
 import logging
 
@@ -38,6 +39,21 @@ except ImportError as e:
 dlogic_manager = None
 dlogic_engine = None
 
+
+def _get_total_horses(manager: Any) -> int:
+    if hasattr(manager, "get_total_horses"):
+        try:
+            return manager.get_total_horses()
+        except Exception as exc:
+            logger.debug(f"get_total_horses unavailable: {exc}")
+
+    knowledge = getattr(manager, "knowledge_data", None)
+    if isinstance(knowledge, dict):
+        horses = knowledge.get("horses", {})
+        if isinstance(horses, dict):
+            return len(horses)
+    return 0
+
 def get_dlogic_manager():
     global dlogic_manager
     if dlogic_manager is None:
@@ -46,7 +62,7 @@ def get_dlogic_manager():
             from api.chat import fast_engine_instance
             # FastDLogicEngineが既にDLogicRawDataManagerを保持
             dlogic_manager = fast_engine_instance.raw_manager
-            horses_count = len(dlogic_manager.knowledge_data.get('horses', {})) if hasattr(dlogic_manager, 'knowledge_data') else 0
+            horses_count = _get_total_horses(dlogic_manager)
             logger.info(f"V2 D-Logic: Using pre-initialized knowledge from FastDLogicEngine (horses: {horses_count})")
             print(f"✅ V2 D-Logic: Using shared instance from FastDLogicEngine (horses: {horses_count})")
         except ImportError as e:
@@ -55,14 +71,14 @@ def get_dlogic_manager():
             print(f"⚠️ V2 D-Logic: ImportError when getting fast_engine_instance - {e}")
             logger.warning("V2 D-Logic: Creating new DLogicRawDataManager instance")
             dlogic_manager = DLogicRawDataManager()
-            horses_count = len(dlogic_manager.knowledge_data.get('horses', {})) if hasattr(dlogic_manager, 'knowledge_data') else 0
+            horses_count = _get_total_horses(dlogic_manager)
             print(f"⚠️ V2 D-Logic: Created new instance (horses: {horses_count})")
         except Exception as e:
             logger.error(f"V2 D-Logic: Unexpected error - {e}")
             print(f"❌ V2 D-Logic: Unexpected error - {e}")
             dlogic_manager = DLogicRawDataManager()
     else:
-        horses_count = len(dlogic_manager.knowledge_data.get('horses', {})) if hasattr(dlogic_manager, 'knowledge_data') else 0
+        horses_count = _get_total_horses(dlogic_manager)
         print(f"♻️ V2 D-Logic: Using existing instance (horses: {horses_count})")
     return dlogic_manager
 
@@ -136,15 +152,12 @@ def save_to_cache(cache_key: str, scores: List[HorseScore], ttl: int = 3600):
     except Exception as e:
         logger.error(f"V2 Cache save error: {e}")
 
-@router.post("/batch", response_model=BatchDLogicResponse)
-async def calculate_batch_dlogic(request: BatchDLogicRequest):
-    """
-    複数馬のD-Logicスコアをバッチで計算
-    """
+async def _compute_batch_dlogic(payload: BatchDLogicRequest) -> BatchDLogicResponse:
+    """内部用: D-Logicバッチ計算"""
     start_time = datetime.now()
     
     # キャッシュチェック
-    cache_key = generate_cache_key(request.race_id, request.horses)
+    cache_key = generate_cache_key(payload.race_id, payload.horses)
     cached_data = get_cached_scores(cache_key)
     
     if cached_data:
@@ -152,7 +165,7 @@ async def calculate_batch_dlogic(request: BatchDLogicRequest):
         scores = [HorseScore(**score) for score in cached_data["scores"]]
         calculation_time = (datetime.now() - start_time).total_seconds()
         return BatchDLogicResponse(
-            race_id=request.race_id,
+            race_id=payload.race_id,
             scores=scores,
             cached=True,
             calculation_time=calculation_time
@@ -164,7 +177,7 @@ async def calculate_batch_dlogic(request: BatchDLogicRequest):
         engine = get_dlogic_engine()
         
         scores_list = []
-        for horse_name in request.horses:
+        for horse_name in payload.horses:
             try:
                 # 基本的なD-Logicスコア計算
                 dlogic_scores = manager.calculate_dlogic_realtime(horse_name)
@@ -240,7 +253,7 @@ async def calculate_batch_dlogic(request: BatchDLogicRequest):
         calculation_time = (datetime.now() - start_time).total_seconds()
         
         return BatchDLogicResponse(
-            race_id=request.race_id,
+            race_id=payload.race_id,
             scores=horse_scores,
             cached=False,
             calculation_time=calculation_time
@@ -254,13 +267,22 @@ async def calculate_batch_dlogic(request: BatchDLogicRequest):
         # エラーでも部分的な結果を返す
         if 'horse_scores' in locals() and horse_scores:
             return BatchDLogicResponse(
-                race_id=request.race_id,
+                race_id=payload.race_id,
                 scores=horse_scores,
                 cached=False,
                 calculation_time=(datetime.now() - start_time).total_seconds(),
                 error=str(e)
             )
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/batch", response_model=BatchDLogicResponse)
+@limiter.limit("15/minute")
+async def calculate_batch_dlogic(request: Request, payload: BatchDLogicRequest):
+    """
+    複数馬のD-Logicスコアをバッチで計算
+    """
+    return await _compute_batch_dlogic(payload)
 
 async def calculate_dlogic_batch(horses: List[str]) -> Optional[Dict[str, Any]]:
     """
@@ -319,30 +341,31 @@ async def calculate_dlogic_batch(horses: List[str]) -> Optional[Dict[str, Any]]:
         return None
 
 @router.post("/precalculate")
-async def precalculate_dlogic(request: PreCalculateRequest):
+@limiter.limit("6/minute")
+async def precalculate_dlogic(request: Request, payload: PreCalculateRequest):
     """
     事前にD-Logicスコアを計算してキャッシュに保存（バックグラウンド処理）
     """
     try:
         # バックグラウンドで計算
-        asyncio.create_task(_precalculate_async(request))
+        asyncio.create_task(_precalculate_async(payload))
         
         return {
             "status": "accepted",
-            "message": f"Pre-calculation started for race {request.race_id}",
-            "horses_count": len(request.horses)
+            "message": f"Pre-calculation started for race {payload.race_id}",
+            "horses_count": len(payload.horses)
         }
         
     except Exception as e:
         logger.error(f"Pre-calculation error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def _precalculate_async(request: PreCalculateRequest):
+async def _precalculate_async(request_data: PreCalculateRequest):
     """非同期でD-Logic計算を実行"""
     try:
         # 馬名リストを抽出
         horse_names = []
-        for horse in request.horses:
+        for horse in request_data.horses:
             if isinstance(horse, dict):
                 horse_names.append(horse.get("馬名") or horse.get("horse_name"))
             else:
@@ -350,18 +373,19 @@ async def _precalculate_async(request: PreCalculateRequest):
         
         # バッチ計算を実行
         batch_request = BatchDLogicRequest(
-            race_id=request.race_id,
+            race_id=request_data.race_id,
             horses=horse_names
         )
         
-        await calculate_batch_dlogic(batch_request)
-        logger.info(f"Pre-calculation completed for race {request.race_id}")
+        await _compute_batch_dlogic(batch_request)
+        logger.info(f"Pre-calculation completed for race {request_data.race_id}")
         
     except Exception as e:
         logger.error(f"Async pre-calculation error: {e}")
 
 @router.delete("/cache/{race_id}")
-async def clear_cache(race_id: str):
+@limiter.limit("5/minute")
+async def clear_cache(request: Request, race_id: str):
     """
     特定レースのキャッシュをクリア
     """

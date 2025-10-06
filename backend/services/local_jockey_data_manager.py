@@ -41,6 +41,57 @@ class LocalJockeyDataManager:
         self._last_loaded_at: Optional[datetime.datetime] = None
 
         logger.info("🏇 地方騎手ナレッジ初期化: cache=%s", self.cache_file)
+
+    def get_total_jockeys(self) -> int:
+        """インデックスを優先して総騎手数を取得"""
+        if self._jockey_index:
+            return len(self._jockey_index)
+
+        if os.path.exists(self.index_file):
+            if self._load_index():
+                return len(self._jockey_index)
+
+        if self._knowledge_data and 'jockeys' in self._knowledge_data:
+            return len(self._knowledge_data.get('jockeys', {}))
+
+        return 0
+
+    def get_sample_jockeys(self, limit: int = 20) -> list:
+        """プリウォーム用に騎手名サンプルを取得"""
+        if limit <= 0:
+            return []
+
+        if self._jockey_index or self._load_index():
+            return list(self._jockey_index.keys())[:limit]
+
+        jockeys = self._knowledge_data.get('jockeys', {}) if self._knowledge_data else {}
+        return list(jockeys.keys())[:limit]
+
+    def get_shard_cache_stats(self) -> Dict[str, Any]:
+        """シャードキャッシュ利用状況を取得"""
+        with self._shard_lock:
+            return {
+                "loaded_shards": len(self._shard_cache),
+                "max_cached_shards": self._max_shard_cache,
+                "cached_jockeys_estimate": sum(len(shard.keys()) for shard in self._shard_cache.values()),
+                "index_loaded": bool(self._jockey_index),
+                "has_full_knowledge": self._knowledge_data is not None,
+                "shard_directory_exists": os.path.exists(self.cache_dir)
+            }
+
+    def get_diagnostics(self) -> Dict[str, Any]:
+        """監視用診断情報を返す"""
+        shard_stats = self.get_shard_cache_stats()
+        return {
+            "total_jockeys": self.get_total_jockeys(),
+            "index_loaded": shard_stats["index_loaded"],
+            "loaded_shards": shard_stats["loaded_shards"],
+            "max_cached_shards": shard_stats["max_cached_shards"],
+            "cached_jockeys_estimate": shard_stats["cached_jockeys_estimate"],
+            "knowledge_loaded": shard_stats["has_full_knowledge"],
+            "shard_dir_exists": shard_stats["shard_directory_exists"],
+            "last_loaded_at": self._last_loaded_at.isoformat() if self._last_loaded_at else None
+        }
     
     def _write_full_cache(self, data: Dict[str, Any]):
         try:

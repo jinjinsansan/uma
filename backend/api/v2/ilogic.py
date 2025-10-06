@@ -1,11 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel
-from fastapi import APIRouter
 import logging
-import hashlib
-import json
+from middleware.rate_limiter import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -32,16 +30,13 @@ class BatchILogicResponse(BaseModel):
     calculation_time: float
     error: Optional[str] = None
 
-@router.post("/batch", response_model=BatchILogicResponse)
-async def calculate_batch_ilogic(request: BatchILogicRequest):
-    """
-    複数馬のI-Logicスコアをバッチで計算
-    """
+async def _compute_batch_ilogic(payload: BatchILogicRequest) -> BatchILogicResponse:
+    """内部用: I-Logicバッチ計算"""
     start_time = datetime.now()
     
     try:
         # jockeys、posts、horse_numbersがある場合はI-Logicエンジンを使用
-        if request.jockeys and request.posts and request.venue:
+        if payload.jockeys and payload.posts and payload.venue:
             from services.race_analysis_engine import RaceAnalysisEngine
             
             # I-Logicエンジンのインスタンスを作成
@@ -49,11 +44,11 @@ async def calculate_batch_ilogic(request: BatchILogicRequest):
             
             # 実際のI-Logic計算を実行
             race_data = {
-                'horses': request.horses,
-                'jockeys': request.jockeys,
-                'posts': request.posts,
-                'venue': request.venue,
-                'horse_numbers': request.horse_numbers if request.horse_numbers else list(range(1, len(request.horses) + 1))
+                'horses': payload.horses,
+                'jockeys': payload.jockeys,
+                'posts': payload.posts,
+                'venue': payload.venue,
+                'horse_numbers': payload.horse_numbers if payload.horse_numbers else list(range(1, len(payload.horses) + 1))
             }
             result = race_engine.analyze_race(race_data)
             
@@ -64,9 +59,9 @@ async def calculate_batch_ilogic(request: BatchILogicRequest):
                 scores_list = []
         else:
             # 騎手情報がない場合はエラーとする（簡易計算は行わない）
-            logger.warning(f"I-Logic batch calculation requires jockeys, posts and venue. Request: {request.dict()}")
+            logger.warning(f"I-Logic batch calculation requires jockeys, posts and venue. Request: {payload.dict()}")
             return BatchILogicResponse(
-                race_id=request.race_id,
+                race_id=payload.race_id,
                 scores=[],
                 calculation_time=(datetime.now() - start_time).total_seconds(),
                 error="騎手情報、枠順、開催場が必要です"
@@ -101,7 +96,7 @@ async def calculate_batch_ilogic(request: BatchILogicRequest):
         calculation_time = (datetime.now() - start_time).total_seconds()
         
         return BatchILogicResponse(
-            race_id=request.race_id,
+            race_id=payload.race_id,
             scores=horse_scores,
             calculation_time=calculation_time
         )
@@ -114,11 +109,20 @@ async def calculate_batch_ilogic(request: BatchILogicRequest):
         # エラー時は空の結果を返す
         calculation_time = (datetime.now() - start_time).total_seconds()
         return BatchILogicResponse(
-            race_id=request.race_id,
+            race_id=payload.race_id,
             scores=[],
             calculation_time=calculation_time,
             error=str(e)
         )
+
+
+@router.post("/batch", response_model=BatchILogicResponse)
+@limiter.limit("12/minute")
+async def calculate_batch_ilogic(request: Request, payload: BatchILogicRequest):
+    """
+    複数馬のI-Logicスコアをバッチで計算
+    """
+    return await _compute_batch_ilogic(payload)
 
 async def calculate_ilogic_batch(
     horses: List[str],

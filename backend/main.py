@@ -9,6 +9,11 @@ import json
 import gc
 import logging
 
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
 # ログレベルの設定（本番環境では WARNING に設定）
 # 高負荷時のパフォーマンス向上のため
 logging.basicConfig(
@@ -219,12 +224,12 @@ async def startup_event():
     try:
         # 地方競馬版データマネージャー
         from services.local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
-        horse_count = len(local_dlogic_manager_v2.knowledge_data.get('horses', {}))
+        horse_count = local_dlogic_manager_v2.get_total_horses()
         print(f"✅ 地方競馬版マネージャーV2: 初期化完了（{horse_count}頭）")
         
         # 地方競馬版騎手マネージャー
         from services.local_jockey_data_manager import local_jockey_manager
-        jockey_count = len(local_jockey_manager.knowledge_data.get('jockeys', {}))
+        jockey_count = local_jockey_manager.get_total_jockeys()
         print(f"✅ 地方競馬版騎手マネージャー: 初期化完了（{jockey_count}騎手）")
         
         # 地方競馬版ViewLogicエンジン
@@ -298,6 +303,72 @@ async def startup_event():
     print("=" * 80)
     print("✅ 起動時初期化完了")
     print("=" * 80)
+
+# 健康診断エンドポイント
+@app.get("/health/metrics")
+async def health_metrics() -> Dict[str, Any]:
+    metrics: Dict[str, Any] = {
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
+
+    process_metrics: Dict[str, Any] = {}
+    if psutil:
+        try:
+            process = psutil.Process(os.getpid())
+            process_metrics["memory_mb"] = round(process.memory_info().rss / (1024 * 1024), 2)
+        except Exception as exc:
+            process_metrics["error"] = str(exc)
+    else:
+        process_metrics["psutil"] = "unavailable"
+
+    metrics["process"] = process_metrics
+
+    try:
+        from api.v2.dlogic import get_dlogic_manager
+        dlogic_manager = get_dlogic_manager()
+        metrics["jra"] = {
+            "horses": getattr(dlogic_manager, "get_total_horses", lambda: 0)(),
+            "jockeys": getattr(dlogic_manager, "get_total_jockeys", lambda: 0)()
+        }
+    except Exception as exc:
+        metrics["jra_error"] = str(exc)
+
+    try:
+        from services.local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
+        nar_metrics = {
+            "horses": local_dlogic_manager_v2.get_total_horses()
+        }
+        if hasattr(local_dlogic_manager_v2, "get_shard_cache_stats"):
+            nar_metrics["shards"] = local_dlogic_manager_v2.get_shard_cache_stats()
+        if hasattr(local_dlogic_manager_v2, "get_calculation_cache_stats"):
+            nar_metrics["calc_cache"] = local_dlogic_manager_v2.get_calculation_cache_stats()
+        metrics["nar"] = nar_metrics
+    except Exception as exc:
+        metrics["nar_error"] = str(exc)
+
+    try:
+        from services.local_jockey_data_manager import local_jockey_manager
+        metrics["nar_jockeys"] = {
+            "total": local_jockey_manager.get_total_jockeys()
+        }
+    except Exception as exc:
+        metrics["nar_jockeys_error"] = str(exc)
+
+    try:
+        from services.cache_service import cache_service
+        metrics["cache"] = cache_service.get_stats()
+        redis_status: Dict[str, Any] = {"connected": False}
+        if cache_service.redis_cache:
+            redis_status.update({
+                "connected": cache_service.redis_cache.is_connected(),
+                "host": getattr(cache_service.redis_cache, "host", None),
+                "port": getattr(cache_service.redis_cache, "port", None)
+            })
+        metrics["redis"] = redis_status
+    except Exception as exc:
+        metrics["cache_error"] = str(exc)
+
+    return metrics
 
 # ルーターを含める
 app.include_router(d_logic_router, prefix="/api/d-logic", tags=["D-Logic"])

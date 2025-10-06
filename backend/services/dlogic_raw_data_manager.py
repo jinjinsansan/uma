@@ -64,6 +64,18 @@ class DLogicRawDataManager:
             self.knowledge_data = self._download_from_github()
             horse_count = len(self.knowledge_data.get('horses', {}))
         print(f"🚀 D-Logic生データマネージャー初期化完了 ({horse_count}頭)")
+
+    def get_total_horses(self) -> int:
+        """総馬数を返す"""
+        horses = self.knowledge_data.get('horses', {}) if isinstance(self.knowledge_data, dict) else {}
+        return len(horses)
+
+    def get_total_jockeys(self) -> int:
+        """総騎手数を返す（存在する場合のみ）"""
+        jockeys = self.knowledge_data.get('jockeys') if isinstance(self.knowledge_data, dict) else None
+        if isinstance(jockeys, dict):
+            return len(jockeys)
+        return 0
         
     def _load_knowledge(self) -> Dict[str, Any]:
         """ナレッジファイル読み込み"""

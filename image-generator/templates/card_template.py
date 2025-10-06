@@ -316,7 +316,7 @@ def generate_prediction_section(top_pick: Dict[str, Any], colors: Dict[str, str]
                         <p style="font-size: 24px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.35em;">
                             {top_pick.get('badge', 'TOP PICK')}
                         </p>
-                        <p style="font-size: 64px; font-weight: 700; color: white; line-height: 1.25;">
+                        <p style="font-size: 64px; font-weight: 700; color: white; line-height: 1.25; white-space: nowrap;">
                             {top_pick.get('horseName', '不明')}
                         </p>
                         {f'<p style="font-size: 36px; font-weight: 600; color: {colors["text"]}; line-height: 1.25;">{top_pick.get("highlight")}</p>' if top_pick.get('highlight') else ''}

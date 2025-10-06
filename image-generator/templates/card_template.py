@@ -154,9 +154,9 @@ def extract_top_pick(engine: str, data: Dict[str, Any]) -> Optional[Dict[str, An
         
         top = sorted_entries[0]
         
-        # 勝率を取得（support_rateをパーセント表示）
+        # 勝率を取得（support_rateを100倍してパーセント表示）
         support_rate = top.get('support_rate')
-        highlight_text = f"勝率 {float(support_rate):.1f}%" if support_rate else None
+        highlight_text = f"勝率 {float(support_rate) * 100:.1f}%" if support_rate else None
         
         # オッズを取得
         odds = top.get('odds') or top.get('fair_odds')
@@ -237,6 +237,10 @@ def generate_card_body(
         'imlogic': {'border': '#EAB308', 'text': '#FCD34D', 'gradient': 'linear-gradient(to right, #FACC15, #EAB308)', 'shadow': '#FACC15'},
         'ilogic': {'border': '#2563EB', 'text': '#60A5FA', 'gradient': 'linear-gradient(to right, #60A5FA, #2563EB)', 'shadow': '#60A5FA'},
         'dlogic': {'border': '#059669', 'text': '#34D399', 'gradient': 'linear-gradient(to right, #34D399, #059669)', 'shadow': '#34D399'},
+        'flogic': {'border': '#EC4899', 'text': '#F472B6', 'gradient': 'linear-gradient(to right, #F472B6, #EC4899)', 'shadow': '#EC4899'},
+        'metalogic': {'border': '#EF4444', 'text': '#F97316', 'gradient': 'linear-gradient(to right, #F97316, #EF4444)', 'shadow': '#EF4444'},
+        'nlogic': {'border': '#7C3AED', 'text': '#A855F7', 'gradient': 'linear-gradient(to right, #A855F7, #7C3AED)', 'shadow': '#7C3AED'},
+        'viewlogic': {'border': '#0EA5E9', 'text': '#38BDF8', 'gradient': 'linear-gradient(to right, #38BDF8, #0EA5E9)', 'shadow': '#0EA5E9'}
     }
     
     colors = color_map.get(top_pick.get('engine') if top_pick else 'imlogic', color_map['imlogic'])

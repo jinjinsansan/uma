@@ -12,6 +12,7 @@ from typing import Dict, Any, List, Optional, Tuple
 import logging
 from datetime import datetime
 from statistics import mean, stdev
+import re
 # from .viewlogic_engine import ViewLogicEngine  # 親クラスに依存しない独立実装
 from .local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
 from .local_jockey_data_manager import local_jockey_manager
@@ -720,21 +721,33 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                         jockey_post_stats_dict[jockey_name] = {
                             'assigned_post': assigned_post,  # 今回の枠番
                             'post_category': stat.get('post_category'),  # カテゴリ
-                            'all_post_stats': {}  # 全枠順別成績
+                            'all_post_stats': {}
                         }
-                        
-                        # エラーがない場合のみデータを追加
-                        if 'place_rate' in stat and 'post_category' in stat:
-                            post_category = stat['post_category']
-                            jockey_post_stats_dict[jockey_name]['all_post_stats'][post_category] = {
+
+                        stat_all_post_stats = stat.get('all_post_stats')
+                        if isinstance(stat_all_post_stats, dict):
+                            for category_key, category_stats in stat_all_post_stats.items():
+                                if not isinstance(category_stats, dict):
+                                    continue
+                                jockey_post_stats_dict[jockey_name]['all_post_stats'][category_key] = {
+                                    'fukusho_rate': category_stats.get('fukusho_rate', 0),
+                                    'race_count': category_stats.get('race_count', category_stats.get('total_races', 0))
+                                }
+
+                        post_category = stat.get('post_category')
+                        assigned_stats = stat.get('assigned_post_stats') if isinstance(stat.get('assigned_post_stats'), dict) else None
+
+                        if not assigned_stats and post_category:
+                            assigned_stats = jockey_post_stats_dict[jockey_name]['all_post_stats'].get(post_category)
+
+                        if not assigned_stats and 'place_rate' in stat and post_category:
+                            assigned_stats = {
                                 'fukusho_rate': stat['place_rate'],
                                 'race_count': stat.get('race_count', 0)
                             }
-                            # assigned_post_statsも設定
-                            jockey_post_stats_dict[jockey_name]['assigned_post_stats'] = {
-                                'fukusho_rate': stat['place_rate'],
-                                'race_count': stat.get('race_count', 0)
-                            }
+
+                        if assigned_stats and post_category:
+                            jockey_post_stats_dict[jockey_name]['assigned_post_stats'] = assigned_stats
             
             # 3. 騎手の該当コース成績複勝率分析
             jockey_course_stats = []
@@ -1311,93 +1324,79 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
         return performances
     
     def _analyze_jockeys_post_performance(self, jockeys: List[str], posts: List[int]) -> List[Dict]:
-        """騎手の枠順別成績を分析（実データのみ）"""
-        performances = []
-        
-        for i, jockey_name in enumerate(jockeys):
-            if i < len(posts):
-                post = posts[i]
+        """騎手の枠順別成績を分析（地方競馬カテゴリ対応）"""
+        performances: List[Dict[str, Any]] = []
+
+        if not jockeys:
+            return performances
+
+        normalized_names: List[str] = []
+        normalized_lookup: Dict[int, str] = {}
+
+        for idx, jockey_name in enumerate(jockeys):
+            normalized = self._normalize_jockey_name(jockey_name) if isinstance(jockey_name, str) else ''
+            normalized_names.append(normalized)
+            normalized_lookup[idx] = normalized
+
+        aggregated_stats: Dict[str, Dict[str, Any]] = {}
+        if self.jockey_manager and self.jockey_manager.is_loaded():
+            try:
+                names_for_lookup = [name for name in normalized_names if name]
+                if names_for_lookup:
+                    aggregated_stats = self.jockey_manager.get_jockey_post_position_fukusho_rates(names_for_lookup)
+            except Exception as e:
+                logger.error(f"騎手枠順別統計取得エラー: {e}")
+                aggregated_stats = {}
+
+        for idx, jockey_name in enumerate(jockeys):
+            post_value = posts[idx] if idx < len(posts) else None
+            post_int: Optional[int] = None
+            if isinstance(post_value, (int, float)):
+                post_int = int(post_value)
+            elif isinstance(post_value, str) and post_value.strip():
                 try:
-                    # 実際の騎手データを取得
-                    jockey_data = self.jockey_manager.get_jockey_data(jockey_name)
-                    
-                    if not jockey_data:
-                        performances.append({
-                            'jockey_name': jockey_name,
-                            'post': post,
-                            'error': 'データベースにデータがありません'
-                        })
-                        continue
-                    
-                    # 枠順別データが存在する場合のみ使用
-                    if 'post_position_stats' in jockey_data:
-                        post_stats = jockey_data['post_position_stats']
-                        
-                        # 枠番号のキーを探す（「枠1」〜「枠18」形式）
-                        post_key = f'枠{post}'
-                        
-                        if post_key in post_stats:
-                            # 該当枠のデータが存在する場合
-                            performances.append({
-                                'jockey_name': jockey_name,
-                                'post': post,
-                                'post_category': f'枠{post}',
-                                'place_rate': post_stats[post_key].get('fukusho_rate', 0),
-                                'race_count': post_stats[post_key].get('race_count', 0)
-                            })
-                        else:
-                            # カテゴリ別に集計（内枠、中枠、外枠）
-                            # 地方競馬用：1-3（内）、4-6（中）、7-8（外）
-                            post_category = '内枠' if post <= 3 else '中枠' if post <= 6 else '外枠'
-                            
-                            # 該当カテゴリの枠を集計
-                            total_races = 0
-                            fukusho_count = 0
-                            
-                            if post_category == '内枠':
-                                target_posts = [f'枠{i}' for i in range(1, 4)]  # 1-3
-                            elif post_category == '中枠':
-                                target_posts = [f'枠{i}' for i in range(4, 7)]  # 4-6
-                            else:  # 外枠
-                                target_posts = [f'枠{i}' for i in range(7, 9)]  # 7-8
-                            
-                            for target_post in target_posts:
-                                if target_post in post_stats:
-                                    stats = post_stats[target_post]
-                                    race_count = stats.get('race_count', 0)
-                                    fukusho_rate = stats.get('fukusho_rate', 0)
-                                    total_races += race_count
-                                    fukusho_count += int(race_count * fukusho_rate / 100)
-                            
-                            if total_races > 0:
-                                performances.append({
-                                    'jockey_name': jockey_name,
-                                    'post': post,
-                                    'post_category': post_category,
-                                    'place_rate': (fukusho_count / total_races) * 100,
-                                    'race_count': total_races
-                                })
-                            else:
-                                performances.append({
-                                    'jockey_name': jockey_name,
-                                    'post': post,
-                                    'post_category': post_category,
-                                    'message': '枠順別データなし'
-                                })
-                    else:
-                        performances.append({
-                            'jockey_name': jockey_name,
-                            'post': post,
-                            'message': '枠順別データが利用できません'
-                        })
-                        
-                except Exception as e:
-                    logger.error(f"騎手枠順成績分析エラー ({jockey_name}): {e}")
-                    performances.append({
-                        'jockey_name': jockey_name,
-                        'error': str(e)
-                    })
-        
+                    post_int = int(post_value.strip())
+                except ValueError:
+                    post_int = None
+
+            normalized = normalized_lookup.get(idx, '')
+            entry: Dict[str, Any] = {
+                'jockey_name': jockey_name,
+                'post': post_int
+            }
+
+            formatted_stats: Dict[str, Dict[str, float]] = {}
+
+            raw_stats = aggregated_stats.get(normalized)
+            if not raw_stats and normalized:
+                jockey_data = self.jockey_manager.get_jockey_data(normalized)
+                if jockey_data and isinstance(jockey_data, dict):
+                    raw_stats = self._aggregate_post_stats_from_raw(jockey_data.get('post_position_stats', {}))
+
+            if raw_stats and isinstance(raw_stats, dict):
+                formatted_stats = self._format_post_stats(raw_stats)
+
+            if formatted_stats:
+                entry['all_post_stats'] = formatted_stats
+
+            if post_int is not None:
+                category_key = self._determine_post_category(post_int)
+                entry['post_category'] = category_key
+
+                if formatted_stats and category_key in formatted_stats:
+                    category_stats = formatted_stats[category_key]
+                    entry['place_rate'] = category_stats.get('fukusho_rate', 0.0)
+                    entry['race_count'] = category_stats.get('race_count', 0)
+                    entry['assigned_post_stats'] = category_stats
+                elif formatted_stats:
+                    entry['message'] = '枠順別データなし'
+                else:
+                    entry['message'] = '枠順別データが利用できません'
+            else:
+                entry['message'] = entry.get('message') or '枠番情報なし'
+
+            performances.append(entry)
+
         return performances
     
     def _analyze_jockeys_course_performance(self, jockeys: List[str], venue: str, 
@@ -1485,6 +1484,82 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
         
         logger.info(f"騎手コース成績分析結果: {len(performances)}件")
         return performances
+
+    def _format_post_stats(self, raw_stats: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
+        """枠順カテゴリのキーを統一（内枠/中枠/外枠）"""
+        formatted: Dict[str, Dict[str, float]] = {}
+        if not isinstance(raw_stats, dict):
+            return formatted
+
+        for key, stats in raw_stats.items():
+            if not isinstance(stats, dict):
+                continue
+            category_label = self._normalize_post_category_label(key)
+            if not category_label:
+                continue
+            race_count = stats.get('race_count', stats.get('total_races', 0))
+            fukusho_rate = stats.get('fukusho_rate', 0.0)
+            formatted[category_label] = {
+                'race_count': race_count,
+                'fukusho_rate': fukusho_rate
+            }
+        return formatted
+
+    def _normalize_post_category_label(self, label: str) -> str:
+        if not label or not isinstance(label, str):
+            return ''
+        cleaned = re.sub(r'（.*?）', '', label).strip()
+        # 旧形式の「枠N」を内/中/外カテゴリに変換
+        if cleaned.startswith('枠'):
+            try:
+                post_num = int(cleaned[1:])
+                return self._determine_post_category(post_num)
+            except ValueError:
+                return ''
+        return cleaned
+
+    def _determine_post_category(self, post: int) -> str:
+        if post <= 3:
+            return '内枠'
+        if post <= 6:
+            return '中枠'
+        return '外枠'
+
+    def _aggregate_post_stats_from_raw(self, post_stats: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
+        if not isinstance(post_stats, dict):
+            return {}
+
+        categories = {
+            '内枠（1-3）': [f'枠{i}' for i in range(1, 4)],
+            '中枠（4-6）': [f'枠{i}' for i in range(4, 7)],
+            '外枠（7-8）': [f'枠{i}' for i in range(7, 9)]
+        }
+
+        aggregated: Dict[str, Dict[str, float]] = {}
+        for label, target_posts in categories.items():
+            total_races = 0
+            fukusho_total = 0.0
+            for target in target_posts:
+                stats = post_stats.get(target)
+                if not isinstance(stats, dict):
+                    continue
+                race_count = stats.get('race_count', stats.get('total_races', 0))
+                fukusho_rate = stats.get('fukusho_rate', 0.0)
+                total_races += race_count
+                fukusho_total += (fukusho_rate * race_count / 100) if race_count else 0.0
+
+            if total_races > 0:
+                aggregated[label] = {
+                    'race_count': total_races,
+                    'fukusho_rate': round((fukusho_total / total_races) * 100, 1)
+                }
+            else:
+                aggregated[label] = {
+                    'race_count': 0,
+                    'fukusho_rate': 0.0
+                }
+
+        return aggregated
     
     def _generate_trend_insights(self, horse_stats: List[Dict], 
                                 jockey_post_stats: List[Dict], 

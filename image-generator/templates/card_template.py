@@ -194,7 +194,7 @@ def generate_card_body(
     <div data-share-card style="
         margin: 0 auto;
         display: flex;
-        width: 640px;
+        width: 1024px;
         flex-direction: column;
         gap: 24px;
         border-radius: 36px;

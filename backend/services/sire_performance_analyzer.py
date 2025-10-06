@@ -5,7 +5,7 @@
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
@@ -78,7 +78,13 @@ class SirePerformanceAnalyzer:
         except Exception as e:
             logger.error(f"血統インデックス構築エラー: {e}")
 
-    def analyze_sire_performance(self, sire_name: str, venue_code: str, distance: str) -> Dict:
+    def analyze_sire_performance(
+        self,
+        sire_name: str,
+        venue_code: str,
+        distance: str,
+        track_type: Optional[str] = None
+    ) -> Dict:
         """
         種牡馬の産駒成績を高速分析
 
@@ -91,6 +97,8 @@ class SirePerformanceAnalyzer:
             産駒成績の辞書
         """
         try:
+            normalized_track_type = self._normalize_track_type(track_type)
+
             # インデックスから産駒リストを即座に取得（O(1)）
             offspring_list = self.sire_index.get(sire_name, [])
 
@@ -119,6 +127,10 @@ class SirePerformanceAnalyzer:
                     if race.get('KYORI') != distance:
                         continue
 
+                    race_track_type = self._get_track_type(race)
+                    if normalized_track_type and race_track_type and normalized_track_type != race_track_type:
+                        continue
+
                     total_races += 1
 
                     # 着順を取得
@@ -134,7 +146,13 @@ class SirePerformanceAnalyzer:
                         continue
 
                     # 馬場状態別に集計（芝とダートで別フィールド）
-                    track_condition = race.get('SHIBA_BABAJOTAI_CODE', race.get('DIRT_BABAJOTAI_CODE', ''))
+                    shiba_condition = race.get('SHIBA_BABAJOTAI_CODE', '')
+                    dirt_condition = race.get('DIRT_BABAJOTAI_CODE', '')
+                    if shiba_condition in [None, '', '0', 0]:
+                        track_condition = dirt_condition
+                    else:
+                        track_condition = shiba_condition
+
                     condition_name = self._get_track_condition(track_condition)
 
                     if condition_name in by_condition:
@@ -188,7 +206,13 @@ class SirePerformanceAnalyzer:
             logger.error(f"産駒成績分析エラー（{sire_name}）: {e}")
             return {'message': 'エラー発生'}
 
-    def analyze_broodmare_sire_performance(self, broodmare_sire_name: str, venue_code: str, distance: str) -> Dict:
+    def analyze_broodmare_sire_performance(
+        self,
+        broodmare_sire_name: str,
+        venue_code: str,
+        distance: str,
+        track_type: Optional[str] = None
+    ) -> Dict:
         """
         母父の産駒成績を高速分析
 
@@ -201,6 +225,8 @@ class SirePerformanceAnalyzer:
             産駒成績の辞書
         """
         try:
+            normalized_track_type = self._normalize_track_type(track_type)
+
             # インデックスから産駒リストを即座に取得（O(1)）
             offspring_list = self.broodmare_sire_index.get(broodmare_sire_name, [])
 
@@ -226,6 +252,10 @@ class SirePerformanceAnalyzer:
                     if race.get('KYORI') != distance:
                         continue
 
+                    race_track_type = self._get_track_type(race)
+                    if normalized_track_type and race_track_type and normalized_track_type != race_track_type:
+                        continue
+
                     total_races += 1
 
                     order = race.get('KAKUTEI_CHAKUJUN', '')
@@ -239,7 +269,13 @@ class SirePerformanceAnalyzer:
                     except (ValueError, TypeError):
                         continue
 
-                    track_condition = race.get('SHIBA_BABAJOTAI_CODE', race.get('DIRT_BABAJOTAI_CODE', ''))
+                    shiba_condition = race.get('SHIBA_BABAJOTAI_CODE', '')
+                    dirt_condition = race.get('DIRT_BABAJOTAI_CODE', '')
+                    if shiba_condition in [None, '', '0', 0]:
+                        track_condition = dirt_condition
+                    else:
+                        track_condition = shiba_condition
+
                     condition_name = self._get_track_condition(track_condition)
 
                     if condition_name in by_condition:
@@ -289,6 +325,46 @@ class SirePerformanceAnalyzer:
         except Exception as e:
             logger.error(f"母父産駒成績分析エラー（{broodmare_sire_name}）: {e}")
             return {'message': 'エラー発生'}
+
+    def _normalize_track_type(self, track_type: Optional[str]) -> Optional[str]:
+        if not track_type:
+            return None
+        if isinstance(track_type, str):
+            normalized = track_type.strip()
+            lower = normalized.lower()
+            if '芝' in normalized or 'turf' in lower:
+                return '芝'
+            if 'ダート' in normalized or '砂' in normalized or 'dirt' in lower:
+                return 'ダート'
+            if '障害' in normalized or 'steeple' in lower:
+                return '障害'
+            return normalized
+        return None
+
+    def _get_track_type(self, race: Dict[str, Any]) -> Optional[str]:
+        track_code = race.get('TRACK_CODE')
+        if track_code is not None and track_code != '':
+            try:
+                track_code_int = int(track_code)
+            except (TypeError, ValueError):
+                track_code_int = None
+            if track_code_int is not None:
+                if 11 <= track_code_int <= 19:
+                    return '芝'
+                if 21 <= track_code_int <= 29:
+                    return 'ダート'
+                if 31 <= track_code_int <= 39:
+                    return '障害'
+
+        shiba_condition = race.get('SHIBA_BABAJOTAI_CODE')
+        if shiba_condition not in [None, '', '0', 0]:
+            return '芝'
+
+        dirt_condition = race.get('DIRT_BABAJOTAI_CODE')
+        if dirt_condition not in [None, '', '0', 0]:
+            return 'ダート'
+
+        return None
 
     def _get_track_condition(self, code: str) -> str:
         """馬場状態コードから名称を取得"""

@@ -573,20 +573,9 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
     
     def _ensure_jockey_manager_compatibility(self):
         """jockey_managerに必要なメソッドを追加（ViewLogicEngineとの互換性のため）"""
-        # get_jockey_post_position_fukusho_ratesメソッドが存在しない場合、プロキシを追加
-        if not hasattr(self.jockey_manager, 'get_jockey_post_position_fukusho_rates'):
-            def get_jockey_post_position_fukusho_rates_proxy(jockey_names: list):
-                """騎手の枠順別複勝率を取得するプロキシメソッド"""
-                result = {}
-                for jockey_name in jockey_names:
-                    # デフォルトの枠順別データを返す（データ不足として扱う）
-                    result[jockey_name] = {
-                        '内枠（1-6）': {'fukusho_rate': 0.0, 'race_count': 0},
-                        '中枠（7-12）': {'fukusho_rate': 0.0, 'race_count': 0},
-                        '外枠（13-18）': {'fukusho_rate': 0.0, 'race_count': 0}
-                    }
-                return result
-            self.jockey_manager.get_jockey_post_position_fukusho_rates = get_jockey_post_position_fukusho_rates_proxy
+        # get_jockey_post_position_fukusho_ratesメソッドは
+        # local_jockey_data_manager.pyに実装済みなので、プロキシは不要
+        pass
     
     def predict_race_flow_advanced(self, race_data: Dict[str, Any]) -> Dict[str, Any]:
         """

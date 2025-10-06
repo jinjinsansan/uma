@@ -1347,18 +1347,19 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
                             })
                         else:
                             # カテゴリ別に集計（内枠、中枠、外枠）
-                            post_category = '内枠' if post <= 6 else '中枠' if post <= 12 else '外枠'
+                            # 地方競馬用：1-3（内）、4-6（中）、7-8（外）
+                            post_category = '内枠' if post <= 3 else '中枠' if post <= 6 else '外枠'
                             
                             # 該当カテゴリの枠を集計
                             total_races = 0
                             fukusho_count = 0
                             
                             if post_category == '内枠':
-                                target_posts = [f'枠{i}' for i in range(1, 7)]
+                                target_posts = [f'枠{i}' for i in range(1, 4)]  # 1-3
                             elif post_category == '中枠':
-                                target_posts = [f'枠{i}' for i in range(7, 13)]
+                                target_posts = [f'枠{i}' for i in range(4, 7)]  # 4-6
                             else:  # 外枠
-                                target_posts = [f'枠{i}' for i in range(13, 19)]
+                                target_posts = [f'枠{i}' for i in range(7, 9)]  # 7-8
                             
                             for target_post in target_posts:
                                 if target_post in post_stats:

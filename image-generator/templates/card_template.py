@@ -199,13 +199,13 @@ def generate_card_body(
     <div data-share-card style="
         margin: 0 auto;
         display: flex;
-        width: 1280px;
+        width: 1200px;
         flex-direction: column;
-        gap: 24px;
-        border-radius: 36px;
+        gap: 20px;
+        border-radius: 32px;
         border: 1px solid #1C2534;
         background: linear-gradient(to bottom, #070B12, #05070A, #020305);
-        padding: 32px 40px;
+        padding: 32px 36px;
         color: #EAECEF;
         box-shadow: 0 40px 120px rgba(0,0,0,0.45);
     ">

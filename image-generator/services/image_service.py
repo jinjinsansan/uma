@@ -75,7 +75,7 @@ class ImageGeneratorService:
         try:
             # 新しいページを作成
             page = await self.browser.new_page(
-                viewport={'width': 1024, 'height': 1400},
+                viewport={'width': 1200, 'height': 1200},
                 device_scale_factor=options.get('deviceScaleFactor', 2)
             )
             

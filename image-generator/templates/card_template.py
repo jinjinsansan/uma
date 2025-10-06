@@ -278,12 +278,12 @@ def generate_user_note_section(user_note: str) -> str:
     # HTMLエスケープ
     escaped_note = str(user_note).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
     return f"""
-    <section style="border-radius: 24px; border: 1px solid #1F2733; background: #080C13; padding: 20px;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-            <p style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3em; color: #94A3B8;">MY NOTE</p>
-            <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.3em; color: #3C4454;">USER MEMO</span>
+    <section style="border-radius: 24px; border: 1px solid #1F2733; background: #080C13; padding: 24px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <p style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3em; color: #FACC15;">MY NOTE</p>
+            <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.3em; color: #3C4454;">USER MEMO</span>
         </div>
-        <p style="margin-top: 12px; white-space: pre-wrap; font-size: 14px; line-height: 1.625; color: white;">
+        <p style="white-space: pre-wrap; font-size: 18px; font-weight: 600; line-height: 1.75; color: #FFFFFF;">
             {escaped_note}
         </p>
     </section>

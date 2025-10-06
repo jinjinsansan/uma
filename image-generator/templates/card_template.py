@@ -302,14 +302,14 @@ def generate_prediction_section(top_pick: Dict[str, Any], colors: Dict[str, str]
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 24px;">
             <div style="text-align: center;">
                 <p style="font-size: 18px; text-transform: uppercase; letter-spacing: 0.4em; color: #94A3B8;">ENGINE TOP PICK</p>
-                <p style="margin-top: 8px; font-size: 28px; font-weight: 600; color: white;">
+                <p style="margin-top: 8px; font-size: 28px; font-weight: 600; color: white; white-space: nowrap;">
                     {top_pick.get('label', '')} 1位予想
                 </p>
             </div>
             
             <div style="display: flex; justify-content: center; width: 100%;">
                 <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 20px; border-radius: 28px; border: 1px solid {colors['border']}; background: linear-gradient(to bottom, #0E141F, #0B101A, #070B12); padding: 48px 40px; text-align: center; width: 100%; max-width: 512px; box-shadow: 0 0 40px {colors['shadow']}33;">
-                    <span style="display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; background: {colors['gradient']}; padding: 8px 24px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.35em; color: black; box-shadow: 0 10px 25px rgba(0,0,0,0.35);">
+                    <span style="display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; background: {colors['gradient']}; padding: 8px 24px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.35em; color: black; box-shadow: 0 10px 25px rgba(0,0,0,0.35); white-space: nowrap;">
                         {top_pick.get('label', '')}
                     </span>
                     <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">

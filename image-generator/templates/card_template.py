@@ -213,11 +213,11 @@ def generate_card_body(
 
 def generate_header(race_meta: Dict[str, Any]) -> str:
     """ヘッダー部分を生成"""
-    venue = race_meta.get('venue', '')
-    race_number = race_meta.get('raceNumber', '')
-    race_name = race_meta.get('raceName', '')
-    date = race_meta.get('date', '')
-    distance = race_meta.get('distance', '')
+    venue = str(race_meta.get('venue', '')) if race_meta.get('venue') else ''
+    race_number = str(race_meta.get('raceNumber', '')) if race_meta.get('raceNumber') else ''
+    race_name = str(race_meta.get('raceName', '')) if race_meta.get('raceName') else ''
+    date = str(race_meta.get('date', '')) if race_meta.get('date') else ''
+    distance = str(race_meta.get('distance', '')) if race_meta.get('distance') else ''
     
     return f"""
     <header style="display: flex; flex-direction: column; gap: 16px;">
@@ -275,6 +275,8 @@ def generate_prediction_section(top_pick: Dict[str, Any], colors: Dict[str, str]
 
 def generate_user_note_section(user_note: str) -> str:
     """ユーザーメモセクションを生成"""
+    # HTMLエスケープ
+    escaped_note = str(user_note).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
     return f"""
     <section style="border-radius: 24px; border: 1px solid #1F2733; background: #080C13; padding: 20px;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
@@ -282,7 +284,7 @@ def generate_user_note_section(user_note: str) -> str:
             <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.3em; color: #3C4454;">USER MEMO</span>
         </div>
         <p style="margin-top: 12px; white-space: pre-wrap; font-size: 14px; line-height: 1.625; color: white;">
-            {user_note}
+            {escaped_note}
         </p>
     </section>
     """

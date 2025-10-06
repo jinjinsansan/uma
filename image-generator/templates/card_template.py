@@ -129,6 +129,46 @@ def extract_top_pick(engine: str, data: Dict[str, Any]) -> Optional[Dict[str, An
             'description': format_dlogic_details(top)
         }
     
+    elif engine == 'nlogic':
+        # N-LOGICの処理: predictions, results, scoresなど複数の形式に対応
+        predictions = data.get('predictions', [])
+        results = data.get('results', [])
+        
+        top_list = predictions if predictions else results
+        
+        if not top_list or not isinstance(top_list, list):
+            return None
+        
+        # 1位を取得
+        top = None
+        if top_list:
+            # rankフィールドがある場合はそれでソート
+            if any(item.get('rank') for item in top_list if isinstance(item, dict)):
+                sorted_list = sorted(
+                    [item for item in top_list if isinstance(item, dict)],
+                    key=lambda x: x.get('rank', 9999)
+                )
+                top = sorted_list[0] if sorted_list else None
+            else:
+                # なければ最初の要素を使用
+                top = top_list[0] if isinstance(top_list[0], dict) else None
+        
+        if not top:
+            return None
+        
+        # 勝率を取得
+        win_rate = top.get('win_rate') or top.get('winning_rate')
+        highlight_text = f"勝率 {float(win_rate):.1f}%" if win_rate else None
+        
+        return {
+            'engine': 'nlogic',
+            'label': 'N-LOGIC',
+            'horseName': top.get('horse') or top.get('horse_name', '不明'),
+            'badge': f"RANK {top.get('rank', 1)}",
+            'highlight': highlight_text,
+            'description': f"予測オッズ {top.get('odds', 0):.1f}倍" if top.get('odds') else None
+        }
+    
     # 他のエンジンタイプも同様に実装...
     return None
 

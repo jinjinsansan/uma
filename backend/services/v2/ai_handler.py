@@ -3351,6 +3351,9 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                     }
                     venue_code = venue_codes.get(venue, '')
                 
+                # デバッグログ：venue_codeマッピング確認
+                print(f"[DEBUG] 🔍 会場コードマッピング: venue={venue}, venue_code={venue_code}, is_local={is_local}")
+                
                 # 距離を文字列に変換（例: 2400m → '2400'）
                 if isinstance(distance, str) and distance.endswith('m'):
                     distance = distance[:-1]

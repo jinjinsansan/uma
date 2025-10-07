@@ -151,9 +151,19 @@ class LocalSirePerformanceAnalyzer:
                 '不良': {'races': 0, 'wins': 0, 'places': 0}
             }
 
+            # デバッグログ：最初の産駒のレースを確認
+            debug_count = 0
+            
             # 産駒のレースデータを分析
             for offspring in offspring_list:
                 for race in offspring['races']:
+                    # デバッグ：最初の5件のみログ出力
+                    if debug_count < 5:
+                        race_venue = str(race.get('KEIBAJO_CODE', ''))
+                        race_distance = str(race.get('KYORI', ''))
+                        print(f"[DEBUG] 🔍 地方競馬レース検証: venue={race_venue}(期待:{venue_code}), distance={race_distance}(期待:{normalized_distance}), track_type={self._get_track_type(race)}(期待:{normalized_track_type})")
+                        debug_count += 1
+                    
                     # 会場と距離が一致するかチェック
                     race_venue = str(race.get('KEIBAJO_CODE', ''))
                     race_distance = str(race.get('KYORI', ''))

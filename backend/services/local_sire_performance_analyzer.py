@@ -43,6 +43,15 @@ class LocalSirePerformanceAnalyzer:
         self._initialized = True
         logger.info(f"✅ 地方競馬版 種牡馬産駒成績分析エンジン初期化完了（父: {len(self.sire_index)}頭、母父: {len(self.broodmare_sire_index)}頭）")
 
+    def _normalize_bloodline_name(self, name: Optional[str]) -> Optional[str]:
+        """血統名を正規化（全角スペース対応）"""
+        if not name:
+            return None
+        if not isinstance(name, str):
+            name = str(name)
+        normalized = name.replace('\u3000', ' ').strip()
+        return normalized or None
+
     def _build_index(self):
         """血統インデックスを構築（起動時に1回だけ）"""
         try:
@@ -62,14 +71,8 @@ class LocalSirePerformanceAnalyzer:
 
                 # 最新レースから血統情報を取得
                 latest_race = races[0]
-                sire = latest_race.get('sire')
-                broodmare_sire = latest_race.get('broodmare_sire')
-
-                # 空白文字を除去して正規化
-                if sire:
-                    sire = sire.strip()
-                if broodmare_sire:
-                    broodmare_sire = broodmare_sire.strip()
+                sire = self._normalize_bloodline_name(latest_race.get('sire'))
+                broodmare_sire = self._normalize_bloodline_name(latest_race.get('broodmare_sire'))
 
                 # 産駒情報を保存（レースデータ付き）
                 offspring_info = {
@@ -109,8 +112,10 @@ class LocalSirePerformanceAnalyzer:
             産駒成績の辞書
         """
         try:
-            # 種牡馬名を正規化（空白除去）
-            sire_name = sire_name.strip()
+            original_sire_name = sire_name
+            sire_name = self._normalize_bloodline_name(sire_name)
+            if not sire_name:
+                return {'message': 'データなし'}
 
             normalized_track_type = self._normalize_track_type(track_type)
             normalized_distance = None
@@ -151,19 +156,9 @@ class LocalSirePerformanceAnalyzer:
                 '不良': {'races': 0, 'wins': 0, 'places': 0}
             }
 
-            # デバッグログ：最初の産駒のレースを確認
-            debug_count = 0
-            
             # 産駒のレースデータを分析
             for offspring in offspring_list:
                 for race in offspring['races']:
-                    # デバッグ：最初の5件のみログ出力
-                    if debug_count < 5:
-                        race_venue = str(race.get('KEIBAJO_CODE', ''))
-                        race_distance = str(race.get('KYORI', ''))
-                        print(f"[DEBUG] 🔍 地方競馬レース検証: venue={race_venue}(期待:{venue_code}), distance={race_distance}(期待:{normalized_distance}), track_type={self._get_track_type(race)}(期待:{normalized_track_type})")
-                        debug_count += 1
-                    
                     # 会場と距離が一致するかチェック
                     race_venue = str(race.get('KEIBAJO_CODE', ''))
                     race_distance = str(race.get('KYORI', ''))
@@ -256,7 +251,7 @@ class LocalSirePerformanceAnalyzer:
             }
 
         except Exception as e:
-            logger.error(f"地方競馬 産駒成績分析エラー（{sire_name}）: {e}")
+            logger.error(f"地方競馬 産駒成績分析エラー（{original_sire_name}）: {e}")
             return {'message': 'エラー発生'}
 
     def analyze_broodmare_sire_performance(
@@ -278,8 +273,10 @@ class LocalSirePerformanceAnalyzer:
             産駒成績の辞書
         """
         try:
-            # 母父名を正規化（空白除去）
-            broodmare_sire_name = broodmare_sire_name.strip()
+            original_broodmare_sire_name = broodmare_sire_name
+            broodmare_sire_name = self._normalize_bloodline_name(broodmare_sire_name)
+            if not broodmare_sire_name:
+                return {'message': 'データなし'}
 
             normalized_track_type = self._normalize_track_type(track_type)
             normalized_distance = None
@@ -408,7 +405,7 @@ class LocalSirePerformanceAnalyzer:
             }
 
         except Exception as e:
-            logger.error(f"地方競馬 母父産駒成績分析エラー（{broodmare_sire_name}）: {e}")
+            logger.error(f"地方競馬 母父産駒成績分析エラー（{original_broodmare_sire_name}）: {e}")
             return {'message': 'エラー発生'}
 
     def _normalize_track_type(self, track_type: Optional[str]) -> Optional[str]:

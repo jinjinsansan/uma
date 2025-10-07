@@ -17,13 +17,9 @@ class SirePerformanceAnalyzer:
     _instance = None
 
     def __new__(cls):
-        print(f"[DEBUG] __new__ called: _instance={cls._instance}, id={id(cls._instance) if cls._instance else 'None'}")
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
-            print(f"[DEBUG] Created new instance: id={id(cls._instance)}")
-        else:
-            print(f"[DEBUG] Reusing existing instance: id={id(cls._instance)}")
         return cls._instance
 
     def __init__(self):
@@ -79,8 +75,6 @@ class SirePerformanceAnalyzer:
                         break
                 
                 # デバッグ：ディープインパクト産駒を追跡
-                if sire and 'ディープ' in sire and 'インパクト' in sire:
-                    print(f"[DEBUG] Found Deep Impact offspring: {horse_name}, sire={sire}")
                 
                 # デバッグ: 血統情報がない場合をカウント
                 if not sire:
@@ -148,7 +142,6 @@ class SirePerformanceAnalyzer:
             
             # デバッグログ：インデックス内の産駒数
             total_races_in_list = sum(len(o['races']) for o in offspring_list) if offspring_list else 0
-            print(f"[DEBUG] 🔍 インデックス情報: sire={sire_key}, 産駒数={len(offspring_list)}頭, 総レース数={total_races_in_list}戦, instance={id(self)}, total_sires={len(self.sire_index)}")
 
             if not offspring_list:
                 return {'message': 'データなし'}
@@ -197,8 +190,6 @@ class SirePerformanceAnalyzer:
                     race_track_type = self._get_track_type(race)
                     if normalized_track_type and race_track_type and normalized_track_type != race_track_type:
                         debug_track_mismatch += 1
-                        if debug_matched_count < 10:
-                            print(f"[DEBUG] ❌ Track mismatch: expected={normalized_track_type}, got={race_track_type}, TRACK={race.get('TRACK_CODE')}, SHIBA={race.get('SHIBA_BABAJOTAI_CODE')}, DIRT={race.get('DIRT_BABAJOTAI_CODE')}")
                         continue
 
                     debug_matched_count += 1
@@ -237,10 +228,6 @@ class SirePerformanceAnalyzer:
                             pass
 
             # デバッグログ：最終結果と除外統計
-            print(f"[DEBUG] 🔍 JRA産駒成績: sire={sire_name}, venue={venue_code}, distance={normalized_distance}, track_type={normalized_track_type}")
-            print(f"[DEBUG] 🔍 結果: total_races={total_races}, wins={wins}")
-            print(f"[DEBUG] 🔍 除外統計: venue_mismatch={debug_venue_mismatch}, distance_mismatch={debug_distance_mismatch}, track_mismatch={debug_track_mismatch}, matched={debug_matched_count}")
-            
             # 結果がない場合
             if total_races == 0:
                 return {'message': 'データなし'}
@@ -355,8 +342,6 @@ class SirePerformanceAnalyzer:
                     race_track_type = self._get_track_type(race)
                     if normalized_track_type and race_track_type and normalized_track_type != race_track_type:
                         debug_track_mismatch += 1
-                        if debug_matched_count < 10:
-                            print(f"[DEBUG] ❌ Track mismatch: expected={normalized_track_type}, got={race_track_type}, TRACK={race.get('TRACK_CODE')}, SHIBA={race.get('SHIBA_BABAJOTAI_CODE')}, DIRT={race.get('DIRT_BABAJOTAI_CODE')}")
                         continue
 
                     debug_matched_count += 1

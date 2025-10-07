@@ -3274,9 +3274,6 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             )
             track_type = self._normalize_track_type(raw_track_type)
             
-            # デバッグログ：course_typeの値を確認
-            print(f"[DEBUG] 🔍 血統分析デバッグ: venue={venue}, distance={distance_value}, course_type={race_data.get('course_type')}, raw_track_type={raw_track_type}, track_type={track_type}")
-
             if not track_type and isinstance(normalized_distance_value, str):
                 if '芝' in normalized_distance_value:
                     track_type = '芝'
@@ -3350,9 +3347,6 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                         '阪神': '09', '小倉': '10'
                     }
                     venue_code = venue_codes.get(venue, '')
-                
-                # デバッグログ：venue_codeマッピング確認
-                print(f"[DEBUG] 🔍 会場コードマッピング: venue={venue}, venue_code={venue_code}, is_local={is_local}")
                 
                 # 距離を文字列に変換（例: 2400m → '2400'）
                 if isinstance(distance, str) and distance.endswith('m'):

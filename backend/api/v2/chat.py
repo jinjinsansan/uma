@@ -232,9 +232,6 @@ async def create_chat(
             # )
             # logger.info(f"v2_race_scoresに保存完了: {request.race_id}")
         
-        # デバッグログ：チャット作成時のcourse_type確認
-        print(f"[DEBUG] 🔍 チャット作成: distance={request.distance}, course_type={request.course_type}, venue={request.venue}")
-        
         # チャット作成
         chat_service = V2ChatService()
         chat_session = await chat_service.create_session(
@@ -465,22 +462,12 @@ async def send_message(
             "popularities": race_snapshot.get("popularities") or session.get("popularities")
         }
         
-        # デバッグログ：course_typeの値を確認
-        print(f"[DEBUG] 🔍 チャットメッセージ race_data: distance={race_data.get('distance')}, course_type={race_data.get('course_type')}, venue={race_data.get('venue')}")
-        print(f"[DEBUG] 🔍 race_snapshot.course_type={race_snapshot.get('course_type')}, session.course_type={session.get('course_type')}")
-        
-
-        
         # IMLogic設定を取得（リクエストから渡されるか、Supabaseから取得）
         imlogic_settings = request.imlogic_settings
-        print(f"[DEBUG] imlogic_settings from request: {imlogic_settings}")
-        print(f"[DEBUG] ai_type: {request.ai_type}")
-        print(f"[DEBUG] user_email: {user_email}")
         
         # horse_weightとjockey_weightが含まれていない場合もSupabaseから取得
         if (not imlogic_settings or imlogic_settings == {} or 
             'horse_weight' not in imlogic_settings or 'jockey_weight' not in imlogic_settings):
-            print(f"[DEBUG] 空の設定を検知、Supabaseから取得開始")
             # ユーザーのIMLogic設定をSupabaseから取得
             try:
                 from supabase import create_client, Client
@@ -492,7 +479,6 @@ async def send_message(
                 
                 # v2_usersテーブルからユーザーIDを取得
                 user_result = supabase.table("v2_users").select("id").eq("email", user_email).execute()
-                print(f"[DEBUG] user_result.data: {user_result.data}")
                 if user_result.data:
                     v2_user_id = user_result.data[0]['id']
                     
@@ -508,7 +494,6 @@ async def send_message(
                             "jockey_weight": settings_data.get("jockey_weight", 30),
                             "item_weights": settings_data.get("item_weights", {})
                         }
-                        print(f"IMLogic設定取得成功: 馬={imlogic_settings['horse_weight']}%, 騎手={imlogic_settings['jockey_weight']}%")
             except Exception as e:
                 logger.warning(f"IMLogic設定取得エラー: {e}")
                 pass

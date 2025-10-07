@@ -113,6 +113,10 @@ class SirePerformanceAnalyzer:
 
             # インデックスから産駒リストを即座に取得（O(1)）
             offspring_list = self.sire_index.get(sire_name, [])
+            
+            # デバッグログ：インデックス内の産駒数
+            total_races_in_list = sum(len(o['races']) for o in offspring_list) if offspring_list else 0
+            print(f"[DEBUG] 🔍 インデックス情報: sire={sire_name}, 産駒数={len(offspring_list)}頭, 総レース数={total_races_in_list}戦")
 
             if not offspring_list:
                 return {'message': 'データなし'}

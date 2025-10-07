@@ -14,6 +14,8 @@ import itertools
 import copy
 import os
 from pathlib import Path
+
+ENABLE_V2_PREWARM = os.getenv("ENABLE_V2_PREWARM", "0") == "1"
 LOCK_FILE_PATH = Path("/tmp/uma_prewarm.lock")
 LOCK_REDIS_KEY = "cache_prewarm_lock:nar_v2"
 LOCK_TTL_SECONDS = 1800
@@ -713,10 +715,13 @@ def prewarm_cache():
         except Exception as e:
             logger.error(f"Cache prewarming failed for NAR: {e}")
 
-        try:
-            warmed += _prewarm_nar_v2_engines()
-        except Exception as e:
-            logger.error(f"Cache prewarming failed for NAR V2 engines: {e}")
+        if ENABLE_V2_PREWARM:
+            try:
+                warmed += _prewarm_nar_v2_engines()
+            except Exception as e:
+                logger.error(f"Cache prewarming failed for NAR V2 engines: {e}")
+        else:
+            logger.info("NAR V2 prewarm skipped (ENABLE_V2_PREWARM=0)")
 
         logger.info(f"Cache prewarming completed. Warmed {warmed} entries.")
     finally:

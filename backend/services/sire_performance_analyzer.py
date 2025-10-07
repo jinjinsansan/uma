@@ -331,6 +331,8 @@ class SirePerformanceAnalyzer:
             return None
         if isinstance(track_type, str):
             normalized = track_type.strip()
+            if not normalized:
+                return None
             lower = normalized.lower()
             if '芝' in normalized or 'turf' in lower:
                 return '芝'
@@ -338,7 +340,6 @@ class SirePerformanceAnalyzer:
                 return 'ダート'
             if '障害' in normalized or 'steeple' in lower:
                 return '障害'
-            return normalized
         return None
 
     def _get_track_type(self, race: Dict[str, Any]) -> Optional[str]:

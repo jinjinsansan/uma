@@ -716,6 +716,8 @@ class V2AIHandler:
             return None
         if isinstance(track_type, str):
             normalized = track_type.strip()
+            if not normalized:
+                return None
             lower = normalized.lower()
             if '芝' in normalized or 'turf' in lower:
                 return '芝'
@@ -723,7 +725,6 @@ class V2AIHandler:
                 return 'ダート'
             if '障害' in normalized or 'steeple' in lower:
                 return '障害'
-            return normalized
         return None
     
     async def process_imlogic_message(
@@ -3254,10 +3255,16 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             (content, analysis_data) のタプル
         """
         try:
+            import unicodedata
+
             venue = race_data.get('venue', '')
             race_number = race_data.get('race_number', '')
             horses = race_data.get('horses', [])
             distance_value = race_data.get('distance', '')
+
+            normalized_distance_value = distance_value
+            if isinstance(distance_value, str):
+                normalized_distance_value = unicodedata.normalize('NFKC', distance_value).strip()
 
             raw_track_type = (
                 race_data.get('track_type')
@@ -3267,15 +3274,38 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
             )
             track_type = self._normalize_track_type(raw_track_type)
 
-            if not track_type and isinstance(distance_value, str):
-                if '芝' in distance_value:
+            if not track_type and isinstance(normalized_distance_value, str):
+                if '芝' in normalized_distance_value:
                     track_type = '芝'
-                elif 'ダート' in distance_value or '砂' in distance_value:
+                elif 'ダート' in normalized_distance_value or '砂' in normalized_distance_value:
                     track_type = 'ダート'
-                elif '障害' in distance_value:
+                elif '障害' in normalized_distance_value:
                     track_type = '障害'
 
-            distance = distance_value
+            distance = ''
+            if isinstance(distance_value, (int, float)) and not isinstance(distance_value, bool):
+                distance = str(int(distance_value))
+            elif isinstance(normalized_distance_value, str):
+                digit_chars = ''.join(ch for ch in normalized_distance_value if ch.isdigit())
+                distance = digit_chars
+            elif distance_value:
+                distance = str(distance_value)
+
+            if isinstance(distance, str):
+                distance = distance.strip()
+                if distance.endswith(('m', 'M')):
+                    distance = distance[:-1].strip()
+                if distance and not distance.isdigit():
+                    digit_chars = ''.join(ch for ch in distance if ch.isdigit())
+                    distance = digit_chars
+
+            course_suffix = ''
+            if distance:
+                course_suffix = f"{distance}m"
+            elif isinstance(normalized_distance_value, str) and normalized_distance_value:
+                course_suffix = normalized_distance_value
+
+            course_label = f"{venue}{course_suffix}" if course_suffix else venue
 
             # 地方競馬かどうかを判定
             is_local = self._is_local_racing(venue)
@@ -3402,7 +3432,8 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                                         sire, venue_code, distance, track_type
                                     )
                                     if 'message' not in sire_perf:
-                                        lines.append(f"    └ 父 {venue}{distance}m成績: {sire_perf['total_races']}戦{sire_perf['wins']}勝 複勝率{sire_perf['place_rate']:.1f}%")
+                                        father_label = course_label if distance else f"{course_label}"
+                                        lines.append(f"    └ 父 {father_label}成績: {sire_perf['total_races']}戦{sire_perf['wins']}勝 複勝率{sire_perf['place_rate']:.1f}%")
                                         # 馬場状態別を追加（0戦のデータは表示しない）
                                         if sire_perf.get('by_condition'):
                                             for cond in sire_perf['by_condition']:
@@ -3422,7 +3453,8 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                                         broodmare_sire, venue_code, distance, track_type
                                     )
                                     if 'message' not in bm_perf:
-                                        lines.append(f"    └ 母父 {venue}{distance}m成績: {bm_perf['total_races']}戦{bm_perf['wins']}勝 複勝率{bm_perf['place_rate']:.1f}%")
+                                        broodmare_label = course_label if distance else f"{course_label}"
+                                        lines.append(f"    └ 母父 {broodmare_label}成績: {bm_perf['total_races']}戦{bm_perf['wins']}勝 複勝率{bm_perf['place_rate']:.1f}%")
                                         # 馬場状態別を追加（0戦のデータは表示しない）
                                         if bm_perf.get('by_condition'):
                                             for cond in bm_perf['by_condition']:
@@ -3452,6 +3484,8 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 'venue': venue,
                 'race_number': race_number,
                 'distance': distance,
+                'distance_label': course_suffix,
+                'track_type': track_type,
                 'is_local': is_local,
                 'horses_count': len(horses),
                 'entries': entries

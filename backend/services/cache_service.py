@@ -5,13 +5,59 @@ OpenAI APIとD-Logic分析結果をキャッシュして負荷軽減
 Redis統合版 - Redisが利用可能な場合は優先的に使用
 """
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import hashlib
 import json
 from functools import lru_cache
 import logging
 import itertools
 import copy
+import os
+from pathlib import Path
+LOCK_FILE_PATH = Path("/tmp/uma_prewarm.lock")
+LOCK_REDIS_KEY = "cache_prewarm_lock:nar_v2"
+LOCK_TTL_SECONDS = 1800
+
+
+def _acquire_prewarm_lock() -> Tuple[bool, bool]:
+    """プリウォームの重複実行を防ぐためのロックを取得"""
+    redis_lock_acquired = False
+    try:
+        if cache_service.redis_cache and cache_service.redis_cache.is_connected():
+            client = cache_service.redis_cache.client
+            if client.set(LOCK_REDIS_KEY, os.getpid(), nx=True, ex=LOCK_TTL_SECONDS):
+                redis_lock_acquired = True
+                return True, True
+    except Exception as exc:  # pragma: no cover - safety
+        logger.debug("Prewarm redis lock failed: %s", exc)
+
+    try:
+        LOCK_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(LOCK_FILE_PATH, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        with os.fdopen(fd, 'w') as handle:
+            handle.write(str(os.getpid()))
+        return True, redis_lock_acquired
+    except FileExistsError:
+        return False, redis_lock_acquired
+    except Exception as exc:  # pragma: no cover - safety
+        logger.debug("Prewarm file lock failed: %s", exc)
+        return False, redis_lock_acquired
+
+
+def _release_prewarm_lock(redis_lock_acquired: bool) -> None:
+    """取得したプリウォームロックを解放"""
+    if redis_lock_acquired:
+        try:
+            if cache_service.redis_cache and cache_service.redis_cache.is_connected():
+                cache_service.redis_cache.client.delete(LOCK_REDIS_KEY)
+        except Exception as exc:  # pragma: no cover - safety
+            logger.debug("Prewarm redis unlock failed: %s", exc)
+
+    try:
+        if LOCK_FILE_PATH.exists():
+            LOCK_FILE_PATH.unlink()
+    except Exception as exc:  # pragma: no cover - safety
+        logger.debug("Prewarm file unlock failed: %s", exc)
 
 logger = logging.getLogger(__name__)
 
@@ -553,113 +599,121 @@ def _prewarm_nar_v2_engines() -> int:
 def prewarm_cache():
     """キャッシュをプリウォーミング（G1レース用）"""
     logger.info("Starting cache prewarming for G1 races...")
-    
-    # G1レースでよく使われる馬名リスト（例）
-    popular_horses = [
-        "イクイノックス", "ドウデュース", "リバティアイランド",
-        "ソダシ", "ジオグリフ", "スターズオンアース"
-    ]
-    
-    # 主要競馬場
-    major_venues = ["東京", "中山", "京都", "阪神"]
-    
+    lock_acquired, redis_lock_acquired = _acquire_prewarm_lock()
+    if not lock_acquired:
+        logger.info("Cache prewarming skipped: another worker already running prewarm.")
+        return 0
+
     warmed = 0
     try:
-        from services.fast_dlogic_engine import FastDLogicEngine
-        engine = FastDLogicEngine()
+        # G1レースでよく使われる馬名リスト（例）
+        popular_horses = [
+            "イクイノックス", "ドウデュース", "リバティアイランド",
+            "ソダシ", "ジオグリフ", "スターズオンアース"
+        ]
 
-        for horse_name in popular_horses:
-            for venue in major_venues:
-                cache_data = {
-                    'horse_name': horse_name,
-                    'venue': venue,
-                    'analysis_type': 'dlogic',
-                    'region': 'jra'
-                }
+        # 主要競馬場
+        major_venues = ["東京", "中山", "京都", "阪神"]
 
-                key = cache_service._generate_key('dlogic_analysis', cache_data)
+        try:
+            from services.fast_dlogic_engine import FastDLogicEngine
+            engine = FastDLogicEngine()
 
-                if cache_service.redis_cache and cache_service.redis_cache.is_connected():
-                    redis_key = f"dlogic:{key}"
-                    if cache_service.redis_cache.exists(redis_key):
-                        continue
-
-                try:
-                    result = engine.analyze_single_horse(horse_name)
-                    cache_service.set(
-                        'dlogic_analysis',
-                        cache_data,
-                        result,
-                        ttl_override=timedelta(days=3)
-                    )
-                    warmed += 1
-                    logger.debug(f"Prewarmed JRA cache for {horse_name} at {venue}")
-                except Exception as e:
-                    logger.warning(f"Failed to prewarm JRA horse {horse_name}: {e}")
-
-    except Exception as e:
-        logger.error(f"Cache prewarming failed for JRA: {e}")
-
-    # 地方競馬(NAR)向けのプリウォーム
-    try:
-        from services.local_fast_dlogic_engine_v2 import LocalFastDLogicEngineV2
-        local_engine = LocalFastDLogicEngineV2()
-        local_manager = local_engine.raw_manager
-
-        local_horses = []
-        if hasattr(local_manager, 'get_sample_horses'):
-            local_horses = local_manager.get_sample_horses(limit=16)
-        elif hasattr(local_manager, 'get_all_horse_names'):
-            local_horses = local_manager.get_all_horse_names()[:16]
-
-        local_venues = ["大井", "川崎", "船橋", "浦和", "門別"]
-        local_distances = [1200, 1400, 1600, 1800, 2000]
-
-        for horse_name in local_horses:
-            try:
-                local_manager.calculate_dlogic_realtime(horse_name)
-            except Exception as e:
-                logger.debug(f"Shard warm-up failed for {horse_name}: {e}")
-                continue
-
-            for venue in local_venues:
-                for distance in local_distances:
+            for horse_name in popular_horses:
+                for venue in major_venues:
                     cache_data = {
                         'horse_name': horse_name,
                         'venue': venue,
-                        'distance': distance,
                         'analysis_type': 'dlogic',
-                        'region': 'nar'
+                        'region': 'jra'
                     }
 
                     key = cache_service._generate_key('dlogic_analysis', cache_data)
+
                     if cache_service.redis_cache and cache_service.redis_cache.is_connected():
                         redis_key = f"dlogic:{key}"
                         if cache_service.redis_cache.exists(redis_key):
                             continue
 
                     try:
-                        result = local_manager.calculate_dlogic_realtime(horse_name)
+                        result = engine.analyze_single_horse(horse_name)
                         cache_service.set(
                             'dlogic_analysis',
                             cache_data,
                             result,
-                            ttl_override=timedelta(days=2)
+                            ttl_override=timedelta(days=3)
                         )
                         warmed += 1
-                        logger.debug(f"Prewarmed NAR cache for {horse_name} at {venue} {distance}m")
+                        logger.debug(f"Prewarmed JRA cache for {horse_name} at {venue}")
                     except Exception as e:
-                        logger.warning(f"Failed to prewarm NAR horse {horse_name} at {venue} {distance}m: {e}")
+                        logger.warning(f"Failed to prewarm JRA horse {horse_name}: {e}")
 
-    except Exception as e:
-        logger.error(f"Cache prewarming failed for NAR: {e}")
+        except Exception as e:
+            logger.error(f"Cache prewarming failed for JRA: {e}")
 
-    try:
-        warmed += _prewarm_nar_v2_engines()
-    except Exception as e:
-        logger.error(f"Cache prewarming failed for NAR V2 engines: {e}")
+        # 地方競馬(NAR)向けのプリウォーム
+        try:
+            from services.local_fast_dlogic_engine_v2 import LocalFastDLogicEngineV2
+            local_engine = LocalFastDLogicEngineV2()
+            local_manager = local_engine.raw_manager
 
-    logger.info(f"Cache prewarming completed. Warmed {warmed} entries.")
+            local_horses = []
+            if hasattr(local_manager, 'get_sample_horses'):
+                local_horses = local_manager.get_sample_horses(limit=16)
+            elif hasattr(local_manager, 'get_all_horse_names'):
+                local_horses = local_manager.get_all_horse_names()[:16]
+
+            local_venues = ["大井", "川崎", "船橋", "浦和", "門別"]
+            local_distances = [1200, 1400, 1600, 1800, 2000]
+
+            for horse_name in local_horses:
+                try:
+                    local_manager.calculate_dlogic_realtime(horse_name)
+                except Exception as e:
+                    logger.debug(f"Shard warm-up failed for {horse_name}: {e}")
+                    continue
+
+                for venue in local_venues:
+                    for distance in local_distances:
+                        cache_data = {
+                            'horse_name': horse_name,
+                            'venue': venue,
+                            'distance': distance,
+                            'analysis_type': 'dlogic',
+                            'region': 'nar'
+                        }
+
+                        key = cache_service._generate_key('dlogic_analysis', cache_data)
+                        if cache_service.redis_cache and cache_service.redis_cache.is_connected():
+                            redis_key = f"dlogic:{key}"
+                            if cache_service.redis_cache.exists(redis_key):
+                                continue
+
+                        try:
+                            result = local_manager.calculate_dlogic_realtime(horse_name)
+                            cache_service.set(
+                                'dlogic_analysis',
+                                cache_data,
+                                result,
+                                ttl_override=timedelta(days=2)
+                            )
+                            warmed += 1
+                            logger.debug(f"Prewarmed NAR cache for {horse_name} at {venue} {distance}m")
+                        except Exception as e:
+                            logger.warning(f"Failed to prewarm NAR horse {horse_name} at {venue} {distance}m: {e}")
+
+        except Exception as e:
+            logger.error(f"Cache prewarming failed for NAR: {e}")
+
+        try:
+            warmed += _prewarm_nar_v2_engines()
+        except Exception as e:
+            logger.error(f"Cache prewarming failed for NAR V2 engines: {e}")
+
+        logger.info(f"Cache prewarming completed. Warmed {warmed} entries.")
+    finally:
+        _release_prewarm_lock(redis_lock_acquired)
+
     return warmed
 
 

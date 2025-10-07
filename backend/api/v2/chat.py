@@ -462,6 +462,9 @@ async def send_message(
             "popularities": race_snapshot.get("popularities") or session.get("popularities")
         }
         
+        # デバッグログ：course_typeの値を確認
+        logger.info(f"🔍 チャットメッセージ race_data: distance={race_data.get('distance')}, course_type={race_data.get('course_type')}, venue={race_data.get('venue')}")
+        
 
         
         # IMLogic設定を取得（リクエストから渡されるか、Supabaseから取得）

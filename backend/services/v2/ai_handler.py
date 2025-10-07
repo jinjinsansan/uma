@@ -3273,6 +3273,9 @@ I-Logicは、馬の能力（70%）と騎手の適性（30%）を総合した分�
                 or race_data.get('course_type')
             )
             track_type = self._normalize_track_type(raw_track_type)
+            
+            # デバッグログ：course_typeの値を確認
+            logger.info(f"🔍 血統分析デバッグ: venue={venue}, distance={distance_value}, course_type={race_data.get('course_type')}, raw_track_type={raw_track_type}, track_type={track_type}")
 
             if not track_type and isinstance(normalized_distance_value, str):
                 if '芝' in normalized_distance_value:

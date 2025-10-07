@@ -659,12 +659,20 @@ def prewarm_cache():
 
             local_horses = []
             if hasattr(local_manager, 'get_sample_horses'):
-                local_horses = local_manager.get_sample_horses(limit=16)
+                local_horses = local_manager.get_sample_horses(limit=8)
             elif hasattr(local_manager, 'get_all_horse_names'):
-                local_horses = local_manager.get_all_horse_names()[:16]
+                local_horses = local_manager.get_all_horse_names()[:8]
 
-            local_venues = ["大井", "川崎", "船橋", "浦和", "門別"]
-            local_distances = [1200, 1400, 1600, 1800, 2000]
+            local_horses = (local_horses or [])[:8]
+            local_venues = ["大井", "川崎", "船橋"]
+            local_distances = [1200, 1600, 2000]
+
+            logger.info(
+                "NAR D-Logic prewarm coverage: horses=%d venues=%d distances=%d",
+                len(local_horses),
+                len(local_venues),
+                len(local_distances)
+            )
 
             for horse_name in local_horses:
                 try:

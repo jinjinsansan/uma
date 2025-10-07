@@ -288,6 +288,9 @@ class SirePerformanceAnalyzer:
             産駒成績の辞書
         """
         try:
+            normalized_name = self._normalize_bloodline_name(broodmare_sire_name)
+            broodmare_sire_key = normalized_name or broodmare_sire_name
+
             normalized_track_type = self._normalize_track_type(track_type)
             normalized_distance = None
             if distance not in (None, ''):
@@ -302,7 +305,7 @@ class SirePerformanceAnalyzer:
                         normalized_distance = digit_only or raw_distance
 
             # インデックスから産駒リストを即座に取得（O(1)）
-            offspring_list = self.broodmare_sire_index.get(broodmare_sire_name, [])
+            offspring_list = self.broodmare_sire_index.get(broodmare_sire_key, [])
 
             if not offspring_list:
                 return {'message': 'データなし'}
@@ -318,6 +321,11 @@ class SirePerformanceAnalyzer:
                 '重': {'races': 0, 'wins': 0, 'places': 0},
                 '不良': {'races': 0, 'wins': 0, 'places': 0}
             }
+
+            debug_matched_count = 0
+            debug_venue_mismatch = 0
+            debug_distance_mismatch = 0
+            debug_track_mismatch = 0
 
             for offspring in offspring_list:
                 for race in offspring['races']:
@@ -392,7 +400,7 @@ class SirePerformanceAnalyzer:
                     condition['place_rate'] = 0
 
             return {
-                'sire_name': broodmare_sire_name,
+                'sire_name': broodmare_sire_key,
                 'total_races': total_races,
                 'wins': wins,
                 'win_rate': win_rate,

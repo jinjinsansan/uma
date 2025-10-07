@@ -74,6 +74,10 @@ class SirePerformanceAnalyzer:
                     if sire and broodmare_sire:
                         break
                 
+                # デバッグ：ディープインパクト産駒を追跡
+                if sire and 'ディープ' in sire and 'インパクト' in sire:
+                    print(f"[DEBUG] Found Deep Impact offspring: {horse_name}, sire={sire}")
+                
                 # デバッグ: 血統情報がない場合をカウント
                 if not sire:
                     skipped_no_sire += 1

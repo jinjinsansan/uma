@@ -98,6 +98,12 @@ class SirePerformanceAnalyzer:
         """
         try:
             normalized_track_type = self._normalize_track_type(track_type)
+            normalized_distance = None
+            if distance not in (None, ''):
+                if isinstance(distance, (int, float)) and not isinstance(distance, bool):
+                    normalized_distance = str(int(distance))
+                else:
+                    normalized_distance = str(distance).strip()
 
             # インデックスから産駒リストを即座に取得（O(1)）
             offspring_list = self.sire_index.get(sire_name, [])
@@ -124,7 +130,17 @@ class SirePerformanceAnalyzer:
                     # 会場と距離が一致するかチェック
                     if race.get('KEIBAJO_CODE') != venue_code:
                         continue
-                    if race.get('KYORI') != distance:
+                    if normalized_distance:
+                        race_distance = race.get('KYORI')
+                        compared_distance = None
+                        if race_distance not in (None, ''):
+                            try:
+                                compared_distance = str(int(race_distance))
+                            except (ValueError, TypeError):
+                                compared_distance = str(race_distance).strip()
+                        if not compared_distance or compared_distance != normalized_distance:
+                            continue
+                    elif distance not in (None, '') and race.get('KYORI') != distance:
                         continue
 
                     race_track_type = self._get_track_type(race)
@@ -226,6 +242,12 @@ class SirePerformanceAnalyzer:
         """
         try:
             normalized_track_type = self._normalize_track_type(track_type)
+            normalized_distance = None
+            if distance not in (None, ''):
+                if isinstance(distance, (int, float)) and not isinstance(distance, bool):
+                    normalized_distance = str(int(distance))
+                else:
+                    normalized_distance = str(distance).strip()
 
             # インデックスから産駒リストを即座に取得（O(1)）
             offspring_list = self.broodmare_sire_index.get(broodmare_sire_name, [])
@@ -249,7 +271,17 @@ class SirePerformanceAnalyzer:
                 for race in offspring['races']:
                     if race.get('KEIBAJO_CODE') != venue_code:
                         continue
-                    if race.get('KYORI') != distance:
+                    if normalized_distance:
+                        race_distance = race.get('KYORI')
+                        compared_distance = None
+                        if race_distance not in (None, ''):
+                            try:
+                                compared_distance = str(int(race_distance))
+                            except (ValueError, TypeError):
+                                compared_distance = str(race_distance).strip()
+                        if not compared_distance or compared_distance != normalized_distance:
+                            continue
+                    elif distance not in (None, '') and race.get('KYORI') != distance:
                         continue
 
                     race_track_type = self._get_track_type(race)

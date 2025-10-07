@@ -47,6 +47,9 @@ class SirePerformanceAnalyzer:
         """血統インデックスを構築（起動時に1回だけ）"""
         try:
             horses_data = self.dlogic_manager.knowledge_data.get('horses', {})
+            
+            skipped_no_sire = 0
+            skipped_no_broodmare = 0
 
             # 全馬データを1回だけスキャン
             for horse_name, horse_data in horses_data.items():
@@ -58,6 +61,12 @@ class SirePerformanceAnalyzer:
                 latest_race = races[0]
                 sire = latest_race.get('sire')
                 broodmare_sire = latest_race.get('broodmare_sire')
+                
+                # デバッグ: 血統情報がない場合をカウント
+                if not sire:
+                    skipped_no_sire += 1
+                if not broodmare_sire:
+                    skipped_no_broodmare += 1
 
                 # 産駒情報を保存（レースデータ付き）
                 offspring_info = {
@@ -74,6 +83,7 @@ class SirePerformanceAnalyzer:
                     self.broodmare_sire_index[broodmare_sire].append(offspring_info)
 
             logger.info(f"📊 血統インデックス構築完了: {len(horses_data)}頭を処理")
+            logger.info(f"⚠️ 父情報なし: {skipped_no_sire}頭, 母父情報なし: {skipped_no_broodmare}頭")
 
         except Exception as e:
             logger.error(f"血統インデックス構築エラー: {e}")

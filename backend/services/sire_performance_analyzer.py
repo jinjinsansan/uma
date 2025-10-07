@@ -187,6 +187,11 @@ class SirePerformanceAnalyzer:
                         except:
                             pass
 
+            # デバッグログ：最終結果と除外統計
+            print(f"[DEBUG] 🔍 JRA産駒成績: sire={sire_name}, venue={venue_code}, distance={normalized_distance}, track_type={normalized_track_type}")
+            print(f"[DEBUG] 🔍 結果: total_races={total_races}, wins={wins}")
+            print(f"[DEBUG] 🔍 除外統計: venue_mismatch={debug_venue_mismatch}, distance_mismatch={debug_distance_mismatch}, track_mismatch={debug_track_mismatch}, matched={debug_matched_count}")
+            
             # 結果がない場合
             if total_races == 0:
                 return {'message': 'データなし'}

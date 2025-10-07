@@ -232,6 +232,9 @@ async def create_chat(
             # )
             # logger.info(f"v2_race_scoresに保存完了: {request.race_id}")
         
+        # デバッグログ：チャット作成時のcourse_type確認
+        print(f"[DEBUG] 🔍 チャット作成: distance={request.distance}, course_type={request.course_type}, venue={request.venue}")
+        
         # チャット作成
         chat_service = V2ChatService()
         chat_session = await chat_service.create_session(
@@ -463,7 +466,8 @@ async def send_message(
         }
         
         # デバッグログ：course_typeの値を確認
-        logger.info(f"🔍 チャットメッセージ race_data: distance={race_data.get('distance')}, course_type={race_data.get('course_type')}, venue={race_data.get('venue')}")
+        print(f"[DEBUG] 🔍 チャットメッセージ race_data: distance={race_data.get('distance')}, course_type={race_data.get('course_type')}, venue={race_data.get('venue')}")
+        print(f"[DEBUG] 🔍 race_snapshot.course_type={race_snapshot.get('course_type')}, session.course_type={session.get('course_type')}")
         
 
         

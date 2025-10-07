@@ -130,6 +130,12 @@ class SirePerformanceAnalyzer:
                 '不良': {'races': 0, 'wins': 0, 'places': 0}
             }
 
+            # デバッグカウンター
+            debug_matched_count = 0
+            debug_venue_mismatch = 0
+            debug_distance_mismatch = 0
+            debug_track_mismatch = 0
+
             # 産駒のレースデータを分析
             for offspring in offspring_list:
                 for race in offspring['races']:

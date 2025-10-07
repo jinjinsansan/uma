@@ -27,7 +27,7 @@ class SirePerformanceAnalyzer:
         if self._initialized:
             return
 
-        logger.info("🏇 種牡馬産駒成績分析エンジン初期化開始...")
+        print("🏇 種牡馬産駒成績分析エンジン初期化開始...")
 
         # DLogicRawDataManagerからデータ取得
         from services.dlogic_raw_data_manager import DLogicRawDataManager
@@ -41,7 +41,7 @@ class SirePerformanceAnalyzer:
         self._build_index()
 
         self._initialized = True
-        logger.info(f"✅ 種牡馬産駒成績分析エンジン初期化完了（父: {len(self.sire_index)}頭、母父: {len(self.broodmare_sire_index)}頭）")
+        print(f"✅ 種牡馬産駒成績分析エンジン初期化完了（父: {len(self.sire_index)}頭、母父: {len(self.broodmare_sire_index)}頭）")
 
     def _build_index(self):
         """血統インデックスを構築（起動時に1回だけ）"""
@@ -90,8 +90,8 @@ class SirePerformanceAnalyzer:
                 if broodmare_sire:
                     self.broodmare_sire_index[broodmare_sire].append(offspring_info)
 
-            logger.info(f"📊 血統インデックス構築完了: {len(horses_data)}頭を処理")
-            logger.info(f"⚠️ 父情報なし: {skipped_no_sire}頭, 母父情報なし: {skipped_no_broodmare}頭")
+            print(f"📊 血統インデックス構築完了: {len(horses_data)}頭を処理")
+            print(f"⚠️ 父情報なし: {skipped_no_sire}頭, 母父情報なし: {skipped_no_broodmare}頭")
 
         except Exception as e:
             logger.error(f"血統インデックス構築エラー: {e}")

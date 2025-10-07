@@ -141,6 +141,7 @@ class SirePerformanceAnalyzer:
                 for race in offspring['races']:
                     # 会場と距離が一致するかチェック
                     if race.get('KEIBAJO_CODE') != venue_code:
+                        debug_venue_mismatch += 1
                         continue
                     if normalized_distance:
                         race_distance = race.get('KYORI')
@@ -151,14 +152,20 @@ class SirePerformanceAnalyzer:
                             except (ValueError, TypeError):
                                 compared_distance = str(race_distance).strip()
                         if not compared_distance or compared_distance != normalized_distance:
+                            debug_distance_mismatch += 1
                             continue
                     elif distance not in (None, '') and race.get('KYORI') != distance:
+                        debug_distance_mismatch += 1
                         continue
 
                     race_track_type = self._get_track_type(race)
                     if normalized_track_type and race_track_type and normalized_track_type != race_track_type:
+                        debug_track_mismatch += 1
+                        if debug_matched_count < 10:
+                            print(f"[DEBUG] ❌ Track mismatch: expected={normalized_track_type}, got={race_track_type}, TRACK={race.get('TRACK_CODE')}, SHIBA={race.get('SHIBA_BABAJOTAI_CODE')}, DIRT={race.get('DIRT_BABAJOTAI_CODE')}")
                         continue
 
+                    debug_matched_count += 1
                     total_races += 1
 
                     # 着順を取得
@@ -292,6 +299,7 @@ class SirePerformanceAnalyzer:
             for offspring in offspring_list:
                 for race in offspring['races']:
                     if race.get('KEIBAJO_CODE') != venue_code:
+                        debug_venue_mismatch += 1
                         continue
                     if normalized_distance:
                         race_distance = race.get('KYORI')
@@ -302,14 +310,20 @@ class SirePerformanceAnalyzer:
                             except (ValueError, TypeError):
                                 compared_distance = str(race_distance).strip()
                         if not compared_distance or compared_distance != normalized_distance:
+                            debug_distance_mismatch += 1
                             continue
                     elif distance not in (None, '') and race.get('KYORI') != distance:
+                        debug_distance_mismatch += 1
                         continue
 
                     race_track_type = self._get_track_type(race)
                     if normalized_track_type and race_track_type and normalized_track_type != race_track_type:
+                        debug_track_mismatch += 1
+                        if debug_matched_count < 10:
+                            print(f"[DEBUG] ❌ Track mismatch: expected={normalized_track_type}, got={race_track_type}, TRACK={race.get('TRACK_CODE')}, SHIBA={race.get('SHIBA_BABAJOTAI_CODE')}, DIRT={race.get('DIRT_BABAJOTAI_CODE')}")
                         continue
 
+                    debug_matched_count += 1
                     total_races += 1
 
                     order = race.get('KAKUTEI_CHAKUJUN', '')

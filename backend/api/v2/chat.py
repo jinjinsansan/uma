@@ -452,6 +452,7 @@ async def send_message(
             "posts": race_snapshot.get("posts") or session.get("posts"),
             "horse_numbers": race_snapshot.get("horse_numbers") or session.get("horse_numbers"),
             "distance": race_snapshot.get("distance") or session.get("distance"),
+            "course_type": race_snapshot.get("course_type") or session.get("course_type"),  # 血統分析で使用
             "track_condition": race_snapshot.get("track_condition") or session.get("track_condition"),
             # V2フィールド追加（F-Logic等で必要）
             "sex_ages": race_snapshot.get("sex_ages") or session.get("sex_ages"),

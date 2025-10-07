@@ -113,6 +113,17 @@ class LocalSirePerformanceAnalyzer:
             sire_name = sire_name.strip()
 
             normalized_track_type = self._normalize_track_type(track_type)
+            normalized_distance = None
+            if distance not in (None, ''):
+                if isinstance(distance, (int, float)) and not isinstance(distance, bool):
+                    normalized_distance = str(int(distance))
+                else:
+                    raw_distance = str(distance).strip()
+                    if raw_distance:
+                        if raw_distance.lower().endswith('m'):
+                            raw_distance = raw_distance[:-1].strip()
+                        digit_only = ''.join(ch for ch in raw_distance if ch.isdigit())
+                        normalized_distance = digit_only or raw_distance
 
             # インデックスから産駒リストを即座に取得（O(1)）
             offspring_list = self.sire_index.get(sire_name, [])
@@ -149,8 +160,12 @@ class LocalSirePerformanceAnalyzer:
                     
                     if race_venue != venue_code:
                         continue
-                    if race_distance != distance:
-                        continue
+                    if normalized_distance:
+                        if race_distance != normalized_distance:
+                            continue
+                    else:
+                        if race_distance != distance:
+                            continue
 
                     race_track_type = self._get_track_type(race)
                     if normalized_track_type and race_track_type and normalized_track_type != race_track_type:
@@ -257,6 +272,17 @@ class LocalSirePerformanceAnalyzer:
             broodmare_sire_name = broodmare_sire_name.strip()
 
             normalized_track_type = self._normalize_track_type(track_type)
+            normalized_distance = None
+            if distance not in (None, ''):
+                if isinstance(distance, (int, float)) and not isinstance(distance, bool):
+                    normalized_distance = str(int(distance))
+                else:
+                    raw_distance = str(distance).strip()
+                    if raw_distance:
+                        if raw_distance.lower().endswith('m'):
+                            raw_distance = raw_distance[:-1].strip()
+                        digit_only = ''.join(ch for ch in raw_distance if ch.isdigit())
+                        normalized_distance = digit_only or raw_distance
 
             # インデックスから産駒リストを即座に取得（O(1)）
             offspring_list = self.broodmare_sire_index.get(broodmare_sire_name, [])
@@ -290,8 +316,12 @@ class LocalSirePerformanceAnalyzer:
                     
                     if race_venue != venue_code:
                         continue
-                    if race_distance != distance:
-                        continue
+                    if normalized_distance:
+                        if race_distance != normalized_distance:
+                            continue
+                    else:
+                        if race_distance != distance:
+                            continue
 
                     race_track_type = self._get_track_type(race)
                     if normalized_track_type and race_track_type and normalized_track_type != race_track_type:

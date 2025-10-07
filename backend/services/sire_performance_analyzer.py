@@ -103,7 +103,13 @@ class SirePerformanceAnalyzer:
                 if isinstance(distance, (int, float)) and not isinstance(distance, bool):
                     normalized_distance = str(int(distance))
                 else:
-                    normalized_distance = str(distance).strip()
+                    raw_distance = str(distance).strip()
+                    if raw_distance:
+                        # 末尾のm/Mを除去し、数字のみを抽出
+                        if raw_distance.lower().endswith('m'):
+                            raw_distance = raw_distance[:-1].strip()
+                        digit_only = ''.join(ch for ch in raw_distance if ch.isdigit())
+                        normalized_distance = digit_only or raw_distance
 
             # インデックスから産駒リストを即座に取得（O(1)）
             offspring_list = self.sire_index.get(sire_name, [])
@@ -247,7 +253,12 @@ class SirePerformanceAnalyzer:
                 if isinstance(distance, (int, float)) and not isinstance(distance, bool):
                     normalized_distance = str(int(distance))
                 else:
-                    normalized_distance = str(distance).strip()
+                    raw_distance = str(distance).strip()
+                    if raw_distance:
+                        if raw_distance.lower().endswith('m'):
+                            raw_distance = raw_distance[:-1].strip()
+                        digit_only = ''.join(ch for ch in raw_distance if ch.isdigit())
+                        normalized_distance = digit_only or raw_distance
 
             # インデックスから産駒リストを即座に取得（O(1)）
             offspring_list = self.broodmare_sire_index.get(broodmare_sire_name, [])

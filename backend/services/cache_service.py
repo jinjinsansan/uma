@@ -142,7 +142,13 @@ class CacheService:
                 value = self.redis_cache.get(redis_key)
                 if value is not None:
                     self.hit_count += 1
-                    logger.debug(f"Redis cache hit for {redis_key}")
+                    hit_rate = self.get_hit_rate()
+                    logger.info(
+                        "Cache hit [redis] prefix=%s hit_rate=%.1f%% key=%s",
+                        prefix,
+                        hit_rate,
+                        redis_key
+                    )
                     return value
             except Exception as e:
                 logger.warning(f"Redis get failed: {e}, falling back to memory cache")
@@ -153,13 +159,25 @@ class CacheService:
             # 有効期限チェック
             if datetime.now() < entry['expires_at']:
                 self.hit_count += 1
-                print(f"📋 キャッシュヒット: {prefix} (ヒット率: {self.get_hit_rate():.1f}%)")
+                hit_rate = self.get_hit_rate()
+                logger.info(
+                    "Cache hit [memory] prefix=%s hit_rate=%.1f%% key=%s",
+                    prefix,
+                    hit_rate,
+                    key
+                )
                 return entry['value']
             else:
                 # 期限切れは削除
                 del self.cache[key]
         
         self.miss_count += 1
+        logger.info(
+            "Cache miss prefix=%s hit_rate=%.1f%% key=%s",
+            prefix,
+            self.get_hit_rate(),
+            key
+        )
         return None
     
     def set(self, prefix: str, data: Any, value: Any, ttl_override: Optional[timedelta] = None) -> None:

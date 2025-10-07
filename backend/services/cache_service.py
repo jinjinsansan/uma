@@ -5,11 +5,13 @@ OpenAI APIとD-Logic分析結果をキャッシュして負荷軽減
 Redis統合版 - Redisが利用可能な場合は優先的に使用
 """
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 import hashlib
 import json
 from functools import lru_cache
 import logging
+import itertools
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -49,11 +51,19 @@ class CacheService:
             'chat_response': timedelta(hours=48),      # チャット応答: 48時間（増加）
             'dlogic_analysis': timedelta(hours=72),    # D-Logic分析: 72時間（増加）
             'imlogic_analysis': timedelta(hours=72),   # IMLogic分析: 72時間
+            'ilogic_analysis': timedelta(hours=48),    # I-Logic分析: 48時間
+            'flogic_analysis': timedelta(hours=48),    # F-Logic分析: 48時間
+            'metalogic_analysis': timedelta(hours=48), # MetaLogic分析: 48時間
             'weather_analysis': timedelta(hours=24),   # 天候適性: 24時間（増加）
             'faq_response': timedelta(days=14),        # FAQ: 14日間（増加）
             'race_analysis': timedelta(hours=12),      # レース分析: 12時間（増加）
             'horse_data': timedelta(days=7),           # 馬データ: 7日間
             'jockey_data': timedelta(days=7),          # 騎手データ: 7日間
+            'viewlogic_flow': timedelta(hours=6),      # ViewLogic展開予想
+            'viewlogic_trend': timedelta(hours=6),     # ViewLogic傾向分析
+            'viewlogic_recommendation': timedelta(hours=6),  # ViewLogic推奨
+            'viewlogic_history': timedelta(hours=12),  # ViewLogic過去データ
+            'viewlogic_sire': timedelta(hours=24),     # ViewLogic血統分析
         }
     
     def _generate_key(self, prefix: str, data: Any) -> str:
@@ -206,6 +216,298 @@ class CacheService:
         return total_size / (1024 * 1024)  # MB変換
 
 
+def _build_nar_sample_races() -> List[Dict[str, Any]]:
+    """プリウォームに使用する地方競馬のサンプルレースを生成"""
+    try:
+        from services.local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
+    except Exception as exc:  # pragma: no cover - defensive import
+        logger.warning("NAR prewarm: failed to import horse manager: %s", exc)
+        return []
+
+    try:
+        from services.local_jockey_data_manager import local_jockey_manager
+    except Exception as exc:  # pragma: no cover - defensive import
+        logger.warning("NAR prewarm: failed to import jockey manager: %s", exc)
+        return []
+
+    horses: List[str] = []
+    jockeys: List[str] = []
+
+    try:
+        if hasattr(local_dlogic_manager_v2, 'get_sample_horses'):
+            horses = local_dlogic_manager_v2.get_sample_horses(limit=24) or []
+        elif hasattr(local_dlogic_manager_v2, 'get_all_horse_names'):
+            horses = (local_dlogic_manager_v2.get_all_horse_names() or [])[:24]
+    except Exception as exc:
+        logger.warning("NAR prewarm: failed to fetch sample horses: %s", exc)
+
+    try:
+        if hasattr(local_jockey_manager, 'get_sample_jockeys'):
+            jockeys = local_jockey_manager.get_sample_jockeys(limit=24) or []
+        elif hasattr(local_jockey_manager, 'get_all_jockey_names'):
+            jockeys = (local_jockey_manager.get_all_jockey_names() or [])[:24]
+    except Exception as exc:
+        logger.warning("NAR prewarm: failed to fetch sample jockeys: %s", exc)
+
+    if not horses or not jockeys:
+        logger.warning(
+            "NAR prewarm: insufficient sample data (horses=%d, jockeys=%d)",
+            len(horses),
+            len(jockeys)
+        )
+        return []
+
+    sample_configs = [
+        ("大井", "2025-01-01", "11", "ダート", 1800, "プリウォーム記念"),
+        ("川崎", "2025-01-02", "10", "ダート", 1600, "プリウォームカップ"),
+        ("船橋", "2025-01-03", "9", "ダート", 1200, "プリウォームスプリント")
+    ]
+
+    horse_cycle = itertools.cycle(horses)
+    jockey_cycle = itertools.cycle(jockeys)
+    headcount = min(12, len(horses), len(jockeys))
+    if headcount == 0:
+        return []
+
+    sample_races: List[Dict[str, Any]] = []
+    for venue, race_date, race_number, track_type, distance, race_name in sample_configs:
+        selected_horses = [next(horse_cycle) for _ in range(headcount)]
+        selected_jockeys = [next(jockey_cycle) for _ in range(headcount)]
+        posts = list(range(1, headcount + 1))
+        odds = [round(1.8 + 0.35 * idx, 1) for idx in range(headcount)]
+        sample_races.append({
+            'race_date': race_date,
+            'venue': venue,
+            'race_number': race_number,
+            'race_name': race_name,
+            'distance': distance,
+            'track_type': track_type,
+            'track_condition': '良',
+            'horses': selected_horses,
+            'jockeys': selected_jockeys,
+            'posts': posts,
+            'horse_numbers': posts,
+            'sex_ages': [],
+            'weights': [],
+            'trainers': [],
+            'odds': odds,
+            'popularities': list(range(1, headcount + 1)),
+            'course_type': track_type
+        })
+
+    return sample_races
+
+
+def _prewarm_nar_v2_engines() -> int:
+    """地方競馬版V2エンジン群をプリウォーム"""
+    sample_races = _build_nar_sample_races()
+    if not sample_races:
+        return 0
+
+    try:
+        from services.v2.ai_handler import V2AIHandler
+        from services.local_race_analysis_engine_v2 import local_race_analysis_engine_v2
+        from services.local_imlogic_engine_v2 import local_imlogic_engine_v2
+        from services.local_flogic_engine_v2 import local_flogic_engine_v2
+        from services.local_metalogic_engine_v2 import local_metalogic_engine_v2
+        from services.local_viewlogic_engine_v2 import local_viewlogic_engine_v2
+        from services.v2.ai_handler_format_advanced import format_flow_prediction_advanced
+    except Exception as exc:  # pragma: no cover - defensive import
+        logger.error("NAR prewarm: failed to import V2 components: %s", exc)
+        return 0
+
+    handler = V2AIHandler()
+    default_item_weights = handler._get_default_weights()
+    warmed_entries = 0
+
+    for base_race in sample_races:
+        race_template = copy.deepcopy(base_race)
+
+        # I-Logicプリウォーム
+        try:
+            race_data = copy.deepcopy(race_template)
+            ilogic_result = local_race_analysis_engine_v2.analyze_race(race_data)
+            if isinstance(ilogic_result, dict) and ilogic_result.get('status') == 'success':
+                scores = ilogic_result.get('scores') or ilogic_result.get('results') or []
+                content = handler._format_ilogic_scores_local(scores, race_data)
+                race_info = ilogic_result.get('race_info') or {
+                    'venue': race_data.get('venue', ''),
+                    'race_number': race_data.get('race_number', ''),
+                    'race_name': race_data.get('race_name', '')
+                }
+                summary = ilogic_result.get('summary') or {}
+                item_weights = ilogic_result.get('item_weights') or copy.deepcopy(default_item_weights)
+                weights = ilogic_result.get('weights') or {'horse': 70, 'jockey': 30}
+                top_horses = ilogic_result.get('top_horses') or [
+                    entry.get('horse') for entry in scores if isinstance(entry, dict) and entry.get('horse')
+                ][:5]
+                analysis_data = {
+                    'type': 'ilogic',
+                    'analysis_type': ilogic_result.get('analysis_type', 'race_analysis_v2'),
+                    'race_info': race_info,
+                    'results': scores,
+                    'scores': scores,
+                    'summary': summary,
+                    'item_weights': item_weights,
+                    'weights': weights,
+                    'top_horses': top_horses
+                }
+                cache_key = handler._build_cache_key_data('nar_ilogic', race_data)
+                handler._save_cached_response('ilogic_analysis', cache_key, content, analysis_data)
+                warmed_entries += 1
+        except Exception as exc:
+            logger.debug("NAR I-Logic prewarm skipped: %s", exc)
+
+        # IMLogicプリウォーム
+        try:
+            race_data = copy.deepcopy(race_template)
+            imlogic_result = local_imlogic_engine_v2.analyze_race(
+                race_data=race_data,
+                horse_weight=70,
+                jockey_weight=30,
+                item_weights=copy.deepcopy(default_item_weights)
+            )
+            if isinstance(imlogic_result, dict) and imlogic_result.get('status') == 'success':
+                cache_extra = {
+                    'horse_weight': 70,
+                    'jockey_weight': 30,
+                    'item_weights': copy.deepcopy(default_item_weights)
+                }
+                content = handler._format_imlogic_result(imlogic_result, race_data)
+                cache_key = handler._build_cache_key_data('nar_imlogic', race_data, extra=cache_extra)
+                handler._save_cached_response('imlogic_analysis', cache_key, content, imlogic_result)
+                warmed_entries += 1
+        except Exception as exc:
+            logger.debug("NAR IMLogic prewarm skipped: %s", exc)
+
+        # F-Logicプリウォーム
+        try:
+            race_data = copy.deepcopy(race_template)
+            odds_values = race_data.get('odds') or []
+            horses = race_data.get('horses') or []
+            market_odds = {
+                horse: float(odds_values[idx])
+                for idx, horse in enumerate(horses)
+                if idx < len(odds_values) and odds_values[idx]
+            }
+            flogic_result = local_flogic_engine_v2.analyze_race(
+                race_data=race_data,
+                market_odds=market_odds
+            )
+            if isinstance(flogic_result, dict) and flogic_result.get('status') == 'success':
+                content = handler._format_flogic_result(flogic_result, race_data)
+                analysis_data = {
+                    'type': 'flogic',
+                    'rankings': flogic_result.get('rankings', []),
+                    'has_market_odds': flogic_result.get('has_market_odds', bool(market_odds))
+                }
+                cache_key = handler._build_cache_key_data('nar_flogic', race_data, extra={'market_odds': market_odds})
+                handler._save_cached_response('flogic_analysis', cache_key, content, analysis_data)
+                warmed_entries += 1
+        except Exception as exc:
+            logger.debug("NAR F-Logic prewarm skipped: %s", exc)
+
+        # MetaLogicプリウォーム
+        try:
+            race_data = copy.deepcopy(race_template)
+            metalogic_result = local_metalogic_engine_v2.analyze_race(race_data)
+            if isinstance(metalogic_result, dict) and metalogic_result.get('status') == 'success':
+                content = handler._format_metalogic_result(metalogic_result)
+                cache_key = handler._build_cache_key_data(
+                    'nar_metalogic',
+                    race_data,
+                    extra={'odds': list(race_data.get('odds') or [])}
+                )
+                handler._save_cached_response('metalogic_analysis', cache_key, content, metalogic_result)
+                warmed_entries += 1
+        except Exception as exc:
+            logger.debug("NAR MetaLogic prewarm skipped: %s", exc)
+
+        # ViewLogic展開予想プリウォーム
+        try:
+            race_data = copy.deepcopy(race_template)
+            flow_result = local_viewlogic_engine_v2.predict_race_flow_advanced(race_data)
+            if isinstance(flow_result, dict) and flow_result.get('status') == 'success':
+                flow_content = format_flow_prediction_advanced(flow_result)
+                flow_key = handler._build_cache_key_data(
+                    'nar_viewlogic',
+                    race_data,
+                    extra={'sub_type': 'flow'}
+                )
+                handler._save_cached_response('viewlogic_flow', flow_key, flow_content, flow_result)
+                warmed_entries += 1
+        except Exception as exc:
+            logger.debug("NAR ViewLogic flow prewarm skipped: %s", exc)
+
+        # ViewLogic傾向分析プリウォーム
+        try:
+            race_data = copy.deepcopy(race_template)
+            trend_result = local_viewlogic_engine_v2.analyze_course_trend(race_data)
+            if isinstance(trend_result, dict) and trend_result.get('status') == 'success':
+                trend_content = handler._format_trend_analysis(trend_result)
+                trend_key = handler._build_cache_key_data(
+                    'nar_viewlogic',
+                    race_data,
+                    extra={'sub_type': 'trend'}
+                )
+                handler._save_cached_response('viewlogic_trend', trend_key, trend_content, trend_result)
+                warmed_entries += 1
+        except Exception as exc:
+            logger.debug("NAR ViewLogic trend prewarm skipped: %s", exc)
+
+        # ViewLogic推奨馬券プリウォーム
+        try:
+            race_data = copy.deepcopy(race_template)
+            recommendation_result = local_viewlogic_engine_v2.recommend_betting_tickets(race_data=race_data)
+            if isinstance(recommendation_result, dict) and recommendation_result.get('status') == 'success':
+                recommendation_content = handler._format_betting_recommendations(recommendation_result)
+                recommendation_key = handler._build_cache_key_data(
+                    'nar_viewlogic',
+                    race_data,
+                    extra={'sub_type': 'recommendation'}
+                )
+                handler._save_cached_response(
+                    'viewlogic_recommendation',
+                    recommendation_key,
+                    recommendation_content,
+                    recommendation_result
+                )
+                warmed_entries += 1
+        except Exception as exc:
+            logger.debug("NAR ViewLogic recommendation prewarm skipped: %s", exc)
+
+        # ViewLogic過去データプリウォーム（先頭馬）
+        try:
+            race_data = copy.deepcopy(race_template)
+            horses = race_data.get('horses') or []
+            if horses:
+                target_horse = horses[0]
+                history_result = local_viewlogic_engine_v2.get_horse_history(target_horse)
+                if isinstance(history_result, dict) and history_result.get('status') == 'success':
+                    progress_message = (
+                        "ViewLogic過去データを取得中...\n"
+                        f"{target_horse}の履歴を検索しています..."
+                    )
+                    history_content = handler._format_horse_history(history_result, target_horse)
+                    full_content = f"{progress_message}\n\n{history_content}"
+                    history_key = handler._build_cache_key_data(
+                        'nar_viewlogic',
+                        race_data,
+                        extra={'sub_type': 'history', 'target_horse': target_horse}
+                    )
+                    handler._save_cached_response(
+                        'viewlogic_history',
+                        history_key,
+                        full_content,
+                        history_result
+                    )
+                    warmed_entries += 1
+        except Exception as exc:
+            logger.debug("NAR ViewLogic history prewarm skipped: %s", exc)
+
+    return warmed_entries
+
+
 # グローバルインスタンス（全インスタンスで共有）
 def prewarm_cache():
     """キャッシュをプリウォーミング（G1レース用）"""
@@ -310,6 +612,11 @@ def prewarm_cache():
 
     except Exception as e:
         logger.error(f"Cache prewarming failed for NAR: {e}")
+
+    try:
+        warmed += _prewarm_nar_v2_engines()
+    except Exception as e:
+        logger.error(f"Cache prewarming failed for NAR V2 engines: {e}")
 
     logger.info(f"Cache prewarming completed. Warmed {warmed} entries.")
     return warmed

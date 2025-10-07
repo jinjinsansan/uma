@@ -7,8 +7,10 @@ import json
 import logging
 import traceback
 from typing import Dict, Any, Optional, List, Tuple
-from datetime import datetime
+from datetime import datetime, date
 from html import unescape
+from decimal import Decimal
+from services.cache_service import cache_service
 from services.imlogic_engine import IMLogicEngine
 from services.dlogic_raw_data_manager import DLogicRawDataManager
 try:
@@ -104,6 +106,103 @@ class V2AIHandler:
         if status in ('no_data', 'missing_data', 'error', 'local_error'):
             return 'no_data'
         return 'valid'
+
+    def _normalize_for_cache(self, value: Any) -> Any:
+        """キャッシュ保存用にシリアライズ可能な形式へ正規化"""
+        if isinstance(value, dict):
+            items = sorted(value.items(), key=lambda item: str(item[0]))
+            return {str(key): self._normalize_for_cache(val) for key, val in items}
+        if isinstance(value, (set, frozenset)):
+            sorted_values = sorted(list(value), key=lambda item: str(item))
+            return [self._normalize_for_cache(val) for val in sorted_values]
+        if isinstance(value, (list, tuple)):
+            return [self._normalize_for_cache(val) for val in value]
+        if isinstance(value, Decimal):
+            try:
+                return float(value)
+            except Exception:
+                return str(value)
+        if isinstance(value, (datetime, date)):
+            return value.isoformat()
+        if isinstance(value, (int, float, bool)) or value is None:
+            return value
+        return str(value)
+
+    def _build_cache_key_data(
+        self,
+        ai_type: str,
+        race_data: Dict[str, Any],
+        extra: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """分析種別とレース情報を基にキャッシュキー用データを生成"""
+        race_id = (
+            race_data.get('race_id')
+            or self._derive_race_id(race_data)
+            or self._derive_year_only_race_id(race_data)
+            or self._derive_legacy_race_id(race_data)
+        )
+
+        key_data: Dict[str, Any] = {
+            'ai_type': ai_type,
+            'race_id': race_id,
+            'venue': race_data.get('venue'),
+            'race_number': race_data.get('race_number'),
+            'race_date': str(race_data.get('race_date')) if race_data.get('race_date') is not None else None,
+            'distance': str(race_data.get('distance')) if race_data.get('distance') is not None else None,
+            'track_type': race_data.get('track_type'),
+            'track_condition': race_data.get('track_condition'),
+            'horses': sorted([str(horse) for horse in race_data.get('horses', [])])
+        }
+
+        if race_data.get('jockeys'):
+            key_data['jockeys'] = [str(jockey) for jockey in race_data.get('jockeys', [])]
+        if race_data.get('horse_numbers'):
+            key_data['horse_numbers'] = [str(number) for number in race_data.get('horse_numbers', [])]
+        if race_data.get('posts'):
+            key_data['posts'] = [str(post) for post in race_data.get('posts', [])]
+        if race_data.get('odds'):
+            key_data['odds'] = [self._normalize_for_cache(odd) for odd in race_data.get('odds', [])]
+
+        if extra:
+            key_data['extra'] = self._normalize_for_cache(extra)
+
+        return self._normalize_for_cache(key_data)
+
+    def _get_cached_response(
+        self,
+        prefix: str,
+        key_data: Dict[str, Any]
+    ) -> Optional[Tuple[str, Optional[Dict[str, Any]]]]:
+        """キャッシュ済みの分析結果を取得"""
+        try:
+            cached_payload = cache_service.get(prefix, key_data)
+        except Exception as exc:
+            logger.warning("キャッシュ取得エラー: prefix=%s, error=%s", prefix, exc)
+            return None
+
+        if isinstance(cached_payload, dict) and 'content' in cached_payload:
+            return (
+                cached_payload.get('content'),
+                cached_payload.get('analysis_data')
+            )
+        return None
+
+    def _save_cached_response(
+        self,
+        prefix: str,
+        key_data: Dict[str, Any],
+        content: str,
+        analysis_data: Optional[Dict[str, Any]]
+    ) -> None:
+        """分析結果をキャッシュへ保存"""
+        payload = {
+            'content': content,
+            'analysis_data': self._normalize_for_cache(analysis_data) if analysis_data is not None else None
+        }
+        try:
+            cache_service.set(prefix, key_data, payload)
+        except Exception as exc:
+            logger.warning("キャッシュ保存エラー: prefix=%s, error=%s", prefix, exc)
 
     def _create_supabase_client(self):
         """Supabaseクライアントを生成"""
@@ -811,6 +910,20 @@ class V2AIHandler:
                         '12_time_index': 8.37
                     }
                 
+                cache_extra = {
+                    'horse_weight': horse_weight,
+                    'jockey_weight': jockey_weight,
+                    'item_weights': item_weights
+                }
+                cache_key_data = self._build_cache_key_data(
+                    ai_type='nar_imlogic',
+                    race_data=race_data,
+                    extra=cache_extra
+                )
+                cached_response = self._get_cached_response('imlogic_analysis', cache_key_data)
+                if cached_response:
+                    return cached_response
+
                 # 一時的なエンジンインスタンスで分析
                 logger.info(f"IMLogic分析開始 - venue: {venue}, horses: {race_data.get('horses', [])}")
                 logger.info(f"IMLogic重み設定 - horse: {horse_weight}%, jockey: {jockey_weight}%")
@@ -849,6 +962,12 @@ class V2AIHandler:
                 
                 # 結果のフォーマット
                 formatted_content = self._format_imlogic_result(analysis_result, race_data)
+                self._save_cached_response(
+                    'imlogic_analysis',
+                    cache_key_data,
+                    formatted_content,
+                    analysis_result
+                )
                 return (formatted_content, analysis_result)
             
             # 通常の会話の場合
@@ -1004,10 +1123,19 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
         """
         try:
             venue = race_data.get('venue')
+            cache_key_data = None
             if self._is_local_racing(venue):
                 from services.local_metalogic_engine_v2 import local_metalogic_engine_v2
                 metalogic_engine_instance = local_metalogic_engine_v2
                 logger.info("MetaLogic: 地方競馬版エンジンを使用 (%s)", venue)
+                cache_key_data = self._build_cache_key_data(
+                    ai_type='nar_metalogic',
+                    race_data=race_data,
+                    extra={'odds': race_data.get('odds')}
+                )
+                cached_response = self._get_cached_response('metalogic_analysis', cache_key_data)
+                if cached_response:
+                    return cached_response
                 analysis_result = metalogic_engine_instance.analyze_race(race_data)
             else:
                 from services.metalogic_engine import metalogic_engine
@@ -1020,6 +1148,14 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             # 結果のフォーマット
             content = self._format_metalogic_result(analysis_result)
             
+            if cache_key_data is not None:
+                self._save_cached_response(
+                    'metalogic_analysis',
+                    cache_key_data,
+                    content,
+                    analysis_result
+                )
+
             return (content, analysis_result)
             
         except Exception as e:
@@ -1088,7 +1224,8 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
             race_number = race_data.get('race_number', '不明')
             
             # 地方競馬場の場合は地方競馬版エンジンを使用
-            if self._is_local_racing(venue):
+            is_local_racing = self._is_local_racing(venue)
+            if is_local_racing:
                 from services.local_viewlogic_engine_v2 import local_viewlogic_engine_v2
                 viewlogic_engine = local_viewlogic_engine_v2
                 logger.info(f"🏇 地方競馬版ViewLogicエンジンを使用: {venue}")
@@ -1099,6 +1236,17 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 logger.info(f"🏇 JRA版ViewLogicエンジンを使用: {venue}")
             
             if sub_type == 'flow':
+                cache_key_data = None
+                if is_local_racing:
+                    cache_key_data = self._build_cache_key_data(
+                        ai_type='nar_viewlogic',
+                        race_data=race_data,
+                        extra={'sub_type': 'flow'}
+                    )
+                    cached_response = self._get_cached_response('viewlogic_flow', cache_key_data)
+                    if cached_response:
+                        return cached_response
+
                 # 展開予想（高度な分析版を使用）
                 logger.info(f"ViewLogic展開予想開始: venue={venue}, horses={race_data.get('horses', [])}")
                 result = viewlogic_engine.predict_race_flow_advanced(race_data)
@@ -1108,12 +1256,30 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     # 外部フォーマット関数を使用
                     from services.v2.ai_handler_format_advanced import format_flow_prediction_advanced
                     content = format_flow_prediction_advanced(result)
+                    if cache_key_data is not None:
+                        self._save_cached_response(
+                            'viewlogic_flow',
+                            cache_key_data,
+                            content,
+                            result
+                        )
                     return (content, result)
                 else:
                     logger.error(f"ViewLogic展開予想エラー詳細: {result}")
                     return (f"展開予想に失敗しました: {result.get('message', '不明なエラー')}", None)
                     
             elif sub_type == 'trend':
+                cache_key_data = None
+                if is_local_racing:
+                    cache_key_data = self._build_cache_key_data(
+                        ai_type='nar_viewlogic',
+                        race_data=race_data,
+                        extra={'sub_type': 'trend'}
+                    )
+                    cached_response = self._get_cached_response('viewlogic_trend', cache_key_data)
+                    if cached_response:
+                        return cached_response
+
                 # コース傾向分析（実際の出場馬・騎手データを使用）
                 import signal
                 import time
@@ -1134,6 +1300,13 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     
                     if result['status'] == 'success':
                         content = self._format_trend_analysis(result)
+                        if cache_key_data is not None:
+                            self._save_cached_response(
+                                'viewlogic_trend',
+                                cache_key_data,
+                                content,
+                                result
+                            )
                         return (content, result)
                     else:
                         return (f"傾向分析に失敗しました: {result.get('message', '不明なエラー')}", None)
@@ -1148,6 +1321,17 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     return (f"傾向分析中にエラーが発生しました: {str(e)}", None)
                     
             elif sub_type == 'recommendation':
+                cache_key_data = None
+                if is_local_racing:
+                    cache_key_data = self._build_cache_key_data(
+                        ai_type='nar_viewlogic',
+                        race_data=race_data,
+                        extra={'sub_type': 'recommendation'}
+                    )
+                    cached_response = self._get_cached_response('viewlogic_recommendation', cache_key_data)
+                    if cached_response:
+                        return cached_response
+
                 # 推奨馬券（馬券推奨として実装）
                 result = viewlogic_engine.recommend_betting_tickets(
                     race_data=race_data
@@ -1155,6 +1339,13 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                 
                 if result['status'] == 'success':
                     content = self._format_betting_recommendations(result)
+                    if cache_key_data is not None:
+                        self._save_cached_response(
+                            'viewlogic_recommendation',
+                            cache_key_data,
+                            content,
+                            result
+                        )
                     return (content, result)
                 else:
                     # フォールバック: 基本的な推奨を提供
@@ -1198,6 +1389,24 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                             target_jockey = jockey
                             break
                 
+                cache_key_data = None
+                if is_local_racing and (target_horse or target_jockey):
+                    cache_extra = {
+                        'sub_type': 'history'
+                    }
+                    if target_horse:
+                        cache_extra['target_horse'] = target_horse
+                    if target_jockey:
+                        cache_extra['target_jockey'] = target_jockey
+                    cache_key_data = self._build_cache_key_data(
+                        ai_type='nar_viewlogic',
+                        race_data=race_data,
+                        extra=cache_extra
+                    )
+                    cached_response = self._get_cached_response('viewlogic_history', cache_key_data)
+                    if cached_response:
+                        return cached_response
+
                 # プログレスバー表示用のメッセージを最初に返す
                 if target_horse:
                     progress_message = "ViewLogic過去データを取得中...\n" + target_horse + "の履歴を検索しています..."
@@ -1216,6 +1425,13 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                         content = self._format_horse_history(result, target_horse)
                         # プログレスメッセージと実際のコンテンツを結合
                         full_content = f"{progress_message}\n\n{content}"
+                        if cache_key_data is not None:
+                            self._save_cached_response(
+                                'viewlogic_history',
+                                cache_key_data,
+                                full_content,
+                                result
+                            )
                         return (full_content, result)
                     else:
                         return (f"{progress_message}\n\n{target_horse}の過去データが見つかりませんでした。", None)
@@ -1227,6 +1443,13 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                         content = self._format_jockey_history(result, target_jockey)
                         # プログレスメッセージと実際のコンテンツを結合
                         full_content = f"{progress_message}\n\n{content}"
+                        if cache_key_data is not None:
+                            self._save_cached_response(
+                                'viewlogic_history',
+                                cache_key_data,
+                                full_content,
+                                result
+                            )
                         return (full_content, result)
                     else:
                         return (f"{progress_message}\n\n{target_jockey}騎手の過去データが見つかりませんでした。", None)
@@ -1903,6 +2126,14 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                     if not horses:
                         return ("分析対象の馬が指定されていません。", None)
 
+                    cache_key_data = self._build_cache_key_data(
+                        ai_type='nar_dlogic',
+                        race_data=race_data
+                    )
+                    cached_response = self._get_cached_response('dlogic_analysis', cache_key_data)
+                    if cached_response:
+                        return cached_response
+
                     posts = race_data.get('posts') or []
                     horse_numbers = race_data.get('horse_numbers') or []
 
@@ -1954,6 +2185,13 @@ IMLogicは、ユーザーがカスタマイズ可能な分析システムです�
                         },
                         'top_horses': ranked_horses[:5]
                     }
+
+                    self._save_cached_response(
+                        'dlogic_analysis',
+                        cache_key_data,
+                        content,
+                        analysis_data
+                    )
 
                     return (content, analysis_data)
                     
@@ -2098,7 +2336,8 @@ F-Logic分析をご希望の場合は「F-Logic分析して」とお聞きくだ
                 
                 # F-Logic分析実行（市場オッズが無い場合はフェア値のみ算出）
                 has_market_odds = bool(market_odds)
-                if self._is_local_racing(venue):
+                is_local_racing = self._is_local_racing(venue)
+                if is_local_racing:
                     from services.local_flogic_engine_v2 import local_flogic_engine_v2
                     flogic_engine_instance = local_flogic_engine_v2
                     logger.info("F-Logic: 地方競馬版エンジンを使用 (%s)", venue)
@@ -2106,6 +2345,20 @@ F-Logic分析をご希望の場合は「F-Logic分析して」とお聞きくだ
                     from services.flogic_engine import flogic_engine
                     flogic_engine_instance = flogic_engine
                     logger.info("F-Logic: JRA版エンジンを使用 (%s)", venue)
+
+                cache_key_data = None
+                if is_local_racing:
+                    cache_extra = {
+                        'market_odds': market_odds if has_market_odds else None
+                    }
+                    cache_key_data = self._build_cache_key_data(
+                        ai_type='nar_flogic',
+                        race_data=race_data,
+                        extra=cache_extra
+                    )
+                    cached_response = self._get_cached_response('flogic_analysis', cache_key_data)
+                    if cached_response:
+                        return cached_response
 
                 result = flogic_engine_instance.analyze_race(race_data, market_odds if has_market_odds else None)
                 
@@ -2120,7 +2373,14 @@ F-Logic分析をご希望の場合は「F-Logic分析して」とお聞きくだ
                         'rankings': result.get('rankings', []),
                         'has_market_odds': result.get('has_market_odds', False)
                     }
-                    
+                    if cache_key_data is not None:
+                        self._save_cached_response(
+                            'flogic_analysis',
+                            cache_key_data,
+                            content,
+                            analysis_data
+                        )
+
                     return (content, analysis_data)
                 else:
                     return (f"F-Logic分析エラー: {result.get('message', '不明なエラー')}", None)
@@ -2244,6 +2504,14 @@ F-Logic（Fair Value Logic）は、理論的な公正オッズと市場オッズ
                     if not jockeys:
                         return ("I-Logic分析には騎手情報が必要です。", None)
                     
+                    cache_key_data = self._build_cache_key_data(
+                        ai_type='nar_ilogic',
+                        race_data=race_data
+                    )
+                    cached_response = self._get_cached_response('ilogic_analysis', cache_key_data)
+                    if cached_response:
+                        return cached_response
+
                     # 地方競馬版I-Logic計算
                     logger.info(f"地方I-Logic分析開始: horses={horses}, jockeys={jockeys}")
                     result = local_ilogic_engine_v2.analyze_race(race_data)
@@ -2290,6 +2558,13 @@ F-Logic（Fair Value Logic）は、理論的な公正オッズと市場オッズ
                             'weights': weights,
                             'top_horses': top_horses
                         }
+
+                        self._save_cached_response(
+                            'ilogic_analysis',
+                            cache_key_data,
+                            content,
+                            analysis_data
+                        )
 
                         return (content, analysis_data)
                     else:

@@ -27,7 +27,7 @@ class SirePerformanceAnalyzer:
         if self._initialized:
             return
 
-        print("🏇 種牡馬産駒成績分析エンジン初期化開始...")
+        print(f"🏇 種牡馬産駒成績分析エンジン初期化開始... (instance={id(self)})")
 
         # DLogicRawDataManagerからデータ取得
         from services.dlogic_raw_data_manager import DLogicRawDataManager
@@ -134,7 +134,7 @@ class SirePerformanceAnalyzer:
             
             # デバッグログ：インデックス内の産駒数
             total_races_in_list = sum(len(o['races']) for o in offspring_list) if offspring_list else 0
-            print(f"[DEBUG] 🔍 インデックス情報: sire={sire_name}, 産駒数={len(offspring_list)}頭, 総レース数={total_races_in_list}戦")
+            print(f"[DEBUG] 🔍 インデックス情報: sire={sire_name}, 産駒数={len(offspring_list)}頭, 総レース数={total_races_in_list}戦, instance={id(self)}, total_sires={len(self.sire_index)}")
 
             if not offspring_list:
                 return {'message': 'データなし'}

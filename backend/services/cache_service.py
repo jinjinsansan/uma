@@ -230,6 +230,21 @@ def _build_nar_sample_races() -> List[Dict[str, Any]]:
         logger.warning("NAR prewarm: failed to import jockey manager: %s", exc)
         return []
 
+    fallback_horses = [
+        "アランバローズ", "ミスティネイル", "キャッスルトップ", "セイカメテオポリス",
+        "エメリミット", "マンガン", "ヒカリオーソ", "ブラヴール",
+        "ヴァケーション", "トランセンデンス", "ミューチャリー", "デュードヴァン",
+        "サヨノグローリー", "ライトウォーリア", "サルサディオーネ", "ノンコノユメ",
+        "ティーズダンク", "クリスタルシルバー", "リコーシーウルフ", "カジノフォンテン",
+        "ルーチェドーロ", "アングライフェン", "ジョエル", "イグナシオドーロ"
+    ]
+    fallback_jockeys = [
+        "森泰斗", "御神本訓史", "矢野貴之", "笹川翼", "張田昂", "和田譲治",
+        "今野忠成", "川島正太郎", "石崎駿", "真島大輔", "町田直希", "山崎誠士",
+        "岡村健司", "酒井忍", "内田利雄", "左海誠二", "小杉亮", "藤田凌",
+        "吉原寛人", "本橋孝太", "藤本現暉", "本田正重", "小林凌", "江里口裕輝"
+    ]
+
     horses: List[str] = []
     jockeys: List[str] = []
 
@@ -248,6 +263,32 @@ def _build_nar_sample_races() -> List[Dict[str, Any]]:
             jockeys = (local_jockey_manager.get_all_jockey_names() or [])[:24]
     except Exception as exc:
         logger.warning("NAR prewarm: failed to fetch sample jockeys: %s", exc)
+
+    if len(horses) < 12:
+        original = len(horses)
+        existing = set(horses)
+        for name in fallback_horses:
+            if name not in existing:
+                horses.append(name)
+                existing.add(name)
+            if len(horses) >= 12:
+                break
+        if len(horses) < 12:
+            horses = fallback_horses[:12]
+        logger.info("NAR prewarm: using fallback horses (%d->%d)", original, len(horses))
+
+    if len(jockeys) < 12:
+        original = len(jockeys)
+        existing = set(jockeys)
+        for name in fallback_jockeys:
+            if name not in existing:
+                jockeys.append(name)
+                existing.add(name)
+            if len(jockeys) >= 12:
+                break
+        if len(jockeys) < 12:
+            jockeys = fallback_jockeys[:12]
+        logger.info("NAR prewarm: using fallback jockeys (%d->%d)", original, len(jockeys))
 
     if not horses or not jockeys:
         logger.warning(

@@ -157,9 +157,9 @@ class JockeyKnowledgeManager:
                     # 枠番号を抽出（例: "枠4" -> 4）
                     try:
                         waku_num = int(waku_str.replace('枠', ''))
-                        if 1 <= waku_num <= 6:
+                        if 1 <= waku_num <= 3:
                             category = '内枠（1-6）'
-                        elif 7 <= waku_num <= 12:
+                        elif 4 <= waku_num <= 6:
                             category = '中枠（7-12）'
                         else:
                             category = '外枠（13-18）'

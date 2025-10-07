@@ -2490,9 +2490,9 @@ class ViewLogicEngine:
                     if valid_posts and i < len(valid_posts):
                         post_num = valid_posts[i]
                         # 枠番カテゴリーを判定
-                        if post_num <= 6:
+                        if post_num <= 3:
                             category = '内枠（1-6）'
-                        elif post_num <= 12:
+                        elif post_num <= 6:
                             category = '中枠（7-12）'
                         else:
                             category = '外枠（13-18）'

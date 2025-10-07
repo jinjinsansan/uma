@@ -57,10 +57,18 @@ class SirePerformanceAnalyzer:
                 if not races:
                     continue
 
-                # 最新レースから血統情報を取得
-                latest_race = races[0]
-                sire = latest_race.get('sire')
-                broodmare_sire = latest_race.get('broodmare_sire')
+                # 全レースから血統情報を探す（最新レースから順に）
+                sire = None
+                broodmare_sire = None
+                
+                for race in races:
+                    if not sire:
+                        sire = race.get('sire')
+                    if not broodmare_sire:
+                        broodmare_sire = race.get('broodmare_sire')
+                    # 両方見つかったら終了
+                    if sire and broodmare_sire:
+                        break
                 
                 # デバッグ: 血統情報がない場合をカウント
                 if not sire:

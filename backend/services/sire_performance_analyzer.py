@@ -17,9 +17,13 @@ class SirePerformanceAnalyzer:
     _instance = None
 
     def __new__(cls):
+        print(f"[DEBUG] __new__ called: _instance={cls._instance}, id={id(cls._instance) if cls._instance else 'None'}")
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
+            print(f"[DEBUG] Created new instance: id={id(cls._instance)}")
+        else:
+            print(f"[DEBUG] Reusing existing instance: id={id(cls._instance)}")
         return cls._instance
 
     def __init__(self):

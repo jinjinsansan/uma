@@ -67,9 +67,13 @@ class SirePerformanceAnalyzer:
                 
                 for race in races:
                     if not sire:
-                        sire = race.get('sire')
+                        sire_candidate = self._normalize_bloodline_name(race.get('sire'))
+                        if sire_candidate:
+                            sire = sire_candidate
                     if not broodmare_sire:
-                        broodmare_sire = race.get('broodmare_sire')
+                        broodmare_candidate = self._normalize_bloodline_name(race.get('broodmare_sire'))
+                        if broodmare_candidate:
+                            broodmare_sire = broodmare_candidate
                     # 両方見つかったら終了
                     if sire and broodmare_sire:
                         break
@@ -123,6 +127,8 @@ class SirePerformanceAnalyzer:
             産駒成績の辞書
         """
         try:
+            sire_key = self._normalize_bloodline_name(sire_name) or sire_name
+
             normalized_track_type = self._normalize_track_type(track_type)
             normalized_distance = None
             if distance not in (None, ''):
@@ -138,11 +144,11 @@ class SirePerformanceAnalyzer:
                         normalized_distance = digit_only or raw_distance
 
             # インデックスから産駒リストを即座に取得（O(1)）
-            offspring_list = self.sire_index.get(sire_name, [])
+            offspring_list = self.sire_index.get(sire_key, [])
             
             # デバッグログ：インデックス内の産駒数
             total_races_in_list = sum(len(o['races']) for o in offspring_list) if offspring_list else 0
-            print(f"[DEBUG] 🔍 インデックス情報: sire={sire_name}, 産駒数={len(offspring_list)}頭, 総レース数={total_races_in_list}戦, instance={id(self)}, total_sires={len(self.sire_index)}")
+            print(f"[DEBUG] 🔍 インデックス情報: sire={sire_key}, 産駒数={len(offspring_list)}頭, 総レース数={total_races_in_list}戦, instance={id(self)}, total_sires={len(self.sire_index)}")
 
             if not offspring_list:
                 return {'message': 'データなし'}
@@ -423,6 +429,14 @@ class SirePerformanceAnalyzer:
         except Exception as e:
             logger.error(f"母父産駒成績分析エラー（{broodmare_sire_name}）: {e}")
             return {'message': 'エラー発生'}
+
+    def _normalize_bloodline_name(self, name: Optional[str]) -> Optional[str]:
+        if not name:
+            return None
+        if not isinstance(name, str):
+            name = str(name)
+        normalized = name.replace('\u3000', ' ').strip()
+        return normalized or None
 
     def _normalize_track_type(self, track_type: Optional[str]) -> Optional[str]:
         if not track_type:

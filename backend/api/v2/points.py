@@ -2,7 +2,7 @@
 V2ポイント管理API
 既存システムには一切影響しない
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Body
 from typing import Dict, Optional
 from datetime import datetime
 import logging
@@ -32,6 +32,11 @@ class GrantPointsRequest(BaseModel):
     """ポイント付与リクエスト（管理者用）"""
     amount: int = 10
     description: Optional[str] = None
+
+
+class ReferralMilestoneRequest(BaseModel):
+    """紹介マイルストーンボーナス受取リクエスト"""
+    milestone: int
 
 @router.get("/status", response_model=PointsResponse)
 async def get_points_status(user_id: str = Depends(get_current_user)):
@@ -265,7 +270,8 @@ async def get_transactions(
         raise HTTPException(status_code=500, detail="取引履歴の取得に失敗しました")
 @router.post("/referral-milestone-bonus")
 async def claim_referral_milestone_bonus(
-    milestone: int,
+    payload: Optional[ReferralMilestoneRequest] = Body(default=None),
+    milestone: Optional[int] = None,
     user_id: str = Depends(get_current_user)
 ):
     """
@@ -276,8 +282,14 @@ async def claim_referral_milestone_bonus(
         from supabase import create_client, Client
         import os
         
+        # リクエストボディ優先でマイルストーンを決定
+        milestone_value: Optional[int] = payload.milestone if payload else milestone
+
+        if milestone_value is None:
+            raise HTTPException(status_code=422, detail="milestone is required")
+
         # マイルストーンの検証
-        if milestone not in [2, 5, 10]:
+        if milestone_value not in [2, 5, 10]:
             raise HTTPException(status_code=400, detail="無効なマイルストーンです")
         
         supabase_url = os.getenv("SUPABASE_URL")
@@ -289,14 +301,14 @@ async def claim_referral_milestone_bonus(
         referral_count = len(referral_result.data) if referral_result.data else 0
         
         # マイルストーンに達しているか確認
-        if referral_count < milestone:
+        if referral_count < milestone_value:
             raise HTTPException(
                 status_code=400, 
-                detail=f"紹介{milestone}名に達していません（現在: {referral_count}名）"
+                detail=f"紹介{milestone_value}名に達していません（現在: {referral_count}名）"
             )
         
         # 既に受け取り済みか確認
-        transaction_type = f"referral_milestone_{milestone}"
+        transaction_type = f"referral_milestone_{milestone_value}"
         service = V2PointsService()
         
         existing = supabase.table("v2_point_transactions").select("id").eq("user_id", user_id).eq("transaction_type", transaction_type).execute()
@@ -307,14 +319,14 @@ async def claim_referral_milestone_bonus(
         # ボーナスポイントを付与（マイルストーンと同じポイント数）
         transaction = await service.grant_points(
             user_id=user_id,
-            amount=milestone,
+            amount=milestone_value,
             transaction_type=transaction_type,
-            description=f"紹介{milestone}名達成デイリーボーナス"
+            description=f"紹介{milestone_value}名達成デイリーボーナス"
         )
         
         return {
-            "points_granted": milestone,
-            "message": f"紹介{milestone}名達成！デイリーボーナス+{milestone}Pを獲得しました",
+            "points_granted": milestone_value,
+            "message": f"紹介{milestone_value}名達成！デイリーボーナス+{milestone_value}Pを獲得しました",
             "new_balance": transaction["balance_after"]
         }
         

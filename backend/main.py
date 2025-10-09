@@ -81,6 +81,7 @@ DEFAULT_ORIGINS = [
     "https://uma-oracle-ai.netlify.app",
     "https://dlogicai.in",
     "https://www.dlogicai.in",
+    "https://app.dlogicai.in",
     "https://d-logic-ai-frontend.vercel.app",
     "https://d-logic-ai-frontend-git-main-jinjinsansans-projects.vercel.app"
 ]

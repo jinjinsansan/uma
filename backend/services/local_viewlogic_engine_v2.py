@@ -1120,8 +1120,14 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
     def _normalize_jockey_name(self, jockey_name: str) -> str:
         if not jockey_name:
             return ''
-        # 地方騎手データはそのまま使用する
-        return jockey_name.strip()
+
+        # 減量記号や装飾記号を除去し、前後の空白をトリム
+        normalized = re.sub(r'[☆★△▲◇◆▽▼♪♭♯＋＋\s]', '', jockey_name)
+
+        # 記号除去で空になった場合は素のストリップ値を返す
+        normalized = normalized.strip() or jockey_name.strip()
+
+        return normalized
 
     
     # ===== ヘルパーメソッド（JRA版と同一ロジック） =====

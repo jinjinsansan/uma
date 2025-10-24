@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from .local_fast_dlogic_engine_v2 import LocalFastDLogicEngineV2
 from .local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
 from .local_jockey_data_manager import local_jockey_manager
+from .jockey_name_mapper import normalize_jockey_name
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +104,8 @@ class LocalRaceAnalysisEngineV2:
             for i in range(len(horses)):
                 try:
                     horse_name = horses[i]
-                    jockey_name = jockeys[i] if jockeys and i < len(jockeys) else ''
+                    raw_jockey_name = jockeys[i] if jockeys and i < len(jockeys) else ''
+                    jockey_name = raw_jockey_name
                     post = posts[i] if posts and i < len(posts) else i + 1
                     horse_number = horse_numbers[i] if horse_numbers and i < len(horse_numbers) else i + 1
                     
@@ -121,7 +123,7 @@ class LocalRaceAnalysisEngineV2:
                         'sire': horse_details.get('sire')
                     }
                     jockey_score, jockey_breakdown = self._calculate_jockey_score(
-                        jockey_name,
+                        raw_jockey_name,
                         jockey_context
                     )
                     
@@ -488,8 +490,12 @@ class LocalRaceAnalysisEngineV2:
             if not jockey_name:
                 return 0.0, {'venue_score': 0.0, 'post_score': 0.0, 'sire_score': 0.0}
 
+            normalized_name = normalize_jockey_name(jockey_name)
+            if not normalized_name:
+                return 0.0, {'venue_score': 0.0, 'post_score': 0.0, 'sire_score': 0.0}
+
             jockey_analysis = self.jockey_manager.calculate_jockey_score(
-                jockey_name,
+                normalized_name,
                 context
             )
 

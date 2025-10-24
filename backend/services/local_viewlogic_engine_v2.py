@@ -16,6 +16,7 @@ import re
 # from .viewlogic_engine import ViewLogicEngine  # 親クラスに依存しない独立実装
 from .local_dlogic_raw_data_manager_v2 import local_dlogic_manager_v2
 from .local_jockey_data_manager import local_jockey_manager
+from .jockey_name_mapper import normalize_jockey_name
 
 logger = logging.getLogger(__name__)
 
@@ -1120,6 +1121,10 @@ class LocalViewLogicEngineV2:  # ViewLogicEngineを継承しない独立実装
     def _normalize_jockey_name(self, jockey_name: str) -> str:
         if not jockey_name:
             return ''
+
+        normalized_by_mapper = normalize_jockey_name(jockey_name)
+        if normalized_by_mapper:
+            return normalized_by_mapper
 
         # 減量記号や装飾記号を除去し、前後の空白をトリム
         normalized = re.sub(r'[☆★△▲◇◆▽▼♪♭♯＋＋\s]', '', jockey_name)

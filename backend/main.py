@@ -431,12 +431,17 @@ if os.getenv("ENABLE_V2_FEATURES", "true").lower() == "true":
         app.include_router(v2_column_router)
         app.include_router(v2_admin_campaign_router.router)
 
+        # 競馬新聞予想API（認証不要・静的生成用）
+        from api.v2 import predictions as v2_predictions_router
+        app.include_router(v2_predictions_router.router, prefix="/api/v2/predictions")
+
         # デバッグエンドポイント追加（本番環境での確認用）
         from api.v2 import debug as v2_debug_router
         app.include_router(v2_debug_router.router, prefix="/api/v2/debug")
         print("✅ V2ポイント制システムAPI登録完了")
         print("✅ V2 D-Logic バッチ計算API登録完了")
         print("✅ V2 I-Logic バッチ計算API登録完了")
+        print("✅ V2 予想新聞API登録完了")
     except ImportError as e:
         print(f"⚠️ V2ポイント制システムAPIが見つかりません: {e}")
 else:

@@ -247,7 +247,7 @@ def run_race_level_update(date_str, logger):
         return False
 
     script_dir = os.path.dirname(script_path)
-    json_filename = f'jra_race_level_{date_str}.json'
+    json_filename = f'race_level_{date_str}.json'
     json_path = os.path.join(script_dir, json_filename)
 
     # Step 1: ローカルで計算

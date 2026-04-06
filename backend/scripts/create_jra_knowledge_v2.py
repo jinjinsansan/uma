@@ -18,18 +18,34 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 # データベース接続情報
 CONNECTION_PARAMS = {
-    "host": "172.25.160.1",
+    "host": "127.0.0.1",
     "port": "5432",
     "database": "pckeiba",
     "user": "postgres",
     "password": "postgres"
 }
 
-# 国内競馬場コードマッピング
+# 競馬場コードマッピング（JRA国内10場 + 海外14場）
 KEIBAJO_MAP = {
+    # JRA 国内
     '01': '札幌', '02': '函館', '03': '福島', '04': '新潟',
     '05': '東京', '06': '中山', '07': '中京', '08': '京都',
-    '09': '阪神', '10': '小倉'
+    '09': '阪神', '10': '小倉',
+    # 海外
+    'A4': 'アメリカ',
+    'A6': 'イギリス(アスコット等)',
+    'A8': 'イギリス(ニューマーケット等)',
+    'B2': 'アイルランド',
+    'B6': 'オーストラリア',
+    'B8': 'カナダ',
+    'C0': 'イタリア',
+    'C2': 'ドイツ',
+    'C7': 'UAE(ドバイ)',
+    'F0': '韓国',
+    'G0': '香港',
+    'K6': 'サウジアラビア',
+    'M8': 'カタール',
+    'N2': 'バーレーン',
 }
 
 
@@ -217,8 +233,7 @@ def create_jra_knowledge_quality():
         )
         LEFT JOIN jvd_um um ON se.ketto_toroku_bango = um.ketto_toroku_bango
         WHERE se.kaisai_nen BETWEEN %s AND %s
-            -- 国内JRAレースのみ（01-10）
-            -- 海外馬を除外
+            -- JRA国内 + 海外遠征レースを含む（血統登録番号が空の外国馬は除外）
             AND se.ketto_toroku_bango != '0000000000'
             AND se.bamei IS NOT NULL
             AND se.bamei != ''
@@ -423,8 +438,8 @@ def create_jra_knowledge_quality():
         print("\n" + "=" * 80)
         print("📊 【品質保証】")
         print("=" * 80)
-        print("✅ 国内JRAレースのみ抽出")
-        print("✅ 海外馬除外（血統登録番号チェック）")
+        print("✅ JRA国内 + 海外遠征レースを含む")
+        print("✅ 血統登録番号が空の外国馬は除外")
         print("✅ 着順不明データ除外")
         print("✅ 競馬場名を日本語で設定")
         print(f"✅ データ品質率: {valid_data_count/row_count*100:.1f}%")
@@ -460,8 +475,8 @@ def main():
         print(f"✅ データ期間: {start_year}年〜{end_year}年")
         print(f"✅ 品質: JRA国内レースのみ、高品質データ")
         print("\n【今回の改善点】")
-        print("• 国内レースのみ抽出（競馬場コード01-10）")
-        print("• 海外馬除外")
+        print("• JRA国内 + 海外遠征レースを抽出")
+        print("• 血統登録番号が空の外国馬は除外")
         print("• データ品質チェック実装")
         print("• 競馬場名を日本語化")
     else:
